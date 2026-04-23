@@ -1,6 +1,7 @@
 import { Navigate, createBrowserRouter } from 'react-router-dom'
 import { AppShell } from '../components/common/AppShell'
 import { BudgetPage } from '../features/budget/pages/BudgetPage'
+import { CateringPage } from '../features/catering/pages/CateringPage'
 import { DashboardPage } from '../features/dashboard/pages/DashboardPage'
 import { EventsPage } from '../features/events/pages/EventsPage'
 import { GuestsPage } from '../features/guests/pages/GuestsPage'
@@ -32,6 +33,10 @@ export const router = createBrowserRouter([
       {
         path: 'budget',
         element: <BudgetPage />,
+      },
+      {
+        path: 'catering',
+        element: <CateringPage />,
       },
       {
         path: 'vendors',

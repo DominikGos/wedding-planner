@@ -7,6 +7,7 @@ const links = [
   { to: '/budget', label: 'Budzet' },
   { to: '/vendors', label: 'Dostawcy' },
   { to: '/guests', label: 'Goscie' },
+  { to: '/catering', label: 'Catering' },
 ]
 
 export function MainNav() {
