@@ -13,6 +13,18 @@ services:
       APP_USER_PASSWORD: mypassword
     volumes:
       - oracle-data:/opt/oracle/oradata
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"     # Messaging port (Spring Boot uses this)
+      - "15672:15672"   # Web management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: planner_user
+      RABBITMQ_DEFAULT_PASS: password
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
 
 volumes:
   oracle-data:
+  rabbitmq-data:
