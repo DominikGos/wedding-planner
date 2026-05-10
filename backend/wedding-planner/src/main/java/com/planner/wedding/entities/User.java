@@ -21,11 +21,16 @@ public class User {
     @Column(nullable = false, unique = true)
     private String email;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String password;
 
     @Enumerated(EnumType.STRING)
     private UserRole role;
+
+    @Enumerated(EnumType.STRING)
+    private AuthProvider provider;
+
+    private String googleId;
 
     @OneToMany(mappedBy = "user")
     private List<Event> events;
