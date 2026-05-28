@@ -8,20 +8,21 @@ export function CreateEventPage() {
   const navigate = useNavigate()
   const dispatch = useDispatch()
   const user = useSelector((state: RootState) => state.auth.user)
+  const userNameForWedding = user?.name && user.name !== 'Użytkownik' ? user.name.split('&')[0].trim() : ''
   
   useEffect(() => {
     if (user) {
       setFormData(prev => ({
         ...prev,
-        partnerA: prev.partnerA || (user.name ? user.name.split('&')[0].trim() : ''),
+        partnerA: prev.partnerA || userNameForWedding,
         date: prev.date || user.weddingDate || ''
       }))
     }
-  }, [user])
+  }, [user, userNameForWedding])
 
   const [step, setStep] = useState(1)
   const [formData, setFormData] = useState({
-    partnerA: user?.name ? user.name.split('&')[0].trim() : '',
+    partnerA: userNameForWedding,
     partnerB: '',
     date: user?.weddingDate || '',
     venue: '',
@@ -53,10 +54,10 @@ export function CreateEventPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Combine names
     const weddingName = `${formData.partnerA} & ${formData.partnerB || 'Partner'}`
     
     dispatch(createWedding({
+      userName: formData.partnerA,
       name: weddingName,
       date: formData.date || new Date().toISOString().split('T')[0],
       budget: formData.budget,

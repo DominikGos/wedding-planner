@@ -12,6 +12,7 @@ export function AppShell() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const activeWedding = weddings.find(w => w.id === activeWeddingId)
+  const userDisplayName = user?.name || ''
 
   const handleLogout = () => {
     dispatch(logout())
@@ -37,18 +38,34 @@ export function AppShell() {
         zIndex: 100,
         boxShadow: '0 2px 20px rgba(47, 42, 36, 0.03)'
       }}>
+        <style>
+          {`
+            .center-header-section .main-nav {
+              flex-wrap: nowrap !important;
+              white-space: nowrap;
+              align-items: center;
+              justify-content: center;
+              gap: 0.45rem !important;
+            }
+
+            .center-header-section .main-nav a {
+              padding: 0.4rem 0.7rem !important;
+              white-space: nowrap;
+            }
+          `}
+        </style>
         <div style={{
-          maxWidth: '1200px',
-          margin: '0 auto',
-          padding: '0.9rem 1.5rem',
-          display: 'flex',
-          justifyContent: 'space-between',
+          width: '100%',
+          maxWidth: 'none',
+          padding: '0.9rem 2rem',
+          display: 'grid',
+          gridTemplateColumns: '1fr auto 1fr',
           alignItems: 'center',
           gap: '1rem'
         }}>
           {/* Brand Logo */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '0.75rem', minWidth: 0 }}>
+            <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0, whiteSpace: 'nowrap' }}>
               <span style={{ fontSize: '1.6rem', lineHeight: 1 }}>✨</span>
               <strong style={{
                 fontFamily: "'Playfair Display', Georgia, serif",
@@ -66,7 +83,7 @@ export function AppShell() {
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.5rem',
+                gap: '0.2rem',
                 background: 'var(--primary-soft)',
                 padding: '0.25rem 0.75rem',
                 borderRadius: '20px',
@@ -74,10 +91,15 @@ export function AppShell() {
                 color: 'var(--primary)',
                 fontWeight: 600,
                 border: '1px solid rgba(184, 90, 31, 0.15)',
-                marginLeft: '0.5rem'
+                marginLeft: 0,
+                maxWidth: '180px',
+                flexShrink: 1,
+                minWidth: 0
               }}>
                 <span style={{ fontSize: '0.75rem' }}>💍</span>
-                <span>{activeWedding.name}</span>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {activeWedding.name}
+                </span>
                 {user?.role === 'planner' && (
                   <button 
                     onClick={handleBackToPlanner}
@@ -102,16 +124,18 @@ export function AppShell() {
           </div>
 
           {/* Desktop Navigation */}
-          <div className="desktop-nav-container" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+          <div className="center-header-section" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <MainNav />
-            
-            {/* User Auth actions */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderLeft: '1px solid var(--border)', paddingLeft: '1.5rem' }}>
+          </div>
+          
+          {/* User Auth actions */}
+          <div className="right-header-section" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '1rem', minWidth: 0, whiteSpace: 'nowrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderLeft: '1px solid var(--border)', paddingLeft: '1.5rem', flexShrink: 0 }}>
               {user ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text)' }}>
-                      {user.name}
+                  <div style={{ textAlign: 'right', maxWidth: '120px' }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {userDisplayName}
                     </div>
                     <div style={{ fontSize: '0.7rem', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                       {user.role === 'planner' ? 'Wedding Planner' : 'Para Młoda'}
@@ -131,7 +155,7 @@ export function AppShell() {
                     fontSize: '0.9rem',
                     border: '1px solid var(--border)'
                   }}>
-                    {user.name.charAt(0).toUpperCase()}
+                    {userDisplayName.charAt(0).toUpperCase()}
                   </div>
 
                   {/* Logout Button */}
@@ -242,9 +266,11 @@ export function AppShell() {
                     fontWeight: 700,
                     fontSize: '0.8rem'
                   }}>
-                    {user.name.charAt(0).toUpperCase()}
+                    {userDisplayName.charAt(0).toUpperCase()}
                   </div>
-                  <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>{user.name}</span>
+                  <span style={{ fontSize: '0.9rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {userDisplayName}
+                  </span>
                 </div>
                 <button 
                   onClick={handleLogout}

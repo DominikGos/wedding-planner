@@ -18,6 +18,7 @@ export function DashboardPage() {
   // Redux state
   const { user, activeWeddingId, weddings } = useSelector((state: RootState) => state.auth)
   const activeWedding = weddings.find(w => w.id === activeWeddingId)
+  const greetingName = user?.name && user.name !== 'Użytkownik' ? user.name : ''
 
   // Hover states for the active dashboard
   const [hoveredCard, setHoveredCard] = useState<string | null>(null)
@@ -349,7 +350,7 @@ export function DashboardPage() {
           <span style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.2em', color: 'var(--primary)', fontWeight: 600 }}>Witaj w planerze</span>
           
           <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '2.5rem', margin: 0, fontWeight: 500 }}>
-            Witaj, {user.name}!
+            {greetingName ? `Witaj, ${greetingName}!` : 'Witaj!'}
           </h1>
           <p style={{ color: 'var(--muted)', fontSize: '1.05rem', lineHeight: '1.6', margin: 0 }}>
             Cieszymy się, że jesteś z nami. Twój luksusowy planer ślubny jest gotowy do wdrożenia. 
@@ -415,7 +416,7 @@ export function DashboardPage() {
                 {user?.role === 'planner' ? 'Pulpit Menadżera (Koordynator)' : 'Twój Pulpit Ślubny'}
               </h1>
               <p className='page-subtitle' style={{ fontSize: '1.05rem' }}>
-                Witaj, {user?.name.split('&')[0]}! Oto przegląd planowania wesela.
+                {greetingName ? `Witaj, ${greetingName}!` : 'Witaj!'} Oto przegląd planowania wesela.
               </p>
             </div>
 
