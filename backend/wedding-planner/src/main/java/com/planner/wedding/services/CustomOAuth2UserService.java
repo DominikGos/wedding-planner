@@ -3,6 +3,7 @@ package com.planner.wedding.services;
 import com.planner.wedding.entities.*;
 import com.planner.wedding.repositories.UserRepository;
 import org.springframework.security.oauth2.client.userinfo.*;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.*;
 import org.springframework.stereotype.Service;
 
@@ -28,6 +29,12 @@ public class CustomOAuth2UserService
 
         String email =
                 oauthUser.getAttribute("email");
+
+        if (email == null || email.isBlank()) {
+            throw new OAuth2AuthenticationException(
+                    "Google account did not provide email"
+            );
+        }
 
         String googleId =
                 oauthUser.getAttribute("sub");
