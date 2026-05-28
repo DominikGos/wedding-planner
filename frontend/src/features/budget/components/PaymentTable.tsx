@@ -4,15 +4,16 @@ import { BudgetIcon } from './BudgetIcon'
 type PaymentTableProps = {
   payments: Payment[]
   onPay: (id: string) => void
+  userRole: 'couple' | 'planner' | null
 }
 
-export function PaymentTable({ payments, onPay }: PaymentTableProps) {
+export function PaymentTable({ payments, onPay, userRole }: PaymentTableProps) {
   const getStatusStyle = (status: Payment['status']) => {
     switch (status) {
       case 'paid':
         return { bg: '#eef8f3', text: '#35684f', label: 'Opłacono', icon: 'check' as const }
       case 'pending':
-        return { bg: '#fff9eb', text: '#8c5a12', label: 'Oczekuje', icon: 'clock' as const }
+        return { bg: '#fff9eb', text: '#8c5a12', label: 'Oczekuje akceptacji', icon: 'clock' as const }
       case 'overdue':
         return { bg: '#fff2f2', text: '#c53030', label: 'Zaległe', icon: 'alert' as const }
     }
@@ -34,6 +35,8 @@ export function PaymentTable({ payments, onPay }: PaymentTableProps) {
         <tbody>
           {payments.map((p) => {
             const status = getStatusStyle(p.status)
+            const isPendingCouple = p.status === 'pending' && userRole === 'couple'
+            
             return (
               <tr key={p.id} style={{ borderBottom: '1px solid #f6f3ed' }}>
                 <td style={cellStyle}>
@@ -48,7 +51,7 @@ export function PaymentTable({ payments, onPay }: PaymentTableProps) {
                   <div>{p.deadline}</div>
                   {p.paidAt && (
                     <div style={{ fontSize: '0.75rem', color: '#35684f' }}>
-                      Zapłacono: {p.paidAt}
+                      Opłacono: {p.paidAt}
                     </div>
                   )}
                 </td>
@@ -72,15 +75,24 @@ export function PaymentTable({ payments, onPay }: PaymentTableProps) {
                 </td>
                 <td style={cellStyle}>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button style={iconButtonStyle}>
+                    <button style={iconButtonStyle} title="Pokaż szczegóły umowy">
                       <BudgetIcon name='file-text' color='var(--muted)' size={18} />
                     </button>
                     {p.status !== 'paid' && (
                       <button 
-                        style={actionButtonStyle}
+                        style={{
+                          ...actionButtonStyle,
+                          background: isPendingCouple ? '#e2d7c7' : 'var(--primary-soft)',
+                          color: isPendingCouple ? 'var(--muted)' : 'var(--primary)',
+                          cursor: isPendingCouple ? 'not-allowed' : 'pointer'
+                        }}
+                        disabled={isPendingCouple}
                         onClick={() => onPay(p.id)}
                       >
-                        Zapłać
+                        {userRole === 'planner'
+                          ? (p.status === 'pending' ? 'Zatwierdź otrzymanie' : 'Zatwierdź płatność')
+                          : (p.status === 'pending' ? 'Oczekuje' : 'Opłać / Zgłoś')
+                        }
                       </button>
                     )}
                   </div>
@@ -124,5 +136,5 @@ const actionButtonStyle: React.CSSProperties = {
   padding: '0.4rem 0.8rem',
   fontSize: '0.85rem',
   fontWeight: 600,
-  cursor: 'pointer',
+  transition: 'all 0.2s',
 }

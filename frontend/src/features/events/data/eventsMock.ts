@@ -20,6 +20,7 @@ export type TimelineItem = {
   status: string
   color: string
   icon: EventIconName
+  date?: string
 }
 
 export type Reminder = {

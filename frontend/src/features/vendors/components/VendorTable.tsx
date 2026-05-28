@@ -3,9 +3,11 @@ import { VendorIcon, type VendorIconName } from './VendorIcon'
 
 type VendorTableProps = {
   vendors: Vendor[]
+  onSelectVendor: (vendor: Vendor) => void
+  selectedVendorId: string | null
 }
 
-export function VendorTable({ vendors }: VendorTableProps) {
+export function VendorTable({ vendors, onSelectVendor, selectedVendorId }: VendorTableProps) {
   const getStatusStyle = (status: Vendor['status']) => {
     switch (status) {
       case 'confirmed':
@@ -33,8 +35,19 @@ export function VendorTable({ vendors }: VendorTableProps) {
         <tbody>
           {vendors.map((v) => {
             const status = getStatusStyle(v.status)
+            const isSelected = selectedVendorId === v.id
+            
             return (
-              <tr key={v.id} style={{ borderBottom: '1px solid #f6f3ed' }}>
+              <tr 
+                key={v.id} 
+                onClick={() => onSelectVendor(v)}
+                style={{ 
+                  borderBottom: '1px solid #f6f3ed',
+                  background: isSelected ? '#fff8f1' : 'transparent',
+                  cursor: 'pointer',
+                  transition: 'background 0.2s'
+                }}
+              >
                 <td style={cellStyle}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <div style={{
@@ -84,7 +97,7 @@ export function VendorTable({ vendors }: VendorTableProps) {
                     background: 'none', 
                     border: 'none', 
                     cursor: 'pointer',
-                    color: 'var(--muted)',
+                    color: isSelected ? 'var(--primary)' : 'var(--muted)',
                     display: 'flex',
                     alignItems: 'center'
                   }}>

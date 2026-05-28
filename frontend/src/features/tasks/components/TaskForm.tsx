@@ -2,6 +2,7 @@ import type {
   TaskCategory,
   TaskPriority,
   TaskStatus,
+  ScheduleType,
 } from '../data/tasksMock'
 
 export type TaskFormState = {
@@ -14,6 +15,7 @@ export type TaskFormState = {
   priority: TaskPriority
   assignee: string
   status: TaskStatus
+  scheduleType: ScheduleType | ''
 }
 
 type TaskFormProps = {
@@ -43,7 +45,7 @@ export function TaskForm({
           alignItems: 'center',
         }}
       >
-        <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Dodaj nowe zadanie</h2>
+        <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{values.name ? 'Edytuj zadanie' : 'Dodaj nowe zadanie'}</h2>
         <button
           type='button'
           onClick={onCancel}
@@ -95,6 +97,27 @@ export function TaskForm({
             <option value='Fotografia'>Fotografia</option>
             <option value='Muzyka'>Muzyka</option>
             <option value='Wydarzenie'>Wydarzenie</option>
+          </select>
+        </label>
+
+        <label style={{ display: 'grid', gap: '0.5rem' }}>
+          <span style={{ fontWeight: 600 }}>Typ Harmonogramu (do osi czasu)</span>
+          <select
+            value={values.scheduleType}
+            onChange={(event) => onChange('scheduleType', event.target.value)}
+            style={{
+              minHeight: '48px',
+              borderRadius: '12px',
+              border: '1px solid #efe4d7',
+              background: '#fffdfa',
+              padding: '0 1rem',
+            }}
+          >
+            <option value=''>Wybierz typ (Domyślnie: Zadanie)</option>
+            <option value='Zadanie'>Zadanie</option>
+            <option value='Spotkanie'>Spotkanie</option>
+            <option value='Wydarzenie'>Wydarzenie</option>
+            <option value='Płatność'>Płatność</option>
           </select>
         </label>
 
@@ -223,18 +246,6 @@ export function TaskForm({
           </div>
         </div>
 
-        <div
-          style={{
-            border: '1px solid #f2d9bd',
-            borderRadius: '14px',
-            background: '#fff9f1',
-            padding: '0.9rem 1rem',
-            color: '#8f6f45',
-          }}
-        >
-          Zadanie zostanie dodane tylko do tej listy. To nadal jest lokalny mockup UI.
-        </div>
-
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.8rem', marginTop: '0.35rem' }}>
           <button
             type='button'
@@ -265,7 +276,7 @@ export function TaskForm({
               cursor: 'pointer',
             }}
           >
-            Dodaj zadanie
+            {values.name ? 'Zapisz zmiany' : 'Dodaj zadanie'}
           </button>
         </div>
       </div>

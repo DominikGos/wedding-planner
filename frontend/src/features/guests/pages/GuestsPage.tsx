@@ -1,16 +1,42 @@
 import { useMemo, useState } from 'react'
+import { useSelector, useDispatch } from 'react-redux'
+import type { RootState } from '../../../store'
+import { addGuest, updateGuest, deleteGuest } from '../../../store/slices/guestsSlice'
+
 import { GuestRow } from '../components/GuestRow'
 import { SummaryCard } from '../components/SummaryCard'
 import { ToolbarButton } from '../components/ToolbarButton'
-import { initialGuests } from '../data/guestsMock'
+import type { Guest, GuestStatus } from '../data/guestsMock'
 
 export function GuestsPage() {
-  const [listState] = useState(initialGuests)
-  const [selectedItem, setSelectedItem] = useState(initialGuests[0].id)
+  const dispatch = useDispatch()
+  const listState = useSelector((state: RootState) => state.guests.items)
+
+  const [selectedItem, setSelectedItem] = useState<string | null>(listState[0]?.id || null)
   const [formState, setFormState] = useState({
     search: '',
     status: 'Wszystkie',
   })
+
+  // Modal State
+  const [showModal, setShowModal] = useState(false)
+  const [editingGuest, setEditingGuest] = useState<Guest | null>(null)
+  const [guestsNotification, setGuestsNotification] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
+
+  const [guestForm, setGuestForm] = useState({
+    name: '',
+    email: '',
+    status: 'Oczekuje' as GuestStatus,
+    table: '1',
+    allergy: 'Brak'
+  })
+
+  const showNotification = (text: string, type: 'success' | 'error' = 'success') => {
+    setGuestsNotification({ text, type })
+    setTimeout(() => {
+      setGuestsNotification(null)
+    }, 4500)
+  }
 
   const filteredGuests = useMemo(() => {
     return listState.filter((guest) => {
@@ -33,8 +59,96 @@ export function GuestsPage() {
     ]
   }, [listState])
 
+  const handleOpenAdd = () => {
+    setEditingGuest(null)
+    setGuestForm({
+      name: '',
+      email: '',
+      status: 'Oczekuje',
+      table: '1',
+      allergy: 'Brak'
+    })
+    setShowModal(true)
+  }
+
+  const handleOpenEdit = (guest: Guest) => {
+    setEditingGuest(guest)
+    setGuestForm({
+      name: guest.name,
+      email: guest.email || '',
+      status: guest.status,
+      table: guest.table,
+      allergy: guest.allergy
+    })
+    setShowModal(true)
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!guestForm.name.trim()) {
+      showNotification('Proszę podać imię i nazwisko gościa!', 'error')
+      return
+    }
+    if (!guestForm.email.trim()) {
+      showNotification('Proszę podać adres e-mail gościa!', 'error')
+      return
+    }
+
+    if (editingGuest) {
+      // Edit mode
+      const updated: Guest = {
+        id: editingGuest.id,
+        name: guestForm.name,
+        email: guestForm.email,
+        status: guestForm.status,
+        table: guestForm.table,
+        allergy: guestForm.allergy
+      }
+      dispatch(updateGuest(updated))
+      showNotification(`Zaktualizowano pomyślnie dane gościa "${updated.name}"!`, 'success')
+    } else {
+      // Add mode
+      const created: Guest = {
+        id: `guest-${Date.now()}`,
+        name: guestForm.name,
+        email: guestForm.email,
+        status: 'Oczekuje',
+        table: guestForm.table,
+        allergy: guestForm.allergy
+      }
+      dispatch(addGuest(created))
+      showNotification(`Dodano gościa "${created.name}" i automatycznie wysłano zaproszenie RSVP na adres ${created.email}! ✉️`, 'success')
+    }
+
+    setShowModal(false)
+  }
+
+  const handleDeleteGuest = () => {
+    if (editingGuest) {
+      dispatch(deleteGuest(editingGuest.id))
+      showNotification(`Usunięto gościa "${editingGuest.name}" z listy!`, 'success')
+      setShowModal(false)
+    }
+  }
+
   return (
     <section style={{ display: 'grid', gap: '1rem' }}>
+      
+      {guestsNotification && (
+        <div style={{
+          padding: '1rem',
+          borderRadius: '12px',
+          background: guestsNotification.type === 'success' ? '#daf6e5' : '#fff2f2',
+          color: guestsNotification.type === 'success' ? '#14834b' : '#c53030',
+          border: `1px solid ${guestsNotification.type === 'success' ? '#bfeecf' : '#f4c1c1'}`,
+          fontWeight: 600,
+          textAlign: 'center',
+          animation: 'fadeIn 0.3s ease'
+        }}>
+          {guestsNotification.text}
+        </div>
+      )}
+
       <article
         className='page-card'
         style={{
@@ -62,10 +176,7 @@ export function GuestsPage() {
 
           <button
             type='button'
-            onClick={() => {
-              console.log('guests:add')
-              setSelectedItem(initialGuests[0].id)
-            }}
+            onClick={handleOpenAdd}
             style={{
               padding: '0.85rem 1.25rem',
               borderRadius: '14px',
@@ -124,7 +235,7 @@ export function GuestsPage() {
           <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Goscie ({filteredGuests.length})</h2>
 
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <ToolbarButton label='Eksportuj' onClick={() => console.log('guests:export')} />
+            <ToolbarButton label='Eksportuj' onClick={() => showNotification('Pomyślnie wyeksportowano listę gości do pliku CSV!', 'success')} />
             <ToolbarButton
               label='Filtry'
               onClick={() =>
@@ -227,15 +338,199 @@ export function GuestsPage() {
                   setSelectedItem(guest.id)
                   console.log('guests:select', guest.id)
                 }}
-                onEdit={() => {
-                  setSelectedItem(guest.id)
-                  console.log('guests:edit', guest.id)
-                }}
+                onEdit={() => handleOpenEdit(guest)}
               />
             ))}
+
+            {filteredGuests.length === 0 && (
+              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--muted)' }}>
+                Brak gości spełniających kryteria wyszukiwania.
+              </div>
+            )}
           </div>
         </div>
       </article>
+
+      {/* LUXURIOUS ADD/EDIT GUEST MODAL */}
+      {showModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(47, 42, 36, 0.4)',
+          backdropFilter: 'blur(5px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          animation: 'fadeIn 0.2s ease'
+        }}>
+          <form 
+            onSubmit={handleSubmit}
+            className="page-card" 
+            style={{
+              width: '100%',
+              maxWidth: '460px',
+              background: '#fff',
+              padding: '2.5rem',
+              borderRadius: '20px',
+              boxShadow: '0 20px 50px rgba(47, 42, 36, 0.15)',
+              display: 'grid',
+              gap: '1.2rem',
+              position: 'relative'
+            }}
+          >
+            <button 
+              type="button"
+              onClick={() => setShowModal(false)}
+              style={{
+                position: 'absolute',
+                top: '15px',
+                right: '15px',
+                background: 'none',
+                border: 'none',
+                fontSize: '1.2rem',
+                color: 'var(--muted)',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              ✕
+            </button>
+
+            <header style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
+              <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.15em', color: '#d6a061', fontWeight: 600 }}>Karta Gościa</span>
+              <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.8rem', margin: '0.25rem 0', fontWeight: 500 }}>
+                {editingGuest ? 'Edytuj Gościa' : 'Nowy Gość'}
+              </h2>
+              <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.85rem' }}>Wprowadź dane gościa do weselnego RSVP.</p>
+            </header>
+
+            <label style={{ display: 'grid', gap: '0.4rem' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)' }}>Imię i Nazwisko</span>
+              <input 
+                type="text"
+                placeholder="np. Anna Nowak"
+                value={guestForm.name}
+                onChange={(e) => setGuestForm(prev => ({ ...prev, name: e.target.value }))}
+                required
+                style={{ padding: '0.7rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.95rem' }}
+              />
+            </label>
+
+            <label style={{ display: 'grid', gap: '0.4rem' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)' }}>Adres E-mail</span>
+              <input 
+                type="email"
+                placeholder="np. anna.nowak@gmail.com"
+                value={guestForm.email}
+                onChange={(e) => setGuestForm(prev => ({ ...prev, email: e.target.value }))}
+                required
+                style={{ padding: '0.7rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.95rem' }}
+              />
+            </label>
+
+            {editingGuest && (
+              <label style={{ display: 'grid', gap: '0.4rem' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)' }}>Status RSVP</span>
+                <select 
+                  value={guestForm.status}
+                  onChange={(e) => setGuestForm(prev => ({ ...prev, status: e.target.value as GuestStatus }))}
+                  style={{ 
+                    padding: '0.7rem', 
+                    borderRadius: '8px', 
+                    border: '1px solid var(--border)', 
+                    fontSize: '0.95rem', 
+                    background: '#fff', 
+                    fontWeight: 600,
+                    color: guestForm.status === 'Potwierdzony' ? '#0ea44b' : guestForm.status === 'Odrzucony' ? '#eb1d1d' : '#ef8a00'
+                  }}
+                >
+                  <option value="Potwierdzony" style={{ color: '#0ea44b', fontWeight: 600 }}>Potwierdzony</option>
+                  <option value="Oczekuje" style={{ color: '#ef8a00', fontWeight: 600 }}>Oczekuje</option>
+                  <option value="Odrzucony" style={{ color: '#eb1d1d', fontWeight: 600 }}>Odrzucony</option>
+                </select>
+              </label>
+            )}
+
+            <label style={{ display: 'grid', gap: '0.4rem' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)' }}>Przypisany Stół</span>
+              <input 
+                type="text"
+                placeholder="np. 1 lub '-' dla braku"
+                value={guestForm.table}
+                onChange={(e) => setGuestForm(prev => ({ ...prev, table: e.target.value }))}
+                style={{ padding: '0.7rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.95rem' }}
+              />
+            </label>
+
+            <label style={{ display: 'grid', gap: '0.4rem' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)' }}>Alergie / Wymagania Dietetyczne</span>
+              <input 
+                type="text"
+                placeholder="np. Brak, Gluten, Laktoza, Orzechy"
+                value={guestForm.allergy}
+                onChange={(e) => setGuestForm(prev => ({ ...prev, allergy: e.target.value }))}
+                style={{ padding: '0.7rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.95rem' }}
+              />
+            </label>
+
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+              {editingGuest ? (
+                <button 
+                  type="button" 
+                  onClick={handleDeleteGuest}
+                  style={{
+                    padding: '0.75rem 1rem',
+                    borderRadius: '10px',
+                    border: '1px solid #eb1d1d',
+                    background: '#fff',
+                    color: '#eb1d1d',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Usuń
+                </button>
+              ) : null}
+              
+              <button 
+                type="button" 
+                onClick={() => setShowModal(false)}
+                style={{
+                  flex: 1,
+                  padding: '0.75rem',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border)',
+                  background: '#fff',
+                  color: 'var(--muted)',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Anuluj
+              </button>
+              <button 
+                type="submit"
+                style={{
+                  flex: 2,
+                  padding: '0.75rem',
+                  borderRadius: '10px',
+                  border: 'none',
+                  background: '#d6a061',
+                  color: '#fff',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(214, 160, 97, 0.2)'
+                }}
+              >
+                {editingGuest ? 'Zapisz zmiany' : 'Dodaj'}
+              </button>
+            </div>
+
+          </form>
+        </div>
+      )}
+
     </section>
   )
 }

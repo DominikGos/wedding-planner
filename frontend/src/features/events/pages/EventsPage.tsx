@@ -1,39 +1,169 @@
 import { useMemo, useState } from 'react'
+import { useSelector } from 'react-redux'
+import { useNavigate } from 'react-router-dom'
+import type { RootState } from '../../../store'
+import type { TaskItem } from '../../tasks/data/tasksMock'
+
 import { CalendarGrid } from '../components/CalendarGrid'
 import { EventIcon } from '../components/EventIcon'
 import { FilterTab } from '../components/FilterTab'
 import { ReminderItem } from '../components/ReminderItem'
 import { TimelineCard } from '../components/TimelineCard'
 import {
-  calendarRows,
   filterTabs,
   initialReminders,
-  initialTimelineItems,
   tabToSubtitleMap,
+  type TimelineItem,
 } from '../data/eventsMock'
 
+const monthsPL = ['STY', 'LUT', 'MAR', 'KWI', 'MAJ', 'CZE', 'LIP', 'SIE', 'WRZ', 'PAŹ', 'LIS', 'GRU']
+const weekDaysPL = ['Ndz', 'Pon', 'Wt', 'Śr', 'Czw', 'Pt', 'Sob']
+
+const monthNamesPL = [
+  'Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec',
+  'Lipiec', 'Sierpień', 'Wrzesień', 'Październik', 'Listopad', 'Grudzień'
+]
+
+const generateCalendarGrid = (year: number, monthIndex: number): string[][] => {
+  const firstDayOfMonth = new Date(year, monthIndex, 1)
+  let startDayOfWeek = firstDayOfMonth.getDay()
+  startDayOfWeek = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1
+
+  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate()
+  const daysInPrevMonth = new Date(year, monthIndex, 0).getDate()
+
+  const days: string[] = []
+
+  for (let i = startDayOfWeek - 1; i >= 0; i--) {
+    days.push(String(daysInPrevMonth - i))
+  }
+
+  for (let i = 1; i <= daysInMonth; i++) {
+    days.push(String(i))
+  }
+
+  const remainingCells = 42 - days.length
+  for (let i = 1; i <= remainingCells; i++) {
+    days.push(String(i))
+  }
+
+  const rows: string[][] = []
+  for (let i = 0; i < 42; i += 7) {
+    rows.push(days.slice(i, i + 7))
+  }
+  return rows
+}
+
 export function EventsPage() {
-  const [listState, setListState] = useState(initialTimelineItems)
-  const [selectedItem, setSelectedItem] = useState(initialTimelineItems[0].id)
-  const [selectedReminder, setSelectedReminder] = useState(initialReminders[0].id)
+  const navigate = useNavigate()
+  const reduxTasks = useSelector((state: RootState) => state.tasks.items)
+
+  const [selectedItem, setSelectedItem] = useState<string>('task-1')
+  const [selectedReminder, setSelectedReminder] = useState<string>(initialReminders[0].id)
+  const [showRemindersModal, setShowRemindersModal] = useState(false)
   const [activeDate, setActiveDate] = useState('25')
+  const [filterByCalendarDay, setFilterByCalendarDay] = useState(false)
+  
+  const [currentYear, setCurrentYear] = useState(2026)
+  const [currentMonthIndex, setCurrentMonthIndex] = useState(2) // March
+
+  const calendarRows = useMemo(() => {
+    return generateCalendarGrid(currentYear, currentMonthIndex)
+  }, [currentYear, currentMonthIndex])
+
+  const handlePrevMonth = () => {
+    setFilterByCalendarDay(false)
+    if (currentMonthIndex === 0) {
+      setCurrentMonthIndex(11)
+      setCurrentYear(prev => prev - 1)
+    } else {
+      setCurrentMonthIndex(prev => prev - 1)
+    }
+  }
+
+  const handleNextMonth = () => {
+    setFilterByCalendarDay(false)
+    if (currentMonthIndex === 11) {
+      setCurrentMonthIndex(0)
+      setCurrentYear(prev => prev + 1)
+    } else {
+      setCurrentMonthIndex(prev => prev + 1)
+    }
+  }
+
   const [showAll, setShowAll] = useState(false)
   const [formState, setFormState] = useState({
     tab: 'Wszystkie',
     category: 'Wszystkie kategorie',
   })
 
+  // Dynamic mapping of Redux Tasks to TimelineItems
+  const parsedTimelineItems = useMemo(() => {
+    return reduxTasks.map((task: TaskItem) => {
+      let month = 'MAJ 2026'
+      let day = '10'
+      let weekDay = 'Ndz'
+
+      if (task.date) {
+        const d = new Date(task.date)
+        if (!isNaN(d.getTime())) {
+          month = `${monthsPL[d.getMonth()]} ${d.getFullYear()}`
+          day = String(d.getDate()).padStart(2, '0')
+          weekDay = weekDaysPL[d.getDay()]
+        }
+      }
+
+      let iconName: any = 'calendar'
+      if (task.category === 'Catering') iconName = 'calendar'
+      else if (task.category === 'Dekoracje') iconName = 'leaf'
+      else if (task.category === 'Fotografia') iconName = 'document'
+      else if (task.category === 'Muzyka') iconName = 'music'
+      else if (task.category === 'Wydarzenie') iconName = 'heart'
+
+      return {
+        id: task.id,
+        month,
+        day,
+        weekDay,
+        title: task.name,
+        subtitle:
+          task.scheduleType || (
+            task.category === 'Catering'
+              ? 'Spotkanie'
+              : task.category === 'Wydarzenie'
+                ? 'Wydarzenie'
+                : 'Zadanie'
+          ),
+        category: task.category,
+        time: task.time || '12:00',
+        status: task.status,
+        color: task.color,
+        icon: iconName,
+        date: task.date,
+      } as TimelineItem
+    })
+  }, [reduxTasks])
+
+  // Filter based on tabs & category
   const visibleEvents = useMemo(() => {
-    return listState.filter((item) => {
+    return parsedTimelineItems.filter((item: TimelineItem) => {
       const selectedSubtitle = tabToSubtitleMap[formState.tab]
       const matchesTab = selectedSubtitle === null || item.subtitle === selectedSubtitle
       const matchesCategory =
         formState.category === 'Wszystkie kategorie' || item.category === formState.category
-      return matchesTab && matchesCategory
+      
+      const selectedDateString = `${currentYear}-${String(currentMonthIndex + 1).padStart(2, '0')}-${String(activeDate).padStart(2, '0')}`
+      const matchesCalendar = !filterByCalendarDay || item.date === selectedDateString
+      
+      return matchesTab && matchesCategory && matchesCalendar
     })
-  }, [formState.category, formState.tab, listState])
+  }, [formState.category, formState.tab, parsedTimelineItems, filterByCalendarDay, activeDate, currentYear, currentMonthIndex])
 
   const displayedEvents = showAll ? visibleEvents : visibleEvents.slice(0, 5)
+
+  const handleAddNewEvent = () => {
+    navigate('/tasks', { state: { openForm: true } })
+  }
 
   return (
     <section style={{ display: 'grid', gap: '1rem' }}>
@@ -45,10 +175,10 @@ export function EventsPage() {
         }}
       >
         <h1 className='page-title' style={{ fontSize: '2rem' }}>
-          Harmonogram przygotowan
+          Harmonogram przygotowań
         </h1>
         <p className='page-subtitle' style={{ fontSize: '1.05rem' }}>
-          Zobacz plan przygotowan do slubu i nadchodzace kamienie milowe.
+          Zobacz plan przygotowań do ślubu i nadchodzące kamienie milowe.
         </p>
       </article>
 
@@ -141,7 +271,38 @@ export function EventsPage() {
           </div>
 
           <div style={{ padding: '1.2rem', display: 'grid', gap: '1rem' }}>
-            {displayedEvents.map((item) => (
+            {filterByCalendarDay && (
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '0.65rem 0.95rem',
+                borderRadius: '10px',
+                background: '#fff8f1',
+                border: '1px solid #efe1d0',
+                fontSize: '0.88rem',
+                color: '#db7e45',
+                fontWeight: 600,
+                animation: 'fadeIn 0.25s ease'
+              }}>
+                <span>📅 Wyświetlasz tylko wydarzenia na dzień: {activeDate} {monthNamesPL[currentMonthIndex]} {currentYear}</span>
+                <button
+                  type="button"
+                  onClick={() => setFilterByCalendarDay(false)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#db7e45',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    textDecoration: 'underline'
+                  }}
+                >
+                  Pokaż wszystkie dni
+                </button>
+              </div>
+            )}
+            {displayedEvents.map((item: TimelineItem) => (
               <TimelineCard
                 key={item.id}
                 item={item}
@@ -154,21 +315,52 @@ export function EventsPage() {
               />
             ))}
 
-            <button
-              type='button'
-              onClick={() => setShowAll((current) => !current)}
-              style={{
-                textAlign: 'center',
-                paddingTop: '0.35rem',
-                color: 'var(--muted)',
-                fontWeight: 600,
-                border: 'none',
-                background: 'transparent',
-                cursor: 'pointer',
-              }}
-            >
-              {showAll ? 'Pokaz mniej' : 'Pokaz wiecej'} v
-            </button>
+            {visibleEvents.length > 5 && (
+              <button
+                type='button'
+                onClick={() => setShowAll((current) => !current)}
+                style={{
+                  textAlign: 'center',
+                  paddingTop: '0.35rem',
+                  color: 'var(--muted)',
+                  fontWeight: 600,
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                }}
+              >
+                {showAll ? 'Pokaż mniej' : 'Pokaż więcej'}
+              </button>
+            )}
+
+            {visibleEvents.length === 0 && (
+              <div style={{ padding: '2rem 1rem', color: 'var(--muted)', textAlign: 'center', display: 'grid', gap: '0.75rem' }}>
+                <span>
+                  {filterByCalendarDay 
+                    ? `Brak zaplanowanych wydarzeń na dzień ${activeDate} ${monthNamesPL[currentMonthIndex]} ${currentYear}.`
+                    : 'Brak zadań w wybranej kategorii.'}
+                </span>
+                {filterByCalendarDay && (
+                  <button
+                    type="button"
+                    onClick={() => setFilterByCalendarDay(false)}
+                    style={{
+                      margin: '0 auto',
+                      padding: '0.45rem 0.95rem',
+                      borderRadius: '8px',
+                      border: '1px solid #d6a061',
+                      background: '#fff',
+                      color: '#d6a061',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      fontSize: '0.85rem'
+                    }}
+                  >
+                    Pokaż cały harmonogram
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </article>
 
@@ -184,11 +376,19 @@ export function EventsPage() {
                 alignItems: 'center',
               }}
             >
-              <button type='button' onClick={() => console.log('events:prev-month')} style={{ border: 'none', background: 'transparent', color: 'var(--muted)', cursor: 'pointer' }}>
+              <button 
+                type='button' 
+                onClick={handlePrevMonth}
+                style={{ border: 'none', background: 'transparent', color: 'var(--muted)', cursor: 'pointer', padding: '0 0.5rem', fontWeight: 'bold', fontSize: '1.1rem' }}
+              >
                 {'<'}
               </button>
-              <strong>Marzec 2026</strong>
-              <button type='button' onClick={() => console.log('events:next-month')} style={{ border: 'none', background: 'transparent', color: 'var(--muted)', cursor: 'pointer' }}>
+              <strong>{monthNamesPL[currentMonthIndex]} {currentYear}</strong>
+              <button 
+                type='button' 
+                onClick={handleNextMonth}
+                style={{ border: 'none', background: 'transparent', color: 'var(--muted)', cursor: 'pointer', padding: '0 0.5rem', fontWeight: 'bold', fontSize: '1.1rem' }}
+              >
                 {'>'}
               </button>
             </div>
@@ -211,16 +411,21 @@ export function EventsPage() {
 
             <CalendarGrid
               calendarRows={calendarRows}
-              activeDate={activeDate}
+              activeDate={filterByCalendarDay ? activeDate : ''}
               onSelectDate={(day) => {
-                setActiveDate(day)
+                if (activeDate === day && filterByCalendarDay) {
+                  setFilterByCalendarDay(false)
+                } else {
+                  setActiveDate(day)
+                  setFilterByCalendarDay(true)
+                }
                 console.log('events:calendar-day', day)
               }}
             />
           </article>
 
           <article className='page-card' style={{ padding: '1.2rem' }}>
-            <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Najblizsze przypomnienia</h2>
+            <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Najbliższe przypomnienia</h2>
 
             <div style={{ marginTop: '1rem', display: 'grid', gap: '1rem' }}>
               {initialReminders.map((item) => (
@@ -230,15 +435,41 @@ export function EventsPage() {
                   isSelected={selectedReminder === item.id}
                   onClick={() => {
                     setSelectedReminder(item.id)
-                    console.log('events:reminder', item.id)
                   }}
                 />
               ))}
             </div>
 
+            {selectedReminder && (
+              <div style={{
+                marginTop: '1rem',
+                padding: '1rem',
+                borderRadius: '12px',
+                border: '1px solid #f2e2d0',
+                background: '#fffbf7',
+                fontSize: '0.88rem',
+                lineHeight: '1.5',
+                color: '#6f6559',
+                animation: 'fadeIn 0.25s ease'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <strong style={{ color: '#db7e45' }}>📝 Szczegóły:</strong>
+                  <button 
+                    onClick={() => setSelectedReminder('')}
+                    style={{ background: 'none', border: 'none', color: '#db7e45', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}
+                  >
+                    Zamknij
+                  </button>
+                </div>
+                {selectedReminder === 'r1' && 'Omówienie ostatecznego menu weselnego z managerem cateringu. Ustalenie godzin podawania ciepłych posiłków (17:30, 20:00, 22:30) oraz przekazanie zapotrzebowań dietetycznych (wege/gluten-free).'}
+                {selectedReminder === 'r2' && 'Próba smaków wybranych dań weselnych w restauracji partnerskiej. Dobór deserów, ciast oraz degustacja weselnego tortu wegańskiego.'}
+                {selectedReminder === 'r3' && 'Ostateczne zatwierdzenie kompozycji kwiatowych z florystką. Wybór koloru obrusów, świeczników oraz dekoracji ścianki Pary Młodej.'}
+              </div>
+            )}
+
             <button
               type='button'
-              onClick={() => console.log('events:show-all-reminders')}
+              onClick={() => setShowRemindersModal(true)}
               style={{
                 marginTop: '1.2rem',
                 border: '1px solid #efe1d0',
@@ -286,33 +517,15 @@ export function EventsPage() {
             <strong style={{ display: 'block', fontSize: '1rem' }}>
               Dobrze zaplanowany harmonogram to klucz do udanego wesela!
             </strong>
-            <p style={{ margin: '0.35rem 0 0', color: 'var(--muted)' }}>
-              Regularnie aktualizuj zadania i terminy, aby wszystko przebiegalo zgodnie z planem.
+            <p style={{ margin: '0.35rem 0 0', color: 'var(--muted)', fontSize: '0.9rem' }}>
+              Zadania dodane tutaj automatycznie synchronizują się z Twoim planerem i budżetem.
             </p>
           </div>
         </div>
 
         <button
           type='button'
-          onClick={() => {
-            setListState((current) => [
-              ...current,
-              {
-                id: `new-${current.length + 1}`,
-                month: 'MAJ 2026',
-                day: '18',
-                weekDay: 'Pon',
-                title: 'Nowe zadanie organizacyjne',
-                subtitle: 'Zadanie',
-                category: 'Catering',
-                time: '12:00',
-                status: 'Zaplanowane',
-                color: '#b57be8',
-                icon: 'calendar',
-              },
-            ])
-            console.log('events:add-task')
-          }}
+          onClick={handleAddNewEvent}
           style={{
             padding: '0.9rem 1.2rem',
             borderRadius: '14px',
@@ -326,6 +539,97 @@ export function EventsPage() {
           Dodaj nowe zadanie
         </button>
       </article>
+
+      {/* LUXURIOUS ALL REMINDERS MODAL */}
+      {showRemindersModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(47, 42, 36, 0.4)',
+          backdropFilter: 'blur(5px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          animation: 'fadeIn 0.2s ease'
+        }}>
+          <div className="page-card" style={{
+            width: '100%',
+            maxWidth: '480px',
+            background: '#fff',
+            padding: '2.5rem',
+            borderRadius: '20px',
+            boxShadow: '0 20px 50px rgba(47, 42, 36, 0.15)',
+            position: 'relative'
+          }}>
+            <button 
+              onClick={() => setShowRemindersModal(false)}
+              style={{
+                position: 'absolute',
+                top: '15px',
+                right: '15px',
+                background: 'none',
+                border: 'none',
+                fontSize: '1.2rem',
+                color: 'var(--muted)',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              ✕
+            </button>
+
+            <header style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.15em', color: '#db7e45', fontWeight: 600 }}>Powiadomienia Weselne</span>
+              <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.8rem', margin: '0.25rem 0', fontWeight: 500 }}>
+                Wszystkie Przypomnienia
+              </h2>
+              <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.85rem' }}>Śledź nadchodzące terminy i ważne kamienie milowe.</p>
+            </header>
+
+            <div style={{ display: 'grid', gap: '1rem', maxHeight: '320px', overflowY: 'auto', paddingRight: '0.5rem' }}>
+              {initialReminders.map(item => (
+                <div key={item.id} style={{
+                  padding: '1rem',
+                  borderRadius: '12px',
+                  border: '1px solid #efe4d7',
+                  background: '#fffdfa',
+                  display: 'grid',
+                  gap: '0.35rem'
+                }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: item.color }} />
+                    <strong style={{ fontSize: '0.95rem' }}>{item.title}</strong>
+                  </div>
+                  <span style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>📅 Termin: {item.date} o godzinie {item.time}</span>
+                  <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: '#6f6559', lineHeight: '1.4' }}>
+                    {item.id === 'r1' && 'Omówienie ostatecznego menu weselnego z managerem cateringu. Ustalenie godzin podawania posiłków.'}
+                    {item.id === 'r2' && 'Próba smaków wybranych dań weselnych w restauracji partnerskiej. Dobór deserów i ciast.'}
+                    {item.id === 'r3' && 'Ostateczne zatwierdzenie kompozycji kwiatowych z florystką. Wybór dekoracji ścianki Pary Młodej.'}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <button 
+              onClick={() => setShowRemindersModal(false)}
+              style={{
+                width: '100%',
+                marginTop: '1.5rem',
+                padding: '0.75rem',
+                borderRadius: '10px',
+                border: 'none',
+                background: '#db7e45',
+                color: '#fff',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+            >
+              Zamknij widok
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   )
 }

@@ -2,6 +2,8 @@ export type TaskStatus = 'Do zrobienia' | 'W trakcie' | 'Zrobione'
 export type TaskCategory = 'Catering' | 'Dekoracje' | 'Fotografia' | 'Muzyka' | 'Wydarzenie'
 export type TaskPriority = 'Niski' | 'Sredni' | 'Wysoki'
 
+export type ScheduleType = 'Zadanie' | 'Spotkanie' | 'Wydarzenie' | 'Płatność'
+
 export type TaskItem = {
   id: string
   name: string
@@ -15,6 +17,7 @@ export type TaskItem = {
   assignee: string
   checked: boolean
   color: string
+  scheduleType?: ScheduleType
 }
 
 export const plannedBudget = 60000
@@ -55,6 +58,7 @@ export const initialTasks: TaskItem[] = [
     assignee: 'Anna Kowalska',
     checked: false,
     color: '#b57be8',
+    scheduleType: 'Spotkanie',
   },
   {
     id: 'task-2',
@@ -69,6 +73,7 @@ export const initialTasks: TaskItem[] = [
     assignee: 'Anna Kowalska',
     checked: false,
     color: '#ffbd45',
+    scheduleType: 'Zadanie',
   },
   {
     id: 'task-3',
@@ -83,6 +88,7 @@ export const initialTasks: TaskItem[] = [
     assignee: 'Maria Nowak',
     checked: true,
     color: '#58c983',
+    scheduleType: 'Zadanie',
   },
   {
     id: 'task-4',
@@ -97,6 +103,7 @@ export const initialTasks: TaskItem[] = [
     assignee: 'Jakub Zielinski',
     checked: true,
     color: '#ff8ba0',
+    scheduleType: 'Płatność',
   },
   {
     id: 'task-5',
@@ -111,6 +118,7 @@ export const initialTasks: TaskItem[] = [
     assignee: 'Anna Kowalska',
     checked: false,
     color: '#ffad63',
+    scheduleType: 'Zadanie',
   },
   {
     id: 'task-6',
@@ -125,5 +133,6 @@ export const initialTasks: TaskItem[] = [
     assignee: 'Anna Kowalska',
     checked: false,
     color: '#ff9aaa',
+    scheduleType: 'Wydarzenie',
   },
 ]

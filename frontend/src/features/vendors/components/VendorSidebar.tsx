@@ -1,17 +1,33 @@
-import { useState } from 'react'
-import { type VendorCategory, vendorStats } from '../data/vendorsMock'
+import { useState, useEffect } from 'react'
+import { type VendorCategory, type Vendor, vendorStats } from '../data/vendorsMock'
 import { VendorIcon, type VendorIconName } from './VendorIcon'
 
 type VendorSidebarProps = {
   categories: VendorCategory[]
   budgetLimit: number
   onBudgetLimitChange: (value: number) => void
+  selectedVendor: Vendor | null
+  onStatusChange: (status: Vendor['status']) => void
+  onClose: () => void
+  userRole?: string
 }
 
-export function VendorSidebar({ categories, budgetLimit, onBudgetLimitChange }: VendorSidebarProps) {
+export function VendorSidebar({ 
+  categories, 
+  budgetLimit, 
+  onBudgetLimitChange,
+  selectedVendor,
+  onStatusChange,
+  onClose,
+  userRole = 'couple'
+}: VendorSidebarProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [inputValue, setInputValue] = useState(budgetLimit.toString())
   
+  useEffect(() => {
+    setInputValue(budgetLimit.toString())
+  }, [budgetLimit])
+
   const percentage = Math.round((vendorStats.plannedExpenses / budgetLimit) * 100)
   const displayPercentage = Math.min(100, percentage)
 
@@ -25,8 +41,107 @@ export function VendorSidebar({ categories, budgetLimit, onBudgetLimitChange }: 
     setIsEditing(false)
   }
 
+
+
   return (
     <div style={{ display: 'grid', gap: '1.5rem' }}>
+      
+      {/* SELECTED VENDOR DETAILS PANEL */}
+      {selectedVendor && (
+        <section className='page-card' style={{ 
+          padding: '1.25rem',
+          background: 'linear-gradient(to bottom, #fffdf8, #fff)',
+          borderColor: 'var(--primary)',
+          boxShadow: '0 4px 20px rgba(184, 90, 31, 0.08)',
+          position: 'relative',
+          animation: 'fadeIn 0.25s ease'
+        }}>
+          {/* Close button */}
+          <button 
+            onClick={onClose}
+            style={{
+              position: 'absolute',
+              top: '10px',
+              right: '10px',
+              border: 'none',
+              background: 'none',
+              fontSize: '1rem',
+              color: 'var(--muted)',
+              cursor: 'pointer',
+              fontWeight: 'bold'
+            }}
+          >
+            ✕
+          </button>
+
+          <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--primary)', fontWeight: 600 }}>
+            Szczegóły Dostawcy
+          </span>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.75rem', marginBottom: '1.25rem' }}>
+            <div style={{
+              width: '2.8rem',
+              height: '2.8rem',
+              borderRadius: '50%',
+              background: 'var(--primary-soft)',
+              display: 'grid',
+              placeItems: 'center'
+            }}>
+              <VendorIcon name={selectedVendor.icon as VendorIconName} color="var(--primary)" size={20} />
+            </div>
+            <div>
+              <h4 style={{ margin: 0, fontSize: '1.15rem', color: 'var(--text)', fontWeight: 600 }}>
+                {selectedVendor.name}
+              </h4>
+              <span style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>
+                ✉️ {selectedVendor.email}
+              </span>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gap: '0.75rem', fontSize: '0.9rem', marginBottom: '1.25rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--muted)' }}>Kategoria:</span>
+              <strong style={{ color: 'var(--text)' }}>{selectedVendor.category}</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--muted)' }}>Orientacyjna cena:</span>
+              <strong style={{ color: 'var(--primary)' }}>{selectedVendor.priceFrom}</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: 'var(--muted)' }}>Ocena usług:</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', fontWeight: 600 }}>
+                ⭐ {selectedVendor.rating} <span style={{ color: 'var(--muted)', fontWeight: 400, fontSize: '0.8rem' }}>({selectedVendor.reviewsCount} opinii)</span>
+              </span>
+            </div>
+          </div>
+
+          <div style={{ borderTop: '1px solid #f1e8dc', paddingTop: '1rem', display: 'grid', gap: '0.5rem' }}>
+            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)' }}>Status współpracy:</label>
+            <select 
+              value={selectedVendor.status}
+              onChange={(e) => onStatusChange(e.target.value as any)}
+              disabled={userRole === 'couple'}
+              style={{
+                width: '100%',
+                padding: '0.6rem',
+                borderRadius: '8px',
+                border: '1px solid var(--border)',
+                fontSize: '0.9rem',
+                fontWeight: 600,
+                background: userRole === 'couple' ? '#faf7f2' : '#fff',
+                cursor: userRole === 'couple' ? 'not-allowed' : 'pointer'
+              }}
+            >
+              <option value="confirmed">Potwierdzony</option>
+              <option value="pending">Oczekujący</option>
+              <option value="unavailable">Niedostępny</option>
+            </select>
+          </div>
+        </section>
+      )}
+
+      {/* POPULAR CATEGORIES */}
       <section className='page-card' style={{ padding: '1.25rem' }}>
         <h3 style={{ margin: '0 0 1.25rem', fontSize: '1rem', fontWeight: 700 }}>Popularne kategorie</h3>
         <div style={{ display: 'grid', gap: '1rem' }}>
@@ -51,6 +166,7 @@ export function VendorSidebar({ categories, budgetLimit, onBudgetLimitChange }: 
         </div>
       </section>
 
+      {/* PLANNED EXPENSES */}
       <section className='page-card' style={{ padding: '1.25rem' }}>
         <h3 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 700 }}>Planowane wydatki</h3>
         <p style={{ margin: '0 0 1.25rem', fontSize: '0.85rem', color: 'var(--muted)' }}>Suma szacunkowa</p>
@@ -105,12 +221,14 @@ export function VendorSidebar({ categories, budgetLimit, onBudgetLimitChange }: 
           ) : (
             <>
               <span style={{ color: 'var(--muted)' }}>Limit budżetu: {budgetLimit.toLocaleString()} PLN</span>
-              <button 
-                onClick={() => setIsEditing(true)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', padding: '4px' }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
-              </button>
+              {userRole === 'planner' && (
+                <button 
+                  onClick={() => setIsEditing(true)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', padding: '4px' }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                </button>
+              )}
             </>
           )}
         </div>

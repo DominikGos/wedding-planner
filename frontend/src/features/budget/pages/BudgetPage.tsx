@@ -1,4 +1,7 @@
 import { useState, useMemo } from 'react'
+import { useSelector } from 'react-redux'
+import type { RootState } from '../../../store'
+
 import { BudgetStatCard } from '../components/BudgetStatCard'
 import { PaymentTable } from '../components/PaymentTable'
 import { PaymentHistory } from '../components/PaymentHistory'
@@ -7,9 +10,20 @@ import { BudgetIcon } from '../components/BudgetIcon'
 import { history as initialHistory, payments as initialPayments } from '../data/budgetMock'
 
 export function BudgetPage() {
+  const user = useSelector((state: RootState) => state.auth.user)
+  const userRole = user?.role || 'couple'
+
   const [payments, setPayments] = useState(initialPayments)
   const [history, setHistory] = useState(initialHistory)
   const [filter, setFilter] = useState('all')
+  const [budgetNotification, setBudgetNotification] = useState<{ text: string; type: 'success' | 'info' } | null>(null)
+
+  const showNotification = (text: string, type: 'success' | 'info' = 'success') => {
+    setBudgetNotification({ text, type })
+    setTimeout(() => {
+      setBudgetNotification(null)
+    }, 4000)
+  }
 
   const stats = useMemo(() => {
     const total = payments.reduce((acc, p) => acc + p.amount, 0)
@@ -36,31 +50,70 @@ export function BudgetPage() {
     const payment = payments.find(p => p.id === id)
     if (!payment) return
 
-    setPayments(prev => prev.map(p => 
-      p.id === id ? { ...p, status: 'paid', paidAt: new Date().toISOString().split('T')[0] } : p
-    ))
+    if (userRole === 'couple') {
+      // Couple registers payment -> status becomes pending
+      setPayments(prev => prev.map(p => 
+        p.id === id ? { ...p, status: 'pending' } : p
+      ))
 
-    const newHistoryEntry = {
-      id: `h-${Date.now()}`,
-      type: 'payment_confirmed' as const,
-      title: 'Zatwierdzono płatność',
-      description: `Płatność dla ${payment.vendor} (${payment.service}) została zatwierdzona.`,
-      date: new Date().toLocaleString('pl-PL', { hour12: false }).replace(',', ''),
-      user: { name: 'Anna Kowalska', initials: 'AK' }
+      const newHistoryEntry = {
+        id: `h-${Date.now()}`,
+        type: 'payment_confirmed' as const,
+        title: 'Zgłoszono płatność',
+        description: `Para Młoda zgłosiła opłacenie faktury dla ${payment.vendor} (${payment.service}). Oczekuje na zatwierdzenie.`,
+        date: new Date().toLocaleString('pl-PL', { hour12: false }).replace(',', ''),
+        user: { name: user?.name || 'Para Młoda', initials: 'PM' }
+      }
+      setHistory(prev => [newHistoryEntry, ...prev])
+      showNotification('Płatność została zgłoszona! Oczekuje na zatwierdzenie przez Wedding Plannera.', 'info')
+    } else {
+      // Planner approves payment -> status becomes paid
+      setPayments(prev => prev.map(p => 
+        p.id === id ? { ...p, status: 'paid', paidAt: new Date().toISOString().split('T')[0] } : p
+      ))
+
+      const newHistoryEntry = {
+        id: `h-${Date.now()}`,
+        type: 'payment_confirmed' as const,
+        title: 'Zatwierdzono płatność',
+        description: `Wedding Planner zatwierdził odbiór płatności dla ${payment.vendor} (${payment.service}). Środki zostały zaksięgowane.`,
+        date: new Date().toLocaleString('pl-PL', { hour12: false }).replace(',', ''),
+        user: { name: user?.name || 'Konsultant', initials: 'WP' }
+      }
+      setHistory(prev => [newHistoryEntry, ...prev])
+      showNotification('Płatność została pomyślnie zatwierdzona w budżecie ślubnym!', 'success')
     }
-    setHistory(prev => [newHistoryEntry, ...prev])
   }
 
   const handleExport = () => {
-    alert('Raport został wygenerowany i pobrany pomyślnie!')
+    showNotification('Raport finansowy został wygenerowany i pobrany pomyślnie!', 'success')
   }
 
   return (
     <div style={{ display: 'grid', gap: '1.5rem' }}>
+      {budgetNotification && (
+        <div style={{
+          padding: '1rem',
+          borderRadius: '12px',
+          background: budgetNotification.type === 'success' ? '#daf6e5' : '#e8efff',
+          color: budgetNotification.type === 'success' ? '#14834b' : '#4b6acb',
+          border: `1px solid ${budgetNotification.type === 'success' ? '#bfeecf' : '#cbd9f9'}`,
+          fontWeight: 600,
+          textAlign: 'center',
+          animation: 'fadeIn 0.3s ease'
+        }}>
+          {budgetNotification.text}
+        </div>
+      )}
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 className='page-title'>Panel Płatności</h1>
-          <p className='page-subtitle'>Zarządzaj płatnościami dostawców i śledź faktury</p>
+          <p className='page-subtitle'>
+            {userRole === 'planner' 
+              ? 'Koordynuj płatności Pary Młodej, zatwierdzaj rachunki i śledź faktury' 
+              : 'Zarządzaj płatnościami dostawców i rejestruj wykonane przelewy'
+            }
+          </p>
         </div>
         <button 
           onClick={handleExport}
@@ -96,7 +149,7 @@ export function BudgetPage() {
           icon="check" 
         />
         <BudgetStatCard 
-          title="Oczekujące" 
+          title="Oczekujące na zatwierdzenie" 
           value={`${stats.pending.toLocaleString()} PLN`} 
           color="#8c5a12" 
           icon="clock" 
@@ -150,7 +203,7 @@ export function BudgetPage() {
             </div>
           </div>
           <div style={{ padding: '0.5rem' }}>
-            <PaymentTable payments={filteredPayments} onPay={handlePay} />
+            <PaymentTable payments={filteredPayments} onPay={handlePay} userRole={userRole} />
           </div>
         </section>
 
@@ -158,13 +211,13 @@ export function BudgetPage() {
           <section className='page-card' style={{ padding: '1.25rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
               <BudgetIcon name='history' color='var(--primary)' size={20} />
-              <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Historia Zmian</h2>
+              <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Historia Zmian i Akceptacji</h2>
             </div>
             <PaymentHistory history={history} />
           </section>
 
           <section className='page-card' style={{ padding: '1.25rem' }}>
-            <h2 style={{ margin: 0, fontSize: '1.1rem', marginBottom: '1.25rem' }}>Podsumowanie</h2>
+            <h2 style={{ margin: 0, fontSize: '1.1rem', marginBottom: '1.25rem' }}>Podsumowanie Faktur</h2>
             <BudgetSummary 
               paidCount={stats.paidCount} 
               totalCount={stats.totalCount} 

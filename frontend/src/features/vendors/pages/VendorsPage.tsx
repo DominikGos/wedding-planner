@@ -1,30 +1,59 @@
 import { useState, useMemo } from 'react'
+import { useSelector, useDispatch } from 'react-redux'
+import type { RootState } from '../../../store'
+import { addVendor, updateVendorStatus } from '../../../store/slices/vendorsSlice'
+
 import { VendorStatCard } from '../components/VendorStatCard'
 import { VendorTable } from '../components/VendorTable'
 import { VendorSidebar } from '../components/VendorSidebar'
 import { VendorIcon } from '../components/VendorIcon'
-import { vendors as initialVendors, vendorCategories, vendorStats } from '../data/vendorsMock'
+import { vendorCategories, type Vendor } from '../data/vendorsMock'
 
 export function VendorsPage() {
-  const [vendors] = useState(initialVendors)
+  const dispatch = useDispatch()
+  const vendors = useSelector((state: RootState) => state.vendors.items)
+
+  const user = useSelector((state: RootState) => state.auth.user)
+  const userRole = user?.role || 'couple'
+
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('All')
   const [statusFilter, setStatusFilter] = useState('All')
-  const [budgetLimit, setBudgetLimit] = useState(vendorStats.budgetLimit)
+  const [budgetLimit, setBudgetLimit] = useState(30000)
+  const [vendorsNotification, setVendorsNotification] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
+
+  const showNotification = (text: string, type: 'success' | 'error' = 'success') => {
+    setVendorsNotification({ text, type })
+    setTimeout(() => {
+      setVendorsNotification(null)
+    }, 4000)
+  }
+  
+  // Selection and Modal State
+  const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null)
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [newVendor, setNewVendor] = useState({
+    companyName: '',
+    serviceType: 'Catering',
+    contact: '',
+    price: ''
+  })
+
+  // Selected Vendor mapping
+  const selectedVendor = useMemo(() => {
+    return vendors.find((v: Vendor) => v.id === selectedVendorId) || null
+  }, [selectedVendorId, vendors])
 
   const stats = useMemo(() => {
     const total = vendors.length
-    const confirmed = vendors.filter(v => v.status === 'confirmed').length
-    const pending = vendors.filter(v => v.status === 'pending').length
-    const unavailable = vendors.filter(v => v.status === 'unavailable').length
-    
-    // For planned expenses, let's sum some base values or keep as is if not in vendor data
-    // In a real app, this would come from contract data
+    const confirmed = vendors.filter((v: Vendor) => v.status === 'confirmed').length
+    const pending = vendors.filter((v: Vendor) => v.status === 'pending').length
+    const unavailable = vendors.filter((v: Vendor) => v.status === 'unavailable').length
     return { total, confirmed, pending, unavailable }
   }, [vendors])
 
   const filteredVendors = useMemo(() => {
-    return vendors.filter(v => {
+    return vendors.filter((v: Vendor) => {
       const matchesSearch = v.name.toLowerCase().includes(search.toLowerCase()) || 
                            v.email.toLowerCase().includes(search.toLowerCase())
       const matchesCategory = categoryFilter === 'All' || v.category === categoryFilter
@@ -33,37 +62,98 @@ export function VendorsPage() {
     })
   }, [vendors, search, categoryFilter, statusFilter])
 
+  const handleAddSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newVendor.companyName.trim() || !newVendor.contact.trim() || !newVendor.price.trim()) {
+      showNotification('Proszę wypełnić wszystkie pola!', 'error')
+      return
+    }
+
+    const iconMap: Record<string, string> = {
+      Catering: 'catering',
+      Florystyka: 'flowers',
+      Fotografia: 'camera',
+      'Sala weselna': 'venue',
+      Muzyka: 'music'
+    }
+
+    const created: Vendor = {
+      id: `v-${Date.now()}`,
+      name: newVendor.companyName,
+      email: newVendor.contact,
+      category: newVendor.serviceType,
+      rating: 5.0,
+      reviewsCount: 0,
+      status: 'pending',
+      priceFrom: newVendor.serviceType === 'Catering'
+        ? `${Number(newVendor.price).toLocaleString()} PLN / os.`
+        : `${Number(newVendor.price).toLocaleString()} PLN`,
+      icon: iconMap[newVendor.serviceType] || 'users'
+    }
+
+    dispatch(addVendor(created))
+    showNotification(`Dodano pomyślnie dostawcę "${created.name}" do bazy ślubnej!`, 'success')
+    
+    // Reset state
+    setShowAddModal(false)
+    setNewVendor({
+      companyName: '',
+      serviceType: 'Catering',
+      contact: '',
+      price: ''
+    })
+  }
+
   return (
     <div style={{ display: 'grid', gap: '1.5rem' }}>
+      {vendorsNotification && (
+        <div style={{
+          padding: '1rem',
+          borderRadius: '12px',
+          background: vendorsNotification.type === 'success' ? '#daf6e5' : '#fff2f2',
+          color: vendorsNotification.type === 'success' ? '#14834b' : '#c53030',
+          border: `1px solid ${vendorsNotification.type === 'success' ? '#bfeecf' : '#f4c1c1'}`,
+          fontWeight: 600,
+          textAlign: 'center',
+          animation: 'fadeIn 0.3s ease'
+        }}>
+          {vendorsNotification.text}
+        </div>
+      )}
+      
+      {/* HEADER */}
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 className='page-title'>Dostawcy</h1>
           <p className='page-subtitle'>Zarządzaj dostawcami i współpracą przy organizacji wydarzenia.</p>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
-          <div style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>
-            Ślub: <strong>Maria &amp; Jakub</strong>
+        {userRole === 'planner' && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+            <button 
+              onClick={() => setShowAddModal(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.65rem 1.1rem',
+                background: 'var(--primary)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '10px',
+                fontSize: '0.9rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(184, 90, 31, 0.2)'
+              }}
+            >
+              <VendorIcon name='plus' color='#fff' size={18} strokeWidth={2.5} />
+              Dodaj dostawcę
+            </button>
           </div>
-          <button style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            padding: '0.65rem 1.1rem',
-            background: 'var(--primary)',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '10px',
-            fontSize: '0.9rem',
-            fontWeight: 600,
-            cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(184, 90, 31, 0.2)'
-          }}>
-            <VendorIcon name='plus' color='#fff' size={18} strokeWidth={2.5} />
-            Dodaj dostawcę
-          </button>
-        </div>
+        )}
       </header>
 
+      {/* STATS */}
       <div className='stats-grid'>
         <VendorStatCard 
           title="Wszyscy dostawcy" 
@@ -95,12 +185,15 @@ export function VendorsPage() {
         />
       </div>
 
+      {/* MAIN TWO-COLUMN CONTAINER */}
       <div style={{ 
         display: 'grid', 
         gridTemplateColumns: 'minmax(0, 2.5fr) minmax(300px, 1fr)', 
         gap: '1.5rem',
         alignItems: 'start'
       }}>
+        
+        {/* Table & Filter list */}
         <div style={{ display: 'grid', gap: '1.25rem' }}>
           <div style={{ 
             display: 'grid', 
@@ -160,7 +253,12 @@ export function VendorsPage() {
           </div>
 
           <section className='page-card' style={{ padding: 0, overflow: 'hidden' }}>
-            <VendorTable vendors={filteredVendors} />
+            <VendorTable 
+              vendors={filteredVendors} 
+              onSelectVendor={(v) => setSelectedVendorId(v.id)} 
+              selectedVendorId={selectedVendorId}
+            />
+            
             <div style={{ 
               padding: '1.25rem', 
               borderTop: '1px solid #f6f3ed', 
@@ -171,77 +269,170 @@ export function VendorsPage() {
               <span style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>
                 Wyświetlanie 1-{filteredVendors.length} z {stats.total} dostawców
               </span>
-              <div style={{ display: 'flex', gap: '0.4rem' }}>
-                <button style={paginationButtonStyle}>&lt;</button>
-                <button style={{ ...paginationButtonStyle, background: 'var(--primary-soft)', color: 'var(--primary)', fontWeight: 700 }}>1</button>
-                <button style={paginationButtonStyle}>2</button>
-                <button style={paginationButtonStyle}>3</button>
-                <button style={paginationButtonStyle}>&gt;</button>
-              </div>
             </div>
           </section>
         </div>
 
+        {/* Sidebar details panel */}
         <VendorSidebar 
           categories={vendorCategories} 
           budgetLimit={budgetLimit}
           onBudgetLimitChange={setBudgetLimit}
+          selectedVendor={selectedVendor}
+          onStatusChange={(newStatus) => {
+            if (selectedVendorId) {
+              dispatch(updateVendorStatus({ id: selectedVendorId, status: newStatus }))
+            }
+          }}
+          onClose={() => setSelectedVendorId(null)}
+          userRole={userRole}
         />
       </div>
 
-      <section style={{
-        background: 'linear-gradient(90deg, #fdfaf5 0%, #fff 100%)',
-        border: '1px solid #f1e8dc',
-        borderRadius: '20px',
-        padding: '1.5rem',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginTop: '0.5rem'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-          <div style={{
-            width: '4rem',
-            height: '4rem',
-            borderRadius: '50%',
-            background: 'var(--bg-accent)',
-            display: 'grid',
-            placeItems: 'center'
-          }}>
-            <VendorIcon name='handshake' color='var(--primary)' size={32} />
-          </div>
-          <div>
-            <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Współpraca z dostawcami</h3>
-            <p style={{ margin: '0.4rem 0 0', color: 'var(--muted)', fontSize: '0.95rem' }}>
-              Dodawaj dostawców, porównuj oferty i zarządzaj umowami w jednym miejscu.
-            </p>
-          </div>
-        </div>
-        <button style={{
-          padding: '0.75rem 1.5rem',
-          background: 'none',
-          border: '1px solid var(--primary)',
-          color: 'var(--primary)',
-          borderRadius: '10px',
-          fontWeight: 600,
-          cursor: 'pointer'
+      {/* LUXURY ADD VENDOR MODAL */}
+      {showAddModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(47, 42, 36, 0.4)',
+          backdropFilter: 'blur(5px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          animation: 'fadeIn 0.2s ease'
         }}>
-          Dowiedz się więcej
-        </button>
-      </section>
+          <form 
+            onSubmit={handleAddSubmit}
+            className="page-card" 
+            style={{
+              width: '100%',
+              maxWidth: '460px',
+              background: '#fff',
+              padding: '2.5rem',
+              borderRadius: '20px',
+              boxShadow: '0 20px 50px rgba(47, 42, 36, 0.15)',
+              display: 'grid',
+              gap: '1.2rem',
+              position: 'relative'
+            }}
+          >
+            <button 
+              type="button"
+              onClick={() => setShowAddModal(false)}
+              style={{
+                position: 'absolute',
+                top: '15px',
+                right: '15px',
+                background: 'none',
+                border: 'none',
+                fontSize: '1.2rem',
+                color: 'var(--muted)',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              ✕
+            </button>
+
+            <header style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
+              <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--primary)', fontWeight: 600 }}>Kreator Umów</span>
+              <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.8rem', margin: '0.25rem 0', fontWeight: 500 }}>Nowy Dostawca</h2>
+              <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.85rem' }}>Wprowadź dane dostawcy zgodnie ze strukturą encji bazy danych.</p>
+            </header>
+
+            <label style={{ display: 'grid', gap: '0.4rem' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)' }}>Nazwa Firmy (JPA: companyName)</span>
+              <input 
+                type="text"
+                placeholder="np. Flower Concept Store"
+                value={newVendor.companyName}
+                onChange={(e) => setNewVendor(prev => ({ ...prev, companyName: e.target.value }))}
+                required
+                style={{ padding: '0.7rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.95rem' }}
+              />
+            </label>
+
+            <label style={{ display: 'grid', gap: '0.4rem' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)' }}>Kategoria Usług (JPA: serviceType)</span>
+              <select 
+                value={newVendor.serviceType}
+                onChange={(e) => setNewVendor(prev => ({ ...prev, serviceType: e.target.value }))}
+                style={{ padding: '0.7rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.95rem', background: '#fff' }}
+              >
+                <option value="Catering">Catering</option>
+                <option value="Florystyka">Florystyka</option>
+                <option value="Fotografia">Fotografia</option>
+                <option value="Sala weselna">Sala weselna</option>
+                <option value="Muzyka">Muzyka</option>
+              </select>
+            </label>
+
+            <label style={{ display: 'grid', gap: '0.4rem' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)' }}>Kontakt / E-mail (JPA: contact)</span>
+              <input 
+                type="email"
+                placeholder="np. kontakt@biuro.pl"
+                value={newVendor.contact}
+                onChange={(e) => setNewVendor(prev => ({ ...prev, contact: e.target.value }))}
+                required
+                style={{ padding: '0.7rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.95rem' }}
+              />
+            </label>
+
+            <label style={{ display: 'grid', gap: '0.4rem' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)' }}>
+                Cena Orientacyjna ({newVendor.serviceType === 'Catering' ? 'PLN / os.' : 'PLN'})
+              </span>
+              <input 
+                type="number"
+                placeholder={newVendor.serviceType === 'Catering' ? 'np. 250' : 'np. 4500'}
+                value={newVendor.price}
+                onChange={(e) => setNewVendor(prev => ({ ...prev, price: e.target.value }))}
+                required
+                style={{ padding: '0.7rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.95rem' }}
+              />
+            </label>
+
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+              <button 
+                type="button" 
+                onClick={() => setShowAddModal(false)}
+                style={{
+                  flex: 1,
+                  padding: '0.75rem',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border)',
+                  background: '#fff',
+                  color: 'var(--muted)',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Anuluj
+              </button>
+              <button 
+                type="submit"
+                style={{
+                  flex: 1,
+                  padding: '0.75rem',
+                  borderRadius: '10px',
+                  border: 'none',
+                  background: 'var(--primary)',
+                  color: '#fff',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(184, 90, 31, 0.2)'
+                }}
+              >
+                Dodaj
+              </button>
+            </div>
+
+          </form>
+        </div>
+      )}
+
     </div>
   )
-}
-
-const paginationButtonStyle: React.CSSProperties = {
-  width: '32px',
-  height: '32px',
-  borderRadius: '8px',
-  border: 'none',
-  background: 'none',
-  fontSize: '0.85rem',
-  cursor: 'pointer',
-  display: 'grid',
-  placeItems: 'center',
-  color: 'var(--muted)'
 }

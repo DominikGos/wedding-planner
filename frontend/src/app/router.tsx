@@ -8,11 +8,21 @@ import { GuestsPage } from '../features/guests/pages/GuestsPage'
 import { LoginPage } from '../features/auth/pages/LoginPage'
 import { TasksPage } from '../features/tasks/pages/TasksPage'
 import { VendorsPage } from '../features/vendors/pages/VendorsPage'
+import { CreateEventPage } from '../features/events/pages/CreateEventPage'
+import { GuestRsvpPage } from '../features/guests/pages/GuestRsvpPage'
 
 export const router = createBrowserRouter([
   {
     path: '/login',
     element: <LoginPage />,
+  },
+  {
+    path: '/auth',
+    element: <LoginPage />, // Redesigned unified Auth screen
+  },
+  {
+    path: '/rsvp',
+    element: <GuestRsvpPage />, // Standalone public RSVP page for guests
   },
   {
     path: '/',
@@ -25,6 +35,10 @@ export const router = createBrowserRouter([
       {
         path: 'events',
         element: <EventsPage />,
+      },
+      {
+        path: 'events/new',
+        element: <CreateEventPage />, // Multi-step couple event creator
       },
       {
         path: 'tasks',
