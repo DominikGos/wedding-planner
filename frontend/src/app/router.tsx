@@ -6,6 +6,7 @@ import { DashboardPage } from '../features/dashboard/pages/DashboardPage'
 import { EventsPage } from '../features/events/pages/EventsPage'
 import { GuestsPage } from '../features/guests/pages/GuestsPage'
 import { LoginPage } from '../features/auth/pages/LoginPage'
+import { OAuthSuccessPage } from '../features/auth/pages/OAuthSuccessPage'
 import { TasksPage } from '../features/tasks/pages/TasksPage'
 import { VendorsPage } from '../features/vendors/pages/VendorsPage'
 import { CreateEventPage } from '../features/events/pages/CreateEventPage'
@@ -19,6 +20,10 @@ export const router = createBrowserRouter([
   {
     path: '/auth',
     element: <LoginPage />, // Redesigned unified Auth screen
+  },
+  {
+    path: '/oauth-success',
+    element: <OAuthSuccessPage />,
   },
   {
     path: '/rsvp',

@@ -64,6 +64,10 @@ export function LoginPage() {
     navigate('/')
   }
 
+  const handleGoogleLogin = () => {
+    window.location.href = 'http://localhost:8080/oauth2/authorization/google'
+  }
+
   return (
     <div style={{ maxWidth: '480px', margin: '3rem auto', padding: '1rem' }}>
       
@@ -197,6 +201,24 @@ export function LoginPage() {
                 }}
               >
                 Zaloguj się
+              </button>
+              <button
+                type="button"
+                onClick={handleGoogleLogin}
+                style={{
+                  padding: '0.8rem',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border)',
+                  background: '#fff',
+                  color: 'var(--text)',
+                  fontWeight: 600,
+                  fontSize: '1rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(47, 42, 36, 0.06)',
+                  transition: 'all 0.2s'
+                }}
+              >
+                Zaloguj przez Google
               </button>
             </form>
           ) : (

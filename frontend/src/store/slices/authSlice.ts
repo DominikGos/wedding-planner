@@ -20,8 +20,65 @@ export interface User {
 
 interface AuthState {
   user: User | null
+  token: string | null
   activeWeddingId: string | null
   weddings: Wedding[]
+}
+
+type StoredAuthState = Pick<AuthState, 'user' | 'token' | 'activeWeddingId' | 'weddings'>
+
+const AUTH_STATE_STORAGE_KEY = 'weddingPlannerAuth'
+const WEDDING_PLANNER_TOKEN_KEY = 'weddingPlannerToken'
+const googleOAuthUser: User = {
+  name: 'Użytkownik',
+  email: '',
+  role: 'couple',
+}
+
+function getStoredAuthState(): StoredAuthState | null {
+  if (typeof window === 'undefined') return null
+
+  const storedValue = window.localStorage.getItem(AUTH_STATE_STORAGE_KEY)
+  if (!storedValue) {
+    const storedToken = window.localStorage.getItem(WEDDING_PLANNER_TOKEN_KEY)
+    return storedToken
+      ? {
+          user: googleOAuthUser,
+          token: storedToken,
+          activeWeddingId: null,
+          weddings: mockWeddings,
+        }
+      : null
+  }
+
+  try {
+    return JSON.parse(storedValue) as StoredAuthState
+  } catch {
+    return null
+  }
+}
+
+function saveAuthState(state: StoredAuthState) {
+  if (typeof window === 'undefined') return
+
+  window.localStorage.setItem(AUTH_STATE_STORAGE_KEY, JSON.stringify({
+    user: state.user,
+    token: state.token,
+    activeWeddingId: state.activeWeddingId,
+    weddings: state.weddings,
+  }))
+
+  if (state.token) {
+    window.localStorage.setItem(WEDDING_PLANNER_TOKEN_KEY, state.token)
+  } else {
+    window.localStorage.removeItem(WEDDING_PLANNER_TOKEN_KEY)
+  }
+}
+
+function clearStoredAuthState() {
+  if (typeof window === 'undefined') return
+  window.localStorage.removeItem(AUTH_STATE_STORAGE_KEY)
+  window.localStorage.removeItem(WEDDING_PLANNER_TOKEN_KEY)
 }
 
 const mockWeddings: Wedding[] = [
@@ -54,10 +111,13 @@ const mockWeddings: Wedding[] = [
   },
 ]
 
+const storedAuthState = getStoredAuthState()
+
 const initialState: AuthState = {
-  user: null,
-  activeWeddingId: null,
-  weddings: mockWeddings,
+  user: storedAuthState?.user ?? null,
+  token: storedAuthState?.token ?? null,
+  activeWeddingId: storedAuthState?.activeWeddingId ?? null,
+  weddings: storedAuthState?.weddings ?? mockWeddings,
 }
 
 const authSlice = createSlice({
@@ -74,10 +134,20 @@ const authSlice = createSlice({
         // Planner has no active wedding by default, must select one
         state.activeWeddingId = null
       }
+      saveAuthState(state)
     },
     logout: (state) => {
       state.user = null
+      state.token = null
       state.activeWeddingId = null
+      clearStoredAuthState()
+    },
+    oauthLoginSuccess: (state, action: PayloadAction<{ token: string }>) => {
+      state.token = action.payload.token
+      if (!state.user) {
+        state.user = googleOAuthUser
+      }
+      saveAuthState(state)
     },
     registerCouple: (state, action: PayloadAction<{ coupleName: string; email: string; weddingDate: string }>) => {
       state.user = {
@@ -87,20 +157,27 @@ const authSlice = createSlice({
         weddingDate: action.payload.weddingDate
       }
       state.activeWeddingId = null // Starts with no wedding event, will show Create Event screen
+      saveAuthState(state)
     },
-    createWedding: (state, action: PayloadAction<Omit<Wedding, 'id'>>) => {
+    createWedding: (state, action: PayloadAction<Omit<Wedding, 'id'> & { userName?: string }>) => {
+      const { userName, ...weddingData } = action.payload
       const newWedding: Wedding = {
-        ...action.payload,
+        ...weddingData,
         id: `w-${Date.now()}`
+      }
+      if (state.user && userName) {
+        state.user.name = userName
       }
       state.weddings.push(newWedding)
       state.activeWeddingId = newWedding.id
+      saveAuthState(state)
     },
     setActiveWeddingId: (state, action: PayloadAction<string | null>) => {
       state.activeWeddingId = action.payload
+      saveAuthState(state)
     }
   }
 })
 
-export const { login, logout, registerCouple, createWedding, setActiveWeddingId } = authSlice.actions
+export const { login, logout, oauthLoginSuccess, registerCouple, createWedding, setActiveWeddingId } = authSlice.actions
 export const authReducer = authSlice.reducer
