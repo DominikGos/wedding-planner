@@ -1,22 +1,58 @@
-import { type Payment } from '../data/budgetMock'
+import type { PaymentStatus } from '../../../api/paymentApi'
 import { BudgetIcon } from './BudgetIcon'
 
-type PaymentTableProps = {
-  payments: Payment[]
-  onPay: (id: string) => void
-  userRole: 'couple' | 'planner' | null
+export type PaymentTablePayment = {
+  id: number
+  vendor: string
+  invoiceNumber: string
+  service: string
+  amount: number
+  currency: string
+  date: string
+  paidAt?: string
+  status: PaymentStatus
+  failureReason?: string | null
 }
 
-export function PaymentTable({ payments, onPay, userRole }: PaymentTableProps) {
-  const getStatusStyle = (status: Payment['status']) => {
+export type PaymentTableAction = 'retry' | 'cancel' | 'approve-offline'
+
+type PaymentTableProps = {
+  payments: PaymentTablePayment[]
+  onAction: (id: number, action: PaymentTableAction) => void
+  actionLoadingId?: number | null
+}
+
+export function PaymentTable({ payments, onAction, actionLoadingId }: PaymentTableProps) {
+  const getStatusStyle = (status: PaymentStatus) => {
     switch (status) {
-      case 'paid':
+      case 'SUCCESS':
         return { bg: '#eef8f3', text: '#35684f', label: 'Opłacono', icon: 'check' as const }
-      case 'pending':
-        return { bg: '#fff9eb', text: '#8c5a12', label: 'Oczekuje akceptacji', icon: 'clock' as const }
-      case 'overdue':
-        return { bg: '#fff2f2', text: '#c53030', label: 'Zaległe', icon: 'alert' as const }
+      case 'PENDING':
+        return { bg: '#fff9eb', text: '#8c5a12', label: 'Oczekuje', icon: 'clock' as const }
+      case 'FAILED':
+        return { bg: '#fff2f2', text: '#c53030', label: 'Nieudana', icon: 'alert' as const }
+      case 'CANCELLED':
+        return { bg: '#f4f1ed', text: '#6f6256', label: 'Anulowana', icon: 'file-text' as const }
+      case 'OFFLINE':
+        return { bg: '#f4f1ed', text: '#6f6256', label: 'Offline', icon: 'file-text' as const }
+      case 'OFFLINE_APPROVED':
+        return { bg: '#eef4ff', text: '#2f6db5', label: 'Offline zatwierdzone', icon: 'check' as const }
     }
+  }
+
+  const getAction = (status: PaymentStatus): { label: string; action: PaymentTableAction } | null => {
+    if (status === 'FAILED') return { label: 'Ponów', action: 'retry' }
+    if (status === 'PENDING') return { label: 'Anuluj', action: 'cancel' }
+    if (status === 'OFFLINE') return { label: 'Zatwierdź', action: 'approve-offline' }
+    return null
+  }
+
+  if (payments.length === 0) {
+    return (
+      <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--muted)' }}>
+        Brak płatności do wyświetlenia.
+      </div>
+    )
   }
 
   return (
@@ -27,31 +63,32 @@ export function PaymentTable({ payments, onPay, userRole }: PaymentTableProps) {
             <th style={headerStyle}>Dostawca</th>
             <th style={headerStyle}>Usługa</th>
             <th style={headerStyle}>Kwota</th>
-            <th style={headerStyle}>Termin</th>
-            <th style={headerStyle}>Status Płatności</th>
+            <th style={headerStyle}>Data</th>
+            <th style={headerStyle}>Status płatności</th>
             <th style={headerStyle}>Akcje</th>
           </tr>
         </thead>
         <tbody>
-          {payments.map((p) => {
-            const status = getStatusStyle(p.status)
-            const isPendingCouple = p.status === 'pending' && userRole === 'couple'
-            
+          {payments.map((payment) => {
+            const status = getStatusStyle(payment.status)
+            const action = getAction(payment.status)
+            const isActionLoading = actionLoadingId === payment.id
+
             return (
-              <tr key={p.id} style={{ borderBottom: '1px solid #f6f3ed' }}>
+              <tr key={payment.id} style={{ borderBottom: '1px solid #f6f3ed' }}>
                 <td style={cellStyle}>
-                  <div style={{ fontWeight: 600 }}>{p.vendor}</div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>{p.invoiceNumber}</div>
+                  <div style={{ fontWeight: 600 }}>{payment.vendor}</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>{payment.invoiceNumber}</div>
                 </td>
-                <td style={cellStyle}>{p.service}</td>
+                <td style={cellStyle}>{payment.service}</td>
                 <td style={{ ...cellStyle, fontWeight: 600, color: 'var(--primary)' }}>
-                  {p.amount.toLocaleString()} PLN
+                  {payment.amount.toLocaleString()} {payment.currency}
                 </td>
                 <td style={cellStyle}>
-                  <div>{p.deadline}</div>
-                  {p.paidAt && (
+                  <div>{payment.date}</div>
+                  {payment.paidAt && (
                     <div style={{ fontSize: '0.75rem', color: '#35684f' }}>
-                      Opłacono: {p.paidAt}
+                      Opłacono: {payment.paidAt}
                     </div>
                   )}
                 </td>
@@ -68,6 +105,7 @@ export function PaymentTable({ payments, onPay, userRole }: PaymentTableProps) {
                       background: status.bg,
                       color: status.text,
                     }}
+                    title={payment.failureReason || undefined}
                   >
                     <BudgetIcon name={status.icon} color={status.text} size={14} strokeWidth={2.5} />
                     {status.label}
@@ -75,24 +113,20 @@ export function PaymentTable({ payments, onPay, userRole }: PaymentTableProps) {
                 </td>
                 <td style={cellStyle}>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button style={iconButtonStyle} title="Pokaż szczegóły umowy">
+                    <button style={iconButtonStyle} title="Pokaż szczegóły płatności">
                       <BudgetIcon name='file-text' color='var(--muted)' size={18} />
                     </button>
-                    {p.status !== 'paid' && (
-                      <button 
+                    {action && (
+                      <button
                         style={{
                           ...actionButtonStyle,
-                          background: isPendingCouple ? '#e2d7c7' : 'var(--primary-soft)',
-                          color: isPendingCouple ? 'var(--muted)' : 'var(--primary)',
-                          cursor: isPendingCouple ? 'not-allowed' : 'pointer'
+                          cursor: isActionLoading ? 'wait' : 'pointer',
+                          opacity: isActionLoading ? 0.7 : 1,
                         }}
-                        disabled={isPendingCouple}
-                        onClick={() => onPay(p.id)}
+                        disabled={isActionLoading}
+                        onClick={() => onAction(payment.id, action.action)}
                       >
-                        {userRole === 'planner'
-                          ? (p.status === 'pending' ? 'Zatwierdź otrzymanie' : 'Zatwierdź płatność')
-                          : (p.status === 'pending' ? 'Oczekuje' : 'Opłać / Zgłoś')
-                        }
+                        {isActionLoading ? 'Trwa...' : action.label}
                       </button>
                     )}
                   </div>
@@ -116,7 +150,7 @@ const headerStyle: React.CSSProperties = {
 const cellStyle: React.CSSProperties = {
   padding: '1.25rem 0.75rem',
   fontSize: '0.95rem',
-  verticalAlign: 'top'
+  verticalAlign: 'top',
 }
 
 const iconButtonStyle: React.CSSProperties = {

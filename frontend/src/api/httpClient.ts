@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? ''
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 
@@ -9,12 +9,14 @@ type RequestOptions = {
 }
 
 export async function httpClient<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  }
+  const headers: Record<string, string> = {}
 
   if (options.token) {
     headers.Authorization = `Bearer ${options.token}`
+  }
+
+  if (options.body) {
+    headers['Content-Type'] = 'application/json'
   }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
