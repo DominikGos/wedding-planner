@@ -41,9 +41,9 @@ public class Payment {
 
     private LocalDateTime createdAt;
 
-    private LocalDateTime updatedAt;
+    private LocalDateTime updatedAt; // np. przy zmianie statusu platnosci
 
-    private LocalDateTime approvedAt;
+    private LocalDateTime approvedAt; //platnosc offline
 
     private String approvedBy;
 

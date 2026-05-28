@@ -19,21 +19,21 @@ public class CreateTaskDTO {
     private LocalDateTime dueDate;
     private Integer priority;
 
-    // Catering fields
+    // Catering
     private BigDecimal pricePerGuest;
     private Integer numberOfGuests;
     private String mealType;
 
-    // Decoration fields
+    // rekoracje
     private String theme;
 
-    // Entertainment fields
+    // rozrywka
     private String performerName;
     private Integer duration;
 
-    // Generic price (for Decoration/Entertainment)
+    // ogolna cena za muzyke i dekoracje
     private BigDecimal totalPrice;
     
-    // Optional vendor assignment
+    // opcjonalny dodatkowy uslugodawca
     private Long vendorId;
 }
