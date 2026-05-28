@@ -8,7 +8,7 @@ type BudgetSummaryProps = {
 }
 
 export function BudgetSummary({ paidCount, totalCount, totalRemaining, hasOverdue }: BudgetSummaryProps) {
-  const percentage = Math.round((paidCount / totalCount) * 100)
+  const percentage = totalCount > 0 ? Math.round((paidCount / totalCount) * 100) : 0
 
   return (
     <div style={{ display: 'grid', gap: '1.5rem' }}>
