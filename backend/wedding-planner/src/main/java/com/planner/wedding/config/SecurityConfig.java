@@ -49,8 +49,13 @@ public class SecurityConfig {
                                 "/",
                                 "/error",
                                 "/login/**",
-                                "/oauth2/**"
+                                "/oauth2/**",
+                                "/api/payments/**",
+                                "/api/expenses/**",
+                                "/api/vendors/**"
                         ).permitAll()
+                        // TODO: To jest tylko do lokalnego testowania. Docelowo endpointy payments/expenses/vendors powinny być zabezpieczone.
+                        // TODO: Docelowo /api/payments/{id}/offline-approve powinien wymagać roli ADMIN.
                         .anyRequest().authenticated()
                 )
 

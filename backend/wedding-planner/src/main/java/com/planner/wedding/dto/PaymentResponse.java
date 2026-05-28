@@ -1,63 +1,28 @@
-package com.planner.wedding.entities;
+package com.planner.wedding.dto;
 
-import jakarta.persistence.*;
-import lombok.*;
+import com.planner.wedding.entities.PaymentMethod;
+import com.planner.wedding.entities.PaymentStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "PAYMENTS")
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class Payment {
+public class PaymentResponse {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @ManyToOne
-    @JoinColumn(name = "vendor_id")
-    private Vendor vendor;
-
-    @OneToOne
-    @JoinColumn(name = "expense_id")
-    private Expense expense;
-
-    @Enumerated(EnumType.STRING)
+    private Long expenseId;
+    private Long vendorId;
+    private Long taskId;
+    private Long eventId;
     private PaymentStatus status;
-
-    @Enumerated(EnumType.STRING)
     private PaymentMethod method;
-
     private BigDecimal amount;
-
     private String currency;
-
     private String gatewayPaymentId;
-
     private String failureReason;
-
     private LocalDateTime createdAt;
-
     private LocalDateTime updatedAt;
-
     private LocalDateTime approvedAt;
-
     private String approvedBy;
-
-    @PrePersist
-    public void prePersist() {
-        LocalDateTime now = LocalDateTime.now();
-        this.createdAt = now;
-        this.updatedAt = now;
-    }
-
-    @PreUpdate
-    public void preUpdate() {
-        this.updatedAt = LocalDateTime.now();
-    }
 
     public Long getId() {
         return id;
@@ -67,20 +32,36 @@ public class Payment {
         this.id = id;
     }
 
-    public Vendor getVendor() {
-        return vendor;
+    public Long getExpenseId() {
+        return expenseId;
     }
 
-    public void setVendor(Vendor vendor) {
-        this.vendor = vendor;
+    public void setExpenseId(Long expenseId) {
+        this.expenseId = expenseId;
     }
 
-    public Expense getExpense() {
-        return expense;
+    public Long getVendorId() {
+        return vendorId;
     }
 
-    public void setExpense(Expense expense) {
-        this.expense = expense;
+    public void setVendorId(Long vendorId) {
+        this.vendorId = vendorId;
+    }
+
+    public Long getTaskId() {
+        return taskId;
+    }
+
+    public void setTaskId(Long taskId) {
+        this.taskId = taskId;
+    }
+
+    public Long getEventId() {
+        return eventId;
+    }
+
+    public void setEventId(Long eventId) {
+        this.eventId = eventId;
     }
 
     public PaymentStatus getStatus() {
