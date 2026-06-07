@@ -32,6 +32,16 @@ public class TaskController {
     }
 
     /**
+     * GET /api/events/{eventId}/tasks/schedule
+     * Pobiera harmonogram tasków (posortowane po dacie i priorytecie)
+     */
+    @GetMapping("/schedule")
+    public ResponseEntity<List<Map<String, Object>>> getTaskSchedule(@PathVariable Long eventId) {
+        List<Map<String, Object>> schedule = taskService.getTaskSchedule(eventId);
+        return ResponseEntity.ok(schedule);
+    }
+
+    /**
      * POST /api/events/{eventId}/tasks
      * Tworzy nowy task (Factory Pattern)
      *
