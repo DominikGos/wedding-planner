@@ -77,6 +77,23 @@ public class TaskService {
     }
 
     /**
+     * Pobiera wszystkie taski dla eventu w postaci posortowanego harmonogramu
+     */
+    public List<Map<String, Object>> getTaskSchedule(Long eventId) {
+        List<Task> tasks = taskRepository.findByEventId(eventId);
+        
+        // Zastosowanie wzorca Singleton
+        List<Task> scheduledTasks = ScheduleGenerator.getInstance().generateSchedule(tasks);
+
+        return scheduledTasks.stream()
+                .map(task -> {
+                    TaskFactory factory = TaskFactory.getFactory(task.getType());
+                    return factory.convertToDTO(task);
+                })
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Pobiera konkretny task
      */
     public Map<String, Object> getTask(Long taskId) {
