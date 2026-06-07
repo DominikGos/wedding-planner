@@ -3,16 +3,19 @@ package com.planner.wedding.services;
 import com.planner.wedding.dto.CreateTaskDTO;
 import com.planner.wedding.entities.Event;
 import com.planner.wedding.entities.Task;
+import com.planner.wedding.events.TaskStatusChangedEvent;
 import com.planner.wedding.factory.TaskFactory;
 import com.planner.wedding.repositories.EventRepository;
 import com.planner.wedding.repositories.TaskRepository;
 import com.planner.wedding.repositories.VendorRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -27,6 +30,7 @@ public class TaskService {
     private final TaskRepository taskRepository;
     private final EventRepository eventRepository;
     private final VendorRepository vendorRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * Tworzy nowy task używając Factory Pattern
@@ -160,8 +164,13 @@ public class TaskService {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Task not found with id: " + taskId));
 
+        String previousStatus = task.getStatus();
         task.setStatus(status);
         Task updatedTask = taskRepository.save(task);
+
+        if (!Objects.equals(previousStatus, status)) {
+            eventPublisher.publishEvent(new TaskStatusChangedEvent(updatedTask, previousStatus, status));
+        }
 
         TaskFactory factory = TaskFactory.getFactory(updatedTask.getType());
         return factory.convertToDTO(updatedTask);
