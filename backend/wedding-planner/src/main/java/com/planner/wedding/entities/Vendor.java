@@ -1,5 +1,6 @@
 package com.planner.wedding.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -28,8 +29,10 @@ public class Vendor {
     private BigDecimal price;
 
     @OneToMany(mappedBy = "vendor")
+    @JsonIgnore
     private List<Task> tasks;
 
     @OneToMany(mappedBy = "vendor")
+    @JsonIgnore
     private List<Payment> payments;
 }
