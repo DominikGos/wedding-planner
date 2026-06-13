@@ -3,15 +3,18 @@ package com.planner.wedding.services;
 import com.planner.wedding.dto.CreateTaskDTO;
 import com.planner.wedding.entities.Event;
 import com.planner.wedding.entities.Task;
+import com.planner.wedding.entities.User;
 import com.planner.wedding.events.TaskStatusChangedEvent;
 import com.planner.wedding.factory.TaskFactory;
-import com.planner.wedding.repositories.EventRepository;
+import com.planner.wedding.repositories.ExpenseRepository;
 import com.planner.wedding.repositories.TaskRepository;
 import com.planner.wedding.repositories.VendorRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
@@ -28,18 +31,17 @@ import java.util.stream.Collectors;
 public class TaskService {
 
     private final TaskRepository taskRepository;
-    private final EventRepository eventRepository;
+    private final ExpenseRepository expenseRepository;
     private final VendorRepository vendorRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final EventService eventService;
 
     /**
      * Tworzy nowy task używając Factory Pattern
      * Factory wybiera odpowiednią implementację na podstawie TaskType
      */
-    public Map<String, Object> createTask(Long eventId, CreateTaskDTO createTaskDTO) {
-        // Pobranie eventu
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new RuntimeException("Event not found with id: " + eventId));
+    public Map<String, Object> createTask(Long eventId, CreateTaskDTO createTaskDTO, User user) {
+        Event event = eventService.requireOwnedEvent(eventId, user);
 
         // Pobierz odpowiednią fabrykę na podstawie typu
         TaskFactory factory = TaskFactory.getFactory(createTaskDTO.getType());
@@ -69,7 +71,8 @@ public class TaskService {
     /**
      * Pobiera wszystkie taski dla eventu
      */
-    public List<Map<String, Object>> getTasksByEvent(Long eventId) {
+    public List<Map<String, Object>> getTasksByEvent(Long eventId, User user) {
+        eventService.requireOwnedEvent(eventId, user);
         List<Task> tasks = taskRepository.findByEventId(eventId);
 
         return tasks.stream()
@@ -83,7 +86,8 @@ public class TaskService {
     /**
      * Pobiera wszystkie taski dla eventu w postaci posortowanego harmonogramu
      */
-    public List<Map<String, Object>> getTaskSchedule(Long eventId) {
+    public List<Map<String, Object>> getTaskSchedule(Long eventId, User user) {
+        eventService.requireOwnedEvent(eventId, user);
         List<Task> tasks = taskRepository.findByEventId(eventId);
         
         // Zastosowanie wzorca Singleton
@@ -100,9 +104,9 @@ public class TaskService {
     /**
      * Pobiera konkretny task
      */
-    public Map<String, Object> getTask(Long taskId) {
-        Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new RuntimeException("Task not found with id: " + taskId));
+    public Map<String, Object> getTask(Long eventId, Long taskId, User user) {
+        eventService.requireOwnedEvent(eventId, user);
+        Task task = requireTask(eventId, taskId);
 
         TaskFactory factory = TaskFactory.getFactory(task.getType());
         return factory.convertToDTO(task);
@@ -111,9 +115,9 @@ public class TaskService {
     /**
      * Aktualizuje task
      */
-    public Map<String, Object> updateTask(Long taskId, CreateTaskDTO createTaskDTO) {
-        Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new RuntimeException("Task not found with id: " + taskId));
+    public Map<String, Object> updateTask(Long eventId, Long taskId, CreateTaskDTO createTaskDTO, User user) {
+        eventService.requireOwnedEvent(eventId, user);
+        Task task = requireTask(eventId, taskId);
 
         // Update fields
         task.setName(createTaskDTO.getName());
@@ -150,19 +154,24 @@ public class TaskService {
     /**
      * Usuwa task
      */
-    public void deleteTask(Long taskId) {
-        if (!taskRepository.existsById(taskId)) {
-            throw new RuntimeException("Task not found with id: " + taskId);
+    public void deleteTask(Long eventId, Long taskId, User user) {
+        eventService.requireOwnedEvent(eventId, user);
+        Task task = requireTask(eventId, taskId);
+        if (expenseRepository.existsByTaskId(taskId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Task cannot be deleted because it has assigned expenses"
+            );
         }
-        taskRepository.deleteById(taskId);
+        taskRepository.delete(task);
     }
 
     /**
      * Zmienia status tasku
      */
-    public Map<String, Object> updateTaskStatus(Long taskId, String status) {
-        Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new RuntimeException("Task not found with id: " + taskId));
+    public Map<String, Object> updateTaskStatus(Long eventId, Long taskId, String status, User user) {
+        eventService.requireOwnedEvent(eventId, user);
+        Task task = requireTask(eventId, taskId);
 
         String previousStatus = task.getStatus();
         task.setStatus(status);
@@ -174,5 +183,10 @@ public class TaskService {
 
         TaskFactory factory = TaskFactory.getFactory(updatedTask.getType());
         return factory.convertToDTO(updatedTask);
+    }
+
+    private Task requireTask(Long eventId, Long taskId) {
+        return taskRepository.findByIdAndEventId(taskId, eventId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found"));
     }
 }

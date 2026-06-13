@@ -1,7 +1,9 @@
 package com.planner.wedding.controllers;
 
 import com.planner.wedding.dto.EventCostSummaryDTO;
+import com.planner.wedding.entities.User;
 import com.planner.wedding.services.TaskCostService;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,7 +20,10 @@ public class EventCostController {
     }
 
     @GetMapping("/{eventId}/cost-summary")
-    public EventCostSummaryDTO getEventCostSummary(@PathVariable Long eventId) {
-        return taskCostService.calculateEventCostSummary(eventId);
+    public EventCostSummaryDTO getEventCostSummary(
+            @PathVariable Long eventId,
+            @AuthenticationPrincipal User user
+    ) {
+        return taskCostService.calculateEventCostSummary(eventId, user);
     }
 }

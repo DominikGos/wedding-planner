@@ -1,5 +1,6 @@
 package com.planner.wedding.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -21,6 +22,7 @@ public class Expense {
 
     @ManyToOne
     @JoinColumn(name = "task_id")
+    @JsonIgnore
     private Task task;
 
     private BigDecimal amount;
