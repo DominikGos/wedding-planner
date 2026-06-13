@@ -4,6 +4,7 @@ import com.planner.wedding.dto.EventCostSummaryDTO;
 import com.planner.wedding.entities.Event;
 import com.planner.wedding.entities.Task;
 import com.planner.wedding.entities.TaskType;
+import com.planner.wedding.entities.User;
 import com.planner.wedding.repositories.TaskRepository;
 import com.planner.wedding.services.cost.CateringCostStrategy;
 import com.planner.wedding.services.cost.DecorationCostStrategy;
@@ -27,6 +28,9 @@ class TaskCostServiceTest {
     @Mock
     private TaskRepository taskRepository;
 
+    @Mock
+    private EventService eventService;
+
     private TaskCostService taskCostService;
 
     @BeforeEach
@@ -37,7 +41,8 @@ class TaskCostServiceTest {
                         "CATERING", new CateringCostStrategy(),
                         "DECORATION", new DecorationCostStrategy(),
                         "ENTERTAINMENT", new EntertainmentCostStrategy()
-                )
+                ),
+                eventService
         );
     }
 
@@ -72,7 +77,7 @@ class TaskCostServiceTest {
 
         when(taskRepository.findByEventId(1L)).thenReturn(List.of(catering, decoration, entertainment));
 
-        EventCostSummaryDTO summary = taskCostService.calculateEventCostSummary(1L);
+        EventCostSummaryDTO summary = taskCostService.calculateEventCostSummary(1L, User.builder().id(1L).build());
 
         assertEquals(new BigDecimal("12300.00"), summary.getTotalCost());
         assertEquals(3, summary.getTasks().size());

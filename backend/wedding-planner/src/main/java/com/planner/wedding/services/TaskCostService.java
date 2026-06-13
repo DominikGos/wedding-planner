@@ -3,6 +3,7 @@ package com.planner.wedding.services;
 import com.planner.wedding.dto.EventCostSummaryDTO;
 import com.planner.wedding.dto.TaskCostItemDTO;
 import com.planner.wedding.entities.Task;
+import com.planner.wedding.entities.User;
 import com.planner.wedding.repositories.TaskRepository;
 import com.planner.wedding.services.cost.TaskCostStrategy;
 import org.springframework.stereotype.Service;
@@ -16,10 +17,12 @@ public class TaskCostService {
 
     private final TaskRepository taskRepository;
     private final Map<String, TaskCostStrategy> taskCostStrategies;
+    private final EventService eventService;
 
-    public TaskCostService(TaskRepository taskRepository, Map<String, TaskCostStrategy> taskCostStrategies) {
+    public TaskCostService(TaskRepository taskRepository, Map<String, TaskCostStrategy> taskCostStrategies, EventService eventService) {
         this.taskRepository = taskRepository;
         this.taskCostStrategies = taskCostStrategies;
+        this.eventService = eventService;
     }
 
     public BigDecimal calculateTaskCost(Task task) {
@@ -35,7 +38,8 @@ public class TaskCostService {
         return strategy.calculate(task);
     }
 
-    public EventCostSummaryDTO calculateEventCostSummary(Long eventId) {
+    public EventCostSummaryDTO calculateEventCostSummary(Long eventId, User user) {
+        eventService.requireOwnedEvent(eventId, user);
         List<Task> tasks = taskRepository.findByEventId(eventId);
         List<TaskCostItemDTO> taskCosts = tasks.stream()
                 .map(task -> TaskCostItemDTO.builder()

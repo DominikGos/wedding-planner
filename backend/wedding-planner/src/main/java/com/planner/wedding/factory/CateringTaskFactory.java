@@ -52,14 +52,11 @@ public class CateringTaskFactory extends TaskFactory {
         if (dto.getName() == null || dto.getName().isBlank()) {
             throw new IllegalArgumentException("Task name cannot be empty");
         }
-        if (dto.getPricePerGuest() == null) {
-            throw new IllegalArgumentException("Catering: pricePerGuest is required");
+        if (dto.getPricePerGuest() != null && dto.getPricePerGuest().signum() < 0) {
+            throw new IllegalArgumentException("Catering: pricePerGuest cannot be negative");
         }
-        if (dto.getNumberOfGuests() == null || dto.getNumberOfGuests() <= 0) {
-            throw new IllegalArgumentException("Catering: numberOfGuests must be greater than 0");
-        }
-        if (dto.getMealType() == null || dto.getMealType().isBlank()) {
-            throw new IllegalArgumentException("Catering: mealType is required");
+        if (dto.getNumberOfGuests() != null && dto.getNumberOfGuests() < 0) {
+            throw new IllegalArgumentException("Catering: numberOfGuests cannot be negative");
         }
     }
 }

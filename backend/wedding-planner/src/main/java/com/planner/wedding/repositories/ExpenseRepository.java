@@ -9,6 +9,8 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long> {
 
     List<Expense> findByTaskId(Long taskId);
 
+    boolean existsByTaskId(Long taskId);
+
     List<Expense> findByStatus(String status);
 
 }
