@@ -1,18 +1,47 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Outlet, useNavigate, Link } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
 import type { RootState } from '../../store'
-import { logout, setActiveWeddingId } from '../../store/slices/authSlice'
+import { getEvents, toWedding } from '../../api/eventApi'
+import { logout, setActiveWeddingId, setEvents, setEventsError, setEventsLoading } from '../../store/slices/authSlice'
 import { MainNav } from './MainNav'
 
 export function AppShell() {
   const navigate = useNavigate()
   const dispatch = useDispatch()
-  const { user, activeWeddingId, weddings } = useSelector((state: RootState) => state.auth)
+  const { user, token, activeWeddingId, weddings } = useSelector((state: RootState) => state.auth)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const activeWedding = weddings.find(w => w.id === activeWeddingId)
-  const userDisplayName = user?.name || ''
+  const userDisplayName = user?.email?.split('@')[0] || 'Użytkownik'
+
+  useEffect(() => {
+    if (!user || !token) return
+    let active = true
+
+    const loadEvents = async () => {
+      dispatch(setEventsLoading())
+
+      try {
+        const events = await getEvents({ token })
+        if (!active) return
+        const weddings = events.map(toWedding)
+        dispatch(setEvents(weddings))
+        if (weddings.length === 0) {
+          navigate('/events/new', { replace: true })
+        }
+      } catch {
+        if (active) {
+          dispatch(setEventsError('Nie udało się pobrać wydarzeń z backendu.'))
+        }
+      }
+    }
+
+    void loadEvents()
+    return () => {
+      active = false
+    }
+  }, [dispatch, navigate, token, user])
 
   const handleLogout = () => {
     dispatch(logout())

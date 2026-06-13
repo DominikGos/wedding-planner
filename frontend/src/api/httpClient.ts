@@ -29,5 +29,9 @@ export async function httpClient<T>(path: string, options: RequestOptions = {}):
     throw new Error(`Request failed with status ${response.status}`)
   }
 
+  if (response.status === 204) {
+    return undefined as T
+  }
+
   return (await response.json()) as T
 }
