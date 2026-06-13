@@ -1,10 +1,12 @@
 package com.planner.wedding.controllers;
 
 import com.planner.wedding.dto.CreateTaskDTO;
+import com.planner.wedding.entities.User;
 import com.planner.wedding.services.TaskService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,8 +28,11 @@ public class TaskController {
      * Pobiera wszystkie taski dla danego eventu
      */
     @GetMapping
-    public ResponseEntity<List<Map<String, Object>>> getTasksByEvent(@PathVariable Long eventId) {
-        List<Map<String, Object>> tasks = taskService.getTasksByEvent(eventId);
+    public ResponseEntity<List<Map<String, Object>>> getTasksByEvent(
+            @PathVariable Long eventId,
+            @AuthenticationPrincipal User user
+    ) {
+        List<Map<String, Object>> tasks = taskService.getTasksByEvent(eventId, user);
         return ResponseEntity.ok(tasks);
     }
 
@@ -36,8 +41,11 @@ public class TaskController {
      * Pobiera harmonogram tasków (posortowane po dacie i priorytecie)
      */
     @GetMapping("/schedule")
-    public ResponseEntity<List<Map<String, Object>>> getTaskSchedule(@PathVariable Long eventId) {
-        List<Map<String, Object>> schedule = taskService.getTaskSchedule(eventId);
+    public ResponseEntity<List<Map<String, Object>>> getTaskSchedule(
+            @PathVariable Long eventId,
+            @AuthenticationPrincipal User user
+    ) {
+        List<Map<String, Object>> schedule = taskService.getTaskSchedule(eventId, user);
         return ResponseEntity.ok(schedule);
     }
 
@@ -60,9 +68,10 @@ public class TaskController {
     @PostMapping
     public ResponseEntity<Map<String, Object>> createTask(
             @PathVariable Long eventId,
-            @RequestBody CreateTaskDTO createTaskDTO
+            @RequestBody CreateTaskDTO createTaskDTO,
+            @AuthenticationPrincipal User user
     ) {
-        Map<String, Object> task = taskService.createTask(eventId, createTaskDTO);
+        Map<String, Object> task = taskService.createTask(eventId, createTaskDTO, user);
         return ResponseEntity.status(HttpStatus.CREATED).body(task);
     }
 
@@ -73,9 +82,10 @@ public class TaskController {
     @GetMapping("/{taskId}")
     public ResponseEntity<Map<String, Object>> getTask(
             @PathVariable Long eventId,
-            @PathVariable Long taskId
+            @PathVariable Long taskId,
+            @AuthenticationPrincipal User user
     ) {
-        Map<String, Object> task = taskService.getTask(taskId);
+        Map<String, Object> task = taskService.getTask(eventId, taskId, user);
         return ResponseEntity.ok(task);
     }
 
@@ -87,9 +97,10 @@ public class TaskController {
     public ResponseEntity<Map<String, Object>> updateTask(
             @PathVariable Long eventId,
             @PathVariable Long taskId,
-            @RequestBody CreateTaskDTO createTaskDTO
+            @RequestBody CreateTaskDTO createTaskDTO,
+            @AuthenticationPrincipal User user
     ) {
-        Map<String, Object> updatedTask = taskService.updateTask(taskId, createTaskDTO);
+        Map<String, Object> updatedTask = taskService.updateTask(eventId, taskId, createTaskDTO, user);
         return ResponseEntity.ok(updatedTask);
     }
 
@@ -100,9 +111,10 @@ public class TaskController {
     @DeleteMapping("/{taskId}")
     public ResponseEntity<Void> deleteTask(
             @PathVariable Long eventId,
-            @PathVariable Long taskId
+            @PathVariable Long taskId,
+            @AuthenticationPrincipal User user
     ) {
-        taskService.deleteTask(taskId);
+        taskService.deleteTask(eventId, taskId, user);
         return ResponseEntity.noContent().build();
     }
 
@@ -119,9 +131,10 @@ public class TaskController {
     public ResponseEntity<Map<String, Object>> updateTaskStatus(
             @PathVariable Long eventId,
             @PathVariable Long taskId,
-            @RequestBody StatusUpdateDTO statusUpdate
+            @RequestBody StatusUpdateDTO statusUpdate,
+            @AuthenticationPrincipal User user
     ) {
-        Map<String, Object> updatedTask = taskService.updateTaskStatus(taskId, statusUpdate.getStatus());
+        Map<String, Object> updatedTask = taskService.updateTaskStatus(eventId, taskId, statusUpdate.getStatus(), user);
         return ResponseEntity.ok(updatedTask);
     }
 

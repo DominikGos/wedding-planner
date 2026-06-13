@@ -1,25 +1,18 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
-import { createWedding } from '../../../store/slices/authSlice'
+import { createEvent, getEvents, toWedding } from '../../../api/eventApi'
+import { setActiveWeddingId, setEvents, setEventsError, setEventsLoading } from '../../../store/slices/authSlice'
 import type { RootState } from '../../../store'
 
 export function CreateEventPage() {
   const navigate = useNavigate()
   const dispatch = useDispatch()
-  const user = useSelector((state: RootState) => state.auth.user)
+  const { user, token } = useSelector((state: RootState) => state.auth)
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const userNameForWedding = user?.name && user.name !== 'Użytkownik' ? user.name.split('&')[0].trim() : ''
   
-  useEffect(() => {
-    if (user) {
-      setFormData(prev => ({
-        ...prev,
-        partnerA: prev.partnerA || userNameForWedding,
-        date: prev.date || user.weddingDate || ''
-      }))
-    }
-  }, [user, userNameForWedding])
-
   const [step, setStep] = useState(1)
   const [formData, setFormData] = useState({
     partnerA: userNameForWedding,
@@ -51,29 +44,40 @@ export function CreateEventPage() {
     if (step > 1) setStep(prev => prev - 1)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+    setIsSaving(true)
+    setSaveError(null)
+
     const weddingName = `${formData.partnerA} & ${formData.partnerB || 'Partner'}`
-    
-    dispatch(createWedding({
-      userName: formData.partnerA,
-      name: weddingName,
-      date: formData.date || new Date().toISOString().split('T')[0],
-      budget: formData.budget,
-      guestsCount: formData.guestsCount,
-      venue: formData.venue || 'Nie określono',
-      style: formData.style
-    }))
-    
-    navigate('/')
+
+    try {
+      const createdEvent = await createEvent({
+        name: weddingName,
+        eventDate: `${formData.date}T00:00:00`,
+        location: formData.venue || 'Nie określono',
+        status: 'PLANNED',
+      }, { token: token ?? undefined })
+
+      dispatch(setEventsLoading())
+      const events = await getEvents({ token: token ?? undefined })
+      dispatch(setEvents(events.map(toWedding)))
+      dispatch(setActiveWeddingId(createdEvent.id))
+      navigate('/')
+    } catch {
+      const message = 'Nie udało się utworzyć wydarzenia. Sprawdź połączenie z backendem i spróbuj ponownie.'
+      setSaveError(message)
+      dispatch(setEventsError(message))
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const stylesList = [
-    { name: 'Glamour', desc: 'Błysk, kryształy, eleganckie złoto i klasa.', icon: '✨', bg: 'linear-gradient(135deg, #fff5e6 0%, #ffd194 100%)' },
-    { name: 'Boho', desc: 'Luz, naturalność, pióra, trawy pampasowe.', icon: '🌾', bg: 'linear-gradient(135deg, #f7f1e5 0%, #d8c4b6 100%)' },
-    { name: 'Rustykalny', desc: 'Drewno, juta, ciepłe światło i leśny klimat.', icon: '🪵', bg: 'linear-gradient(135deg, #efe8e0 0%, #a79277 100%)' },
-    { name: 'Klasyczny', desc: 'Tradycyjna elegancja, biel i czerwień.', icon: '🌹', bg: 'linear-gradient(135deg, #f9f9f9 0%, #e3e3e3 100%)' }
+    { name: 'Glamour', desc: 'Błysk, kryształy, eleganckie złoto i klasa.', icon: '✨' },
+    { name: 'Boho', desc: 'Luz, naturalność, pióra, trawy pampasowe.', icon: '🌾' },
+    { name: 'Rustykalny', desc: 'Drewno, juta, ciepłe światło i leśny klimat.', icon: '🪵' },
+    { name: 'Klasyczny', desc: 'Tradycyjna elegancja, biel i czerwień.', icon: '🌹' }
   ]
 
   return (
@@ -116,6 +120,11 @@ export function CreateEventPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="page-card" style={{ background: '#fff', padding: '2.5rem', borderRadius: '20px', boxShadow: 'var(--shadow)', border: '1px solid var(--border)' }}>
+        {saveError && (
+          <p style={{ margin: '0 0 1.5rem', padding: '0.8rem 1rem', borderRadius: '10px', background: '#fff0f0', color: '#a33' }}>
+            {saveError}
+          </p>
+        )}
         
         {/* STEP 1: Basic Info */}
         {step === 1 && (
@@ -177,6 +186,9 @@ export function CreateEventPage() {
         {step === 2 && (
           <div style={{ display: 'grid', gap: '1.5rem' }}>
             <h2 style={{ fontSize: '1.3rem', margin: '0 0 0.5rem 0', fontFamily: 'Georgia, serif', fontWeight: 500 }}>Krok 2: Szacowany Budżet i Goście</h2>
+            <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.85rem' }}>
+              Te informacje mają obecnie charakter pomocniczy i nie są jeszcze zapisywane w backendzie.
+            </p>
             
             <div>
               <label style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--muted)' }}>
@@ -228,6 +240,9 @@ export function CreateEventPage() {
         {step === 3 && (
           <div>
             <h2 style={{ fontSize: '1.3rem', margin: '0 0 1rem 0', fontFamily: 'Georgia, serif', fontWeight: 500 }}>Krok 3: Styl Twojego Ślubu</h2>
+            <p style={{ margin: '0 0 1rem', color: 'var(--muted)', fontSize: '0.85rem' }}>
+              Wybrany styl nie jest jeszcze zapisywany w backendzie.
+            </p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               {stylesList.map((styleObj) => (
                 <div 
@@ -259,6 +274,9 @@ export function CreateEventPage() {
         {step === 4 && (
           <div style={{ display: 'grid', gap: '1.5rem' }}>
             <h2 style={{ fontSize: '1.3rem', margin: '0 0 0.5rem 0', fontFamily: 'Georgia, serif', fontWeight: 500 }}>Krok 4: Podsumowanie Wesela</h2>
+            <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.85rem' }}>
+              Backend zapisze nazwę, datę, lokalizację i status PLANNED. Budżet, liczba gości oraz styl nie zostaną jeszcze zapisane.
+            </p>
             
             <div style={{ background: 'var(--bg-accent)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border)', display: 'grid', gap: '1rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed var(--border)', paddingBottom: '0.75rem' }}>
@@ -340,6 +358,7 @@ export function CreateEventPage() {
           ) : (
             <button 
               type="submit"
+              disabled={isSaving}
               style={{
                 padding: '0.75rem 2.2rem',
                 borderRadius: '10px',
@@ -347,12 +366,13 @@ export function CreateEventPage() {
                 background: 'var(--primary)',
                 color: '#fff',
                 fontWeight: 700,
-                cursor: 'pointer',
+                cursor: isSaving ? 'wait' : 'pointer',
+                opacity: isSaving ? 0.7 : 1,
                 transition: 'all 0.2s ease',
                 boxShadow: '0 6px 15px rgba(184, 90, 31, 0.25)'
               }}
             >
-              Stwórz Wydarzenie ✨
+              {isSaving ? 'Zapisywanie...' : 'Stwórz Wydarzenie ✨'}
             </button>
           )}
         </div>

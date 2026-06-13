@@ -50,11 +50,8 @@ public class EntertainmentTaskFactory extends TaskFactory {
         if (dto.getName() == null || dto.getName().isBlank()) {
             throw new IllegalArgumentException("Task name cannot be empty");
         }
-        if (dto.getPerformerName() == null || dto.getPerformerName().isBlank()) {
-            throw new IllegalArgumentException("Entertainment: performerName is required");
-        }
-        if (dto.getTotalPrice() == null) {
-            throw new IllegalArgumentException("Entertainment: totalPrice is required");
+        if (dto.getTotalPrice() != null && dto.getTotalPrice().signum() < 0) {
+            throw new IllegalArgumentException("Entertainment: totalPrice cannot be negative");
         }
     }
 }

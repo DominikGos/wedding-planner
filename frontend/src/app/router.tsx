@@ -10,6 +10,7 @@ import { OAuthSuccessPage } from '../features/auth/pages/OAuthSuccessPage'
 import { TasksPage } from '../features/tasks/pages/TasksPage'
 import { VendorsPage } from '../features/vendors/pages/VendorsPage'
 import { CreateEventPage } from '../features/events/pages/CreateEventPage'
+import { EditEventPage } from '../features/events/pages/EditEventPage'
 import { GuestRsvpPage } from '../features/guests/pages/GuestRsvpPage'
 
 export const router = createBrowserRouter([
@@ -44,6 +45,10 @@ export const router = createBrowserRouter([
       {
         path: 'events/new',
         element: <CreateEventPage />, // Multi-step couple event creator
+      },
+      {
+        path: 'events/:eventId/edit',
+        element: <EditEventPage />,
       },
       {
         path: 'tasks',

@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useDispatch } from 'react-redux'
 import { oauthLoginSuccess } from '../../../store/slices/authSlice'
+import { setTasks } from '../../../store/slices/tasksSlice'
 
 export function OAuthSuccessPage() {
   const [searchParams] = useSearchParams()
@@ -12,7 +13,9 @@ export function OAuthSuccessPage() {
   useEffect(() => {
     if (!token) return
 
-    dispatch(oauthLoginSuccess({ token }))
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))) as { sub: string }
+    dispatch(setTasks([]))
+    dispatch(oauthLoginSuccess({ token, email: payload.sub }))
     navigate('/', { replace: true })
   }, [dispatch, navigate, token])
 

@@ -14,11 +14,12 @@ export function DashboardPage() {
   const dispatch = useDispatch()
   const [searchParams] = useSearchParams()
   const currentTab = searchParams.get('tab') || 'about'
+  const eventUpdated = searchParams.get('eventUpdated') === '1'
 
   // Redux state
-  const { user, activeWeddingId, weddings } = useSelector((state: RootState) => state.auth)
+  const { user, token, activeWeddingId, weddings, eventsLoading, eventsError } = useSelector((state: RootState) => state.auth)
   const activeWedding = weddings.find(w => w.id === activeWeddingId)
-  const greetingName = user?.name && user.name !== 'Użytkownik' ? user.name : ''
+  const greetingName = user?.email?.split('@')[0] || 'Użytkownik'
 
   // Hover states for the active dashboard
   const [hoveredCard, setHoveredCard] = useState<string | null>(null)
@@ -223,6 +224,36 @@ export function DashboardPage() {
   // ----------------------------------------------------
   // CASE 2: ZALOGOWANY WEDDING PLANNER
   // ----------------------------------------------------
+  if (!token) {
+    return (
+      <section className='page-card' style={{ maxWidth: '680px', margin: '3rem auto', padding: '2rem', textAlign: 'center' }}>
+        <h1 className='page-title'>Tryb demonstracyjny</h1>
+        <p className='page-subtitle'>Dane wydarzeń z backendu są dostępne po zalogowaniu przez Google.</p>
+        <Link to='/auth' style={{ color: 'var(--primary)', fontWeight: 600 }}>
+          Przejdź do logowania
+        </Link>
+      </section>
+    )
+  }
+
+  if (eventsLoading) {
+    return (
+      <section className='page-card' style={{ maxWidth: '680px', margin: '3rem auto', padding: '2rem', textAlign: 'center' }}>
+        <h1 className='page-title'>Ładowanie wydarzeń...</h1>
+        <p className='page-subtitle'>Pobieramy aktualną listę wydarzeń z backendu.</p>
+      </section>
+    )
+  }
+
+  if (eventsError) {
+    return (
+      <section className='page-card' style={{ maxWidth: '680px', margin: '3rem auto', padding: '2rem', textAlign: 'center' }}>
+        <h1 className='page-title'>Nie udało się pobrać wydarzeń</h1>
+        <p className='page-subtitle'>{eventsError}</p>
+      </section>
+    )
+  }
+
   if (user.role === 'planner') {
     
     // If planner has already selected a wedding, we render the wedding details!
@@ -243,7 +274,7 @@ export function DashboardPage() {
         }}>
           <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--primary)', fontWeight: 600 }}>Dedykowany Panel Plannera</span>
           <h1 className="page-title" style={{ fontSize: '2.2rem', marginTop: '0.25rem', fontFamily: "'Playfair Display', Georgia, serif", fontWeight: 400 }}>
-            Witaj, {user.name}!
+            Witaj, {greetingName}!
           </h1>
           <p className="page-subtitle" style={{ fontSize: '1.05rem', color: 'var(--muted)', margin: '0.4rem 0 0' }}>
             Oto lista wesel, które aktualnie koordynujesz. Wybierz wesele, aby przejść do szczegółów.
@@ -251,6 +282,15 @@ export function DashboardPage() {
         </article>
 
         {/* Lista Wesel w postaci luksusowych kart */}
+        {weddings.length === 0 && (
+          <article className='page-card' style={{ padding: '2rem', textAlign: 'center' }}>
+            <h2 style={{ marginTop: 0 }}>Brak wydarzeń</h2>
+            <p style={{ color: 'var(--muted)' }}>Backend nie zwrócił jeszcze żadnego wydarzenia.</p>
+            <Link to='/events/new' style={{ color: 'var(--primary)', fontWeight: 600 }}>
+              Utwórz pierwsze wydarzenie
+            </Link>
+          </article>
+        )}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
           {weddings.map((wedding) => (
             <div 
@@ -292,19 +332,8 @@ export function DashboardPage() {
                   fontWeight: 600,
                   fontSize: '0.78rem'
                 }}>
-                  Styl: {wedding.style}
+                  {wedding.status}
                 </span>
-              </div>
-
-              <div style={{ borderTop: '1px solid #f1e8dc', borderBottom: '1px solid #f1e8dc', padding: '1rem 0', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                <div>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--muted)', display: 'block' }}>Budżet całkowity</span>
-                  <strong style={{ fontSize: '1.05rem', color: '#db7e45' }}>{wedding.budget.toLocaleString()} PLN</strong>
-                </div>
-                <div>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--muted)', display: 'block' }}>Liczba gości</span>
-                  <strong style={{ fontSize: '1.05rem', color: 'var(--text)' }}>{wedding.guestsCount} gości</strong>
-                </div>
               </div>
 
               <div style={{ display: 'grid', gap: '0.25rem' }}>
@@ -350,7 +379,7 @@ export function DashboardPage() {
           <span style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.2em', color: 'var(--primary)', fontWeight: 600 }}>Witaj w planerze</span>
           
           <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '2.5rem', margin: 0, fontWeight: 500 }}>
-            {greetingName ? `Witaj, ${greetingName}!` : 'Witaj!'}
+            Witaj, {greetingName}!
           </h1>
           <p style={{ color: 'var(--muted)', fontSize: '1.05rem', lineHeight: '1.6', margin: 0 }}>
             Cieszymy się, że jesteś z nami. Twój luksusowy planer ślubny jest gotowy do wdrożenia. 
@@ -393,6 +422,11 @@ export function DashboardPage() {
 
     return (
       <section style={{ display: 'grid', gap: '1rem' }}>
+        {eventUpdated && (
+          <div style={{ padding: '0.85rem 1rem', borderRadius: '10px', background: '#edf9f0', color: '#276738', border: '1px solid #ccebd4' }}>
+            Szczegóły wydarzenia zostały zapisane.
+          </div>
+        )}
         
         {/* Dynamic Header Panel */}
         <article
@@ -416,7 +450,7 @@ export function DashboardPage() {
                 {user?.role === 'planner' ? 'Pulpit Menadżera (Koordynator)' : 'Twój Pulpit Ślubny'}
               </h1>
               <p className='page-subtitle' style={{ fontSize: '1.05rem' }}>
-                {greetingName ? `Witaj, ${greetingName}!` : 'Witaj!'} Oto przegląd planowania wesela.
+                Witaj, {greetingName}! Oto przegląd planowania wesela.
               </p>
             </div>
 
@@ -430,6 +464,21 @@ export function DashboardPage() {
               <span style={{ display: 'block', fontSize: '0.85rem', color: 'var(--muted)', marginTop: '0.2rem' }}>
                 📅 {activeWedding.date} | 🏰 {activeWedding.venue}
               </span>
+              <Link
+                to={`/events/${activeWedding.id}/edit`}
+                style={{
+                  display: 'inline-block',
+                  marginTop: '0.8rem',
+                  padding: '0.55rem 1rem',
+                  borderRadius: '9px',
+                  background: 'var(--primary)',
+                  color: '#fff',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                }}
+              >
+                Edytuj szczegóły
+              </Link>
             </div>
           </div>
         </article>
@@ -437,21 +486,11 @@ export function DashboardPage() {
         {/* Dynamic stats cards based on current activeWedding state */}
         <div className='stats-grid' style={{ marginTop: 0 }}>
           {topCards.map((card) => {
-            let dynamicVal = card.value
-            // Override value dynamically from redux activeWedding
-            if (card.id === 'budget') {
-              dynamicVal = `${activeWedding.budget.toLocaleString()} PLN`
-            } else if (card.id === 'guests') {
-              dynamicVal = `${activeWedding.guestsCount} osób`
-            } else if (card.id === 'style') {
-              dynamicVal = activeWedding.style
-            }
-
             return (
               <TopStatCard
                 key={card.id}
                 title={card.title}
-                value={dynamicVal}
+                value={card.value}
                 note={card.note}
                 color={card.color}
                 icon={card.icon}
@@ -525,7 +564,7 @@ export function DashboardPage() {
                 }}
               >
                 <strong style={{ fontSize: '1rem' }}>Suma całkowita</strong>
-                <strong style={{ color: '#d6a061', fontSize: '1.8rem' }}>{activeWedding.budget.toLocaleString()} PLN</strong>
+                <strong style={{ color: '#d6a061', fontSize: '1.8rem' }}>45 000 PLN</strong>
               </div>
             </div>
           </article>

@@ -2,13 +2,11 @@ import { createSlice } from '@reduxjs/toolkit'
 import type { PayloadAction } from '@reduxjs/toolkit'
 
 export interface Wedding {
-  id: string
+  id: number
   name: string
   date: string
-  budget: number
-  guestsCount: number
   venue: string
-  style: string
+  status: string
 }
 
 export interface User {
@@ -21,11 +19,13 @@ export interface User {
 interface AuthState {
   user: User | null
   token: string | null
-  activeWeddingId: string | null
+  activeWeddingId: number | null
   weddings: Wedding[]
+  eventsLoading: boolean
+  eventsError: string | null
 }
 
-type StoredAuthState = Pick<AuthState, 'user' | 'token' | 'activeWeddingId' | 'weddings'>
+type StoredAuthState = Pick<AuthState, 'user' | 'token' | 'activeWeddingId'>
 
 const AUTH_STATE_STORAGE_KEY = 'weddingPlannerAuth'
 const WEDDING_PLANNER_TOKEN_KEY = 'weddingPlannerToken'
@@ -46,7 +46,6 @@ function getStoredAuthState(): StoredAuthState | null {
           user: googleOAuthUser,
           token: storedToken,
           activeWeddingId: null,
-          weddings: mockWeddings,
         }
       : null
   }
@@ -65,7 +64,6 @@ function saveAuthState(state: StoredAuthState) {
     user: state.user,
     token: state.token,
     activeWeddingId: state.activeWeddingId,
-    weddings: state.weddings,
   }))
 
   if (state.token) {
@@ -81,43 +79,16 @@ function clearStoredAuthState() {
   window.localStorage.removeItem(WEDDING_PLANNER_TOKEN_KEY)
 }
 
-const mockWeddings: Wedding[] = [
-  {
-    id: 'w-1',
-    name: 'Maria & Jakub',
-    date: '2026-08-15',
-    budget: 45000,
-    guestsCount: 120,
-    venue: 'Złoty Dwór, Warszawa',
-    style: 'Glamour',
-  },
-  {
-    id: 'w-2',
-    name: 'Katarzyna & Tomasz',
-    date: '2026-09-05',
-    budget: 65000,
-    guestsCount: 150,
-    venue: 'Pałac Rozalin',
-    style: 'Boho',
-  },
-  {
-    id: 'w-3',
-    name: 'Aleksandra & Jan',
-    date: '2026-10-24',
-    budget: 35000,
-    guestsCount: 85,
-    venue: 'Stodoła Borowo',
-    style: 'Rustykalny',
-  },
-]
-
 const storedAuthState = getStoredAuthState()
+const storedActiveWeddingId = storedAuthState?.activeWeddingId
 
 const initialState: AuthState = {
   user: storedAuthState?.user ?? null,
   token: storedAuthState?.token ?? null,
-  activeWeddingId: storedAuthState?.activeWeddingId ?? null,
-  weddings: storedAuthState?.weddings ?? mockWeddings,
+  activeWeddingId: typeof storedActiveWeddingId === 'number' ? storedActiveWeddingId : null,
+  weddings: [],
+  eventsLoading: false,
+  eventsError: null,
 }
 
 const authSlice = createSlice({
@@ -126,26 +97,31 @@ const authSlice = createSlice({
   reducers: {
     login: (state, action: PayloadAction<{ name: string; email: string; role: 'couple' | 'planner' }>) => {
       state.user = action.payload
-      if (action.payload.role === 'couple') {
-        // Find if this couple has an active wedding, if not leave null so they can create one
-        const coupleWedding = state.weddings.find(w => w.name.includes(action.payload.name))
-        state.activeWeddingId = coupleWedding ? coupleWedding.id : null
-      } else {
-        // Planner has no active wedding by default, must select one
-        state.activeWeddingId = null
-      }
+      state.token = null
+      state.activeWeddingId = null
+      state.weddings = []
+      state.eventsLoading = false
+      state.eventsError = null
       saveAuthState(state)
     },
     logout: (state) => {
       state.user = null
       state.token = null
       state.activeWeddingId = null
+      state.weddings = []
+      state.eventsLoading = false
+      state.eventsError = null
       clearStoredAuthState()
     },
-    oauthLoginSuccess: (state, action: PayloadAction<{ token: string }>) => {
+    oauthLoginSuccess: (state, action: PayloadAction<{ token: string; email: string }>) => {
       state.token = action.payload.token
-      if (!state.user) {
-        state.user = googleOAuthUser
+      state.activeWeddingId = null
+      state.weddings = []
+      state.eventsLoading = false
+      state.eventsError = null
+      state.user = {
+        ...googleOAuthUser,
+        email: action.payload.email,
       }
       saveAuthState(state)
     },
@@ -156,28 +132,49 @@ const authSlice = createSlice({
         role: 'couple',
         weddingDate: action.payload.weddingDate
       }
-      state.activeWeddingId = null // Starts with no wedding event, will show Create Event screen
+      state.token = null
+      state.activeWeddingId = null
+      state.weddings = []
+      state.eventsLoading = false
+      state.eventsError = null
       saveAuthState(state)
     },
-    createWedding: (state, action: PayloadAction<Omit<Wedding, 'id'> & { userName?: string }>) => {
-      const { userName, ...weddingData } = action.payload
-      const newWedding: Wedding = {
-        ...weddingData,
-        id: `w-${Date.now()}`
+    setEventsLoading: (state) => {
+      state.eventsLoading = true
+      state.eventsError = null
+    },
+    setEvents: (state, action: PayloadAction<Wedding[]>) => {
+      state.weddings = action.payload
+      state.eventsLoading = false
+      state.eventsError = null
+
+      const activeEventExists = state.weddings.some(wedding => wedding.id === state.activeWeddingId)
+      if (!activeEventExists) {
+        state.activeWeddingId = state.user?.role === 'couple' && state.weddings.length > 0
+          ? state.weddings[0].id
+          : null
       }
-      if (state.user && userName) {
-        state.user.name = userName
-      }
-      state.weddings.push(newWedding)
-      state.activeWeddingId = newWedding.id
       saveAuthState(state)
     },
-    setActiveWeddingId: (state, action: PayloadAction<string | null>) => {
+    setEventsError: (state, action: PayloadAction<string>) => {
+      state.eventsLoading = false
+      state.eventsError = action.payload
+    },
+    setActiveWeddingId: (state, action: PayloadAction<number | null>) => {
       state.activeWeddingId = action.payload
       saveAuthState(state)
     }
   }
 })
 
-export const { login, logout, oauthLoginSuccess, registerCouple, createWedding, setActiveWeddingId } = authSlice.actions
+export const {
+  login,
+  logout,
+  oauthLoginSuccess,
+  registerCouple,
+  setEventsLoading,
+  setEvents,
+  setEventsError,
+  setActiveWeddingId,
+} = authSlice.actions
 export const authReducer = authSlice.reducer

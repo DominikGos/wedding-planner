@@ -52,11 +52,8 @@ public class DecorationTaskFactory extends TaskFactory {
         if (dto.getName() == null || dto.getName().isBlank()) {
             throw new IllegalArgumentException("Task name cannot be empty");
         }
-        if (dto.getTheme() == null || dto.getTheme().isBlank()) {
-            throw new IllegalArgumentException("Decoration: theme is required");
-        }
-        if (dto.getTotalPrice() == null) {
-            throw new IllegalArgumentException("Decoration: totalPrice is required");
+        if (dto.getTotalPrice() != null && dto.getTotalPrice().signum() < 0) {
+            throw new IllegalArgumentException("Decoration: totalPrice cannot be negative");
         }
     }
 }

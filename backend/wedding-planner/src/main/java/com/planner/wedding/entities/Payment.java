@@ -1,5 +1,6 @@
 package com.planner.wedding.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -19,10 +20,12 @@ public class Payment {
 
     @ManyToOne
     @JoinColumn(name = "vendor_id")
+    @JsonIgnore
     private Vendor vendor;
 
     @OneToOne
     @JoinColumn(name = "expense_id")
+    @JsonIgnore
     private Expense expense;
 
     @Enumerated(EnumType.STRING)

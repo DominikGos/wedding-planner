@@ -1,8 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
-import type { RootState } from '../../../store'
-import type { TaskItem } from '../../tasks/data/tasksMock'
 
 import { CalendarGrid } from '../components/CalendarGrid'
 import { EventIcon } from '../components/EventIcon'
@@ -12,12 +9,10 @@ import { TimelineCard } from '../components/TimelineCard'
 import {
   filterTabs,
   initialReminders,
+  initialTimelineItems,
   tabToSubtitleMap,
   type TimelineItem,
 } from '../data/eventsMock'
-
-const monthsPL = ['STY', 'LUT', 'MAR', 'KWI', 'MAJ', 'CZE', 'LIP', 'SIE', 'WRZ', 'PAŹ', 'LIS', 'GRU']
-const weekDaysPL = ['Ndz', 'Pon', 'Wt', 'Śr', 'Czw', 'Pt', 'Sob']
 
 const monthNamesPL = [
   'Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec',
@@ -56,7 +51,6 @@ const generateCalendarGrid = (year: number, monthIndex: number): string[][] => {
 
 export function EventsPage() {
   const navigate = useNavigate()
-  const reduxTasks = useSelector((state: RootState) => state.tasks.items)
 
   const [selectedItem, setSelectedItem] = useState<string>('task-1')
   const [selectedReminder, setSelectedReminder] = useState<string>(initialReminders[0].id)
@@ -97,56 +91,9 @@ export function EventsPage() {
     category: 'Wszystkie kategorie',
   })
 
-  // Dynamic mapping of Redux Tasks to TimelineItems
-  const parsedTimelineItems = useMemo(() => {
-    return reduxTasks.map((task: TaskItem) => {
-      let month = 'MAJ 2026'
-      let day = '10'
-      let weekDay = 'Ndz'
-
-      if (task.date) {
-        const d = new Date(task.date)
-        if (!isNaN(d.getTime())) {
-          month = `${monthsPL[d.getMonth()]} ${d.getFullYear()}`
-          day = String(d.getDate()).padStart(2, '0')
-          weekDay = weekDaysPL[d.getDay()]
-        }
-      }
-
-      let iconName: any = 'calendar'
-      if (task.category === 'Catering') iconName = 'calendar'
-      else if (task.category === 'Dekoracje') iconName = 'leaf'
-      else if (task.category === 'Fotografia') iconName = 'document'
-      else if (task.category === 'Muzyka') iconName = 'music'
-      else if (task.category === 'Wydarzenie') iconName = 'heart'
-
-      return {
-        id: task.id,
-        month,
-        day,
-        weekDay,
-        title: task.name,
-        subtitle:
-          task.scheduleType || (
-            task.category === 'Catering'
-              ? 'Spotkanie'
-              : task.category === 'Wydarzenie'
-                ? 'Wydarzenie'
-                : 'Zadanie'
-          ),
-        category: task.category,
-        time: task.time || '12:00',
-        status: task.status,
-        color: task.color,
-        icon: iconName,
-        date: task.date,
-      } as TimelineItem
-    })
-  }, [reduxTasks])
-
   // Filter based on tabs & category
   const visibleEvents = useMemo(() => {
-    return parsedTimelineItems.filter((item: TimelineItem) => {
+    return initialTimelineItems.filter((item: TimelineItem) => {
       const selectedSubtitle = tabToSubtitleMap[formState.tab]
       const matchesTab = selectedSubtitle === null || item.subtitle === selectedSubtitle
       const matchesCategory =
@@ -157,7 +104,7 @@ export function EventsPage() {
       
       return matchesTab && matchesCategory && matchesCalendar
     })
-  }, [formState.category, formState.tab, parsedTimelineItems, filterByCalendarDay, activeDate, currentYear, currentMonthIndex])
+  }, [formState.category, formState.tab, filterByCalendarDay, activeDate, currentYear, currentMonthIndex])
 
   const displayedEvents = showAll ? visibleEvents : visibleEvents.slice(0, 5)
 
