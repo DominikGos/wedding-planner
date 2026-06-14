@@ -1,4 +1,12 @@
-import type { EventIconName } from '../data/eventsMock'
+export type EventIconName =
+  | 'calendar'
+  | 'bell'
+  | 'leaf'
+  | 'document'
+  | 'music'
+  | 'heart'
+  | 'clock'
+  | 'filter'
 
 type EventIconProps = {
   name: EventIconName

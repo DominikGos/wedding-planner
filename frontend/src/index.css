@@ -104,6 +104,124 @@ a {
   color: var(--muted);
 }
 
+.button-primary,
+.button-secondary {
+  min-height: 46px;
+  padding: 0.75rem 1.15rem;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.button-primary {
+  border: 1px solid var(--primary);
+  background: var(--primary);
+  color: #fff;
+}
+
+.button-primary:hover {
+  background: #9f4d1a;
+  border-color: #9f4d1a;
+}
+
+.button-secondary {
+  border: 1px solid #e8b089;
+  background: #fffdfa;
+  color: var(--primary);
+}
+
+.button-secondary:hover {
+  background: #fff3e9;
+}
+
+.filter-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.filter-toolbar input {
+  flex: 2 1 220px;
+  min-width: 220px;
+}
+
+.filter-toolbar select {
+  flex: 1 1 180px;
+  min-width: 180px;
+}
+
+.filter-toolbar button {
+  flex: 0 1 140px;
+  min-width: 140px;
+}
+
+.filter-control {
+  min-height: 46px;
+  border: 1px solid #efe1d0;
+  border-radius: 12px;
+  background: #fffdfa;
+  padding: 0 1rem;
+}
+
+.schedule-filter-panel {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.schedule-filter-search {
+  width: 100%;
+}
+
+.schedule-filter-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem;
+}
+
+.schedule-filter-row > * {
+  width: 100%;
+}
+
+select.filter-control,
+select.task-form-control,
+select.task-status-select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 3rem;
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%235c5248' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 12px 8px;
+}
+
+.schedule-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.task-form-control {
+  min-height: 48px;
+  border-radius: 12px;
+  border: 1px solid #efe4d7;
+  background: #fffdfa;
+  padding: 0 1rem;
+}
+
+.task-status-select {
+  min-width: 135px;
+  padding: 0.45rem 2.2rem 0.45rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid #f0d8c1;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .stats-grid {
   margin-top: 1rem;
   display: grid;
@@ -143,10 +261,15 @@ a {
   .app-shell__content {
     padding: 1rem;
   }
+
 }
 
 /* RWD Navigation Rules */
 @media (max-width: 900px) {
+  .schedule-layout {
+    grid-template-columns: 1fr;
+  }
+
   .desktop-nav-container {
     display: none !important;
   }

@@ -198,8 +198,8 @@ export function TasksPage() {
             <h1 className='page-title' style={{ fontSize: '2rem' }}>Zadania</h1>
             <p className='page-subtitle'>Zadania aktywnego wydarzenia pobrane z backendu.</p>
           </div>
-          <button type='button' onClick={openNewTask} style={{ padding: '0.9rem 1.25rem', borderRadius: '14px', background: '#d67c3a', color: '#fff', border: 'none', fontWeight: 700, cursor: 'pointer' }}>
-            + Dodaj nowe zadanie
+          <button type='button' onClick={openNewTask} className='button-primary'>
+            Dodaj nowe zadanie
           </button>
         </div>
 
@@ -214,17 +214,17 @@ export function TasksPage() {
 
       <div style={{ display: 'grid', gridTemplateColumns: showForm ? 'minmax(420px, 1.8fr) minmax(320px, 0.95fr)' : '1fr', gap: '1rem', alignItems: 'start' }}>
         <article className='page-card' style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '1rem', borderBottom: '1px solid #f1e8dc', display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: '0.8rem' }}>
-            <input value={search} onChange={event => setSearch(event.target.value)} placeholder='Szukaj zadania...' style={{ minHeight: '46px', borderRadius: '12px', border: '1px solid #efe4d7', padding: '0 1rem' }} />
-            <select value={typeFilter} onChange={event => setTypeFilter(event.target.value)} style={{ borderRadius: '12px', border: '1px solid #efe4d7', padding: '0 1rem' }}>
+          <div className='filter-toolbar' style={{ padding: '1rem', borderBottom: '1px solid #f1e8dc' }}>
+            <input value={search} onChange={event => setSearch(event.target.value)} placeholder='Szukaj zadania...' className='filter-control' />
+            <select value={typeFilter} onChange={event => setTypeFilter(event.target.value)} className='filter-control'>
               <option value='ALL'>Wszystkie typy</option>
               {taskTypes.map(type => <option key={type.value} value={type.value}>{type.label}</option>)}
             </select>
-            <select value={statusFilter} onChange={event => setStatusFilter(event.target.value)} style={{ borderRadius: '12px', border: '1px solid #efe4d7', padding: '0 1rem' }}>
+            <select value={statusFilter} onChange={event => setStatusFilter(event.target.value)} className='filter-control'>
               <option value='ALL'>Wszystkie statusy</option>
               {taskStatuses.map(status => <option key={status.value} value={status.value}>{status.label}</option>)}
             </select>
-            <button type='button' onClick={() => { setSearch(''); setTypeFilter('ALL'); setStatusFilter('ALL') }} style={{ borderRadius: '12px', border: '1px solid #f0d8c1', background: '#fff8f1', color: '#db7e45', padding: '0 1rem', fontWeight: 600, cursor: 'pointer' }}>Wyczyść</button>
+            <button type='button' onClick={() => { setSearch(''); setTypeFilter('ALL'); setStatusFilter('ALL') }} className='button-secondary'>Wyczyść filtry</button>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 2.2fr) 1fr 0.9fr 0.9fr 0.9fr', gap: '0.9rem', padding: '1rem', background: '#fbf8f3', fontWeight: 700, color: '#6f6559' }}>

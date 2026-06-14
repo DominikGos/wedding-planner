@@ -41,6 +41,10 @@ export function getTasks(eventId: number, options: TaskRequestOptions) {
   return httpClient<TaskResponse[]>(`/api/events/${eventId}/tasks`, { token: options.token })
 }
 
+export function getTaskSchedule(eventId: number, options: TaskRequestOptions) {
+  return httpClient<TaskResponse[]>(`/api/events/${eventId}/tasks/schedule`, { token: options.token })
+}
+
 export function createTask(eventId: number, request: TaskRequest, options: TaskRequestOptions) {
   return httpClient<TaskResponse>(`/api/events/${eventId}/tasks`, {
     method: 'POST',
