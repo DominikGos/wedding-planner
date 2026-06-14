@@ -28,18 +28,20 @@ export function TaskForm({ values, editing, onChange, onCancel, onSubmit, onDele
     : null
 
   const inputStyle = {
+    width: '100%',
     minHeight: '48px',
     borderRadius: '12px',
     border: '1px solid #efe4d7',
     background: '#fffdfa',
     padding: '0 1rem',
   }
+  const selectStyle = { ...inputStyle, paddingRight: '2.5rem' }
 
   return (
     <article className='page-card' style={{ padding: 0, overflow: 'hidden' }}>
       <div style={{ padding: '1.2rem 1.35rem', borderBottom: '1px solid #f1e8dc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{editing ? 'Edytuj zadanie' : 'Dodaj nowe zadanie'}</h2>
-        <button type='button' onClick={onCancel} style={{ border: 'none', background: 'transparent', color: 'var(--muted)', cursor: 'pointer', fontSize: '1.2rem' }}>x</button>
+        <button type='button' onClick={onCancel} className='button-secondary' style={{ minHeight: '36px', padding: '0.4rem 0.75rem' }}>Zamknij</button>
       </div>
 
       <div style={{ padding: '1.25rem', display: 'grid', gap: '1rem' }}>
@@ -50,7 +52,7 @@ export function TaskForm({ values, editing, onChange, onCancel, onSubmit, onDele
 
         <label style={{ display: 'grid', gap: '0.5rem' }}>
           <span style={{ fontWeight: 600 }}>Typ</span>
-          <select value={values.type} disabled={editing} onChange={event => onChange('type', event.target.value)} style={inputStyle}>
+          <select value={values.type} disabled={editing} onChange={event => onChange('type', event.target.value)} style={selectStyle} className='task-form-control'>
             {taskTypes.map(type => <option key={type.value} value={type.value}>{type.label}</option>)}
           </select>
         </label>
@@ -73,7 +75,7 @@ export function TaskForm({ values, editing, onChange, onCancel, onSubmit, onDele
 
         <label style={{ display: 'grid', gap: '0.5rem' }}>
           <span style={{ fontWeight: 600 }}>Priorytet</span>
-          <select value={values.priority} onChange={event => onChange('priority', event.target.value)} style={inputStyle}>
+          <select value={values.priority} onChange={event => onChange('priority', event.target.value)} style={selectStyle} className='task-form-control'>
             <option value='1'>Niski</option>
             <option value='2'>Średni</option>
             <option value='3'>Wysoki</option>
@@ -109,8 +111,8 @@ export function TaskForm({ values, editing, onChange, onCancel, onSubmit, onDele
         )}
 
         <div style={{ display: 'flex', gap: '0.8rem', marginTop: '0.35rem' }}>
-          <button type='button' onClick={onCancel} style={{ flex: 1, minHeight: '48px', borderRadius: '14px', border: '1px solid #efe1d0', background: '#fffdfa', fontWeight: 600, cursor: 'pointer' }}>Anuluj</button>
-          <button type='button' onClick={onSubmit} style={{ flex: 1, minHeight: '48px', borderRadius: '14px', border: 'none', background: '#d67c3a', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
+          <button type='button' onClick={onCancel} className='button-secondary' style={{ flex: 1 }}>Anuluj</button>
+          <button type='button' onClick={onSubmit} className='button-primary' style={{ flex: 1 }}>
             {editing ? 'Zapisz zmiany' : 'Dodaj zadanie'}
           </button>
         </div>

@@ -4,13 +4,11 @@ type TimelineBadgeProps = {
 
 export function TimelineBadge({ status }: TimelineBadgeProps) {
   const styles =
-    status === 'Oplacone'
+    status === 'Zrobione'
       ? { background: '#daf6e5', color: '#14834b' }
       : status === 'W trakcie'
         ? { background: '#fff3cf', color: '#d37b00' }
-        : status === 'Nadchodzace'
-          ? { background: '#ffe3ea', color: '#ff4f73' }
-          : { background: '#f8dff0', color: '#8b3b74' }
+        : { background: '#eef4ff', color: '#2f6db5' }
 
   return (
     <span

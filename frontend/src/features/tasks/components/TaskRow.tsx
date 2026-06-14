@@ -26,7 +26,7 @@ export function TaskRow({ task, isSelected, onSelect, onStatusChange }: TaskRowP
       <span style={{ color: 'var(--primary)', fontWeight: 600 }}>{type}</span>
       <span>{date}</span>
       <span onClick={event => event.stopPropagation()}>
-        <select value={task.status} onChange={event => onStatusChange(event.target.value as TaskStatus)} style={{ padding: '0.35rem 0.6rem', borderRadius: '999px', border: 'none', background: 'var(--primary-soft)', color: 'var(--primary)', fontWeight: 600, cursor: 'pointer' }}>
+        <select value={task.status} onChange={event => onStatusChange(event.target.value as TaskStatus)} className='task-status-select'>
           {taskStatuses.map(status => <option key={status.value} value={status.value}>{status.label}</option>)}
         </select>
       </span>
