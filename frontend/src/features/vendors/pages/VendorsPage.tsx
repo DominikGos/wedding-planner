@@ -1,25 +1,82 @@
-import { useState, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
+import { createVendor, deleteVendor, getVendors, type VendorResponse } from '../../../api/vendorApi'
 import type { RootState } from '../../../store'
-import { addVendor, updateVendorStatus } from '../../../store/slices/vendorsSlice'
+import { addVendor, removeVendor, setVendors, updateVendorStatus } from '../../../store/slices/vendorsSlice'
 
 import { VendorStatCard } from '../components/VendorStatCard'
 import { VendorTable } from '../components/VendorTable'
 import { VendorSidebar } from '../components/VendorSidebar'
 import { VendorIcon } from '../components/VendorIcon'
-import { vendorCategories, type Vendor } from '../data/vendorsMock'
+import { vendorCategories, type Vendor, type VendorCategory } from '../data/vendorsMock'
+
+const iconMap: Record<string, string> = {
+  Catering: 'catering',
+  Florystyka: 'flowers',
+  Fotografia: 'camera',
+  'Sala weselna': 'venue',
+  Muzyka: 'music',
+}
+
+function normalizeServiceType(serviceType: string | null | undefined) {
+  if (!serviceType) return 'Inne'
+
+  const normalized = serviceType.toUpperCase()
+  if (normalized === 'CATERING') return 'Catering'
+  if (normalized === 'DECORATION' || normalized === 'DEKORACJE' || normalized === 'FLORYSTYKA') return 'Florystyka'
+  if (normalized === 'PHOTOGRAPHY' || normalized === 'FOTOGRAFIA') return 'Fotografia'
+  if (normalized === 'VENUE' || normalized === 'SALA WESELNA') return 'Sala weselna'
+  if (normalized === 'MUSIC' || normalized === 'MUZYKA' || normalized === 'ENTERTAINMENT') return 'Muzyka'
+  return serviceType
+}
+
+function getPriceValue(price: VendorResponse['price']) {
+  if (typeof price === 'number') return price
+  if (typeof price === 'string') return Number(price) || 0
+  return 0
+}
+
+function formatVendorPrice(price: number, category: string) {
+  const formatted = price.toLocaleString('pl-PL')
+  return category === 'Catering' ? `${formatted} PLN / os.` : `${formatted} PLN`
+}
+
+function toVendor(response: VendorResponse): Vendor {
+  const category = normalizeServiceType(response.serviceType)
+  const price = getPriceValue(response.price)
+
+  return {
+    id: String(response.id),
+    name: response.companyName || 'Dostawca bez nazwy',
+    email: response.contact || '',
+    category,
+    rating: 0,
+    reviewsCount: 0,
+    status: 'pending',
+    priceFrom: price > 0 ? formatVendorPrice(price, category) : 'Brak ceny',
+    icon: iconMap[category] || 'users',
+  }
+}
+
+function getVendorPrice(vendor: Vendor) {
+  const normalized = vendor.priceFrom.replace(/\s/g, '').replace(',', '.')
+  const match = normalized.match(/\d+(\.\d+)?/)
+  return match ? Number(match[0]) : 0
+}
 
 export function VendorsPage() {
   const dispatch = useDispatch()
   const vendors = useSelector((state: RootState) => state.vendors.items)
 
-  const user = useSelector((state: RootState) => state.auth.user)
+  const { user, token } = useSelector((state: RootState) => state.auth)
   const userRole = user?.role || 'couple'
 
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('All')
   const [statusFilter, setStatusFilter] = useState('All')
   const [budgetLimit, setBudgetLimit] = useState(30000)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [vendorsNotification, setVendorsNotification] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
 
   const showNotification = (text: string, type: 'success' | 'error' = 'success') => {
@@ -52,6 +109,32 @@ export function VendorsPage() {
     return { total, confirmed, pending, unavailable }
   }, [vendors])
 
+  const categories = useMemo<VendorCategory[]>(() => {
+    const counts = vendors.reduce<Record<string, number>>((acc, vendor) => {
+      acc[vendor.category] = (acc[vendor.category] ?? 0) + 1
+      return acc
+    }, {})
+
+    const known = vendorCategories.map(category => ({
+      ...category,
+      count: counts[category.name] ?? 0,
+    }))
+
+    const extra = Object.entries(counts)
+      .filter(([name]) => !vendorCategories.some(category => category.name === name))
+      .map(([name, count]) => ({
+        name,
+        count,
+        icon: iconMap[name] || 'users',
+      }))
+
+    return [...known, ...extra].filter(category => category.count > 0)
+  }, [vendors])
+
+  const plannedExpenses = useMemo(() => {
+    return vendors.reduce((sum, vendor) => sum + getVendorPrice(vendor), 0)
+  }, [vendors])
+
   const filteredVendors = useMemo(() => {
     return vendors.filter((v: Vendor) => {
       const matchesSearch = v.name.toLowerCase().includes(search.toLowerCase()) || 
@@ -62,47 +145,89 @@ export function VendorsPage() {
     })
   }, [vendors, search, categoryFilter, statusFilter])
 
-  const handleAddSubmit = (e: React.FormEvent) => {
+  const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newVendor.companyName.trim() || !newVendor.contact.trim() || !newVendor.price.trim()) {
       showNotification('Proszę wypełnić wszystkie pola!', 'error')
       return
     }
 
-    const iconMap: Record<string, string> = {
-      Catering: 'catering',
-      Florystyka: 'flowers',
-      Fotografia: 'camera',
-      'Sala weselna': 'venue',
-      Muzyka: 'music'
+    const price = Number(newVendor.price)
+    if (!Number.isFinite(price) || price < 0) {
+      showNotification('Cena musi być poprawną liczbą większą lub równą 0.', 'error')
+      return
     }
 
-    const created: Vendor = {
-      id: `v-${Date.now()}`,
-      name: newVendor.companyName,
-      email: newVendor.contact,
-      category: newVendor.serviceType,
-      rating: 5.0,
-      reviewsCount: 0,
-      status: 'pending',
-      priceFrom: newVendor.serviceType === 'Catering'
-        ? `${Number(newVendor.price).toLocaleString()} PLN / os.`
-        : `${Number(newVendor.price).toLocaleString()} PLN`,
-      icon: iconMap[newVendor.serviceType] || 'users'
-    }
+    try {
+      const created = toVendor(await createVendor({
+        companyName: newVendor.companyName.trim(),
+        serviceType: newVendor.serviceType,
+        contact: newVendor.contact.trim(),
+        price,
+      }, { token: token ?? undefined }))
 
-    dispatch(addVendor(created))
-    showNotification(`Dodano pomyślnie dostawcę "${created.name}" do bazy ślubnej!`, 'success')
-    
-    // Reset state
-    setShowAddModal(false)
-    setNewVendor({
-      companyName: '',
-      serviceType: 'Catering',
-      contact: '',
-      price: ''
-    })
+      dispatch(addVendor(created))
+      showNotification(`Dodano pomyślnie dostawcę "${created.name}" do bazy ślubnej!`, 'success')
+      
+      setShowAddModal(false)
+      setNewVendor({
+        companyName: '',
+        serviceType: 'Catering',
+        contact: '',
+        price: ''
+      })
+    } catch {
+      showNotification('Nie udało się dodać dostawcy w backendzie.', 'error')
+    }
   }
+
+  const handleDeleteVendor = async () => {
+    if (!selectedVendor) return
+
+    const vendorId = Number(selectedVendor.id)
+    if (!Number.isFinite(vendorId)) {
+      showNotification('Tego dostawcy nie można usunąć z backendu, bo nie ma poprawnego identyfikatora.', 'error')
+      return
+    }
+
+    if (!window.confirm(`Czy na pewno usunąć dostawcę "${selectedVendor.name}"?`)) return
+
+    try {
+      await deleteVendor(vendorId, { token: token ?? undefined })
+      dispatch(removeVendor(selectedVendor.id))
+      setSelectedVendorId(null)
+      showNotification(`Usunięto dostawcę "${selectedVendor.name}".`, 'success')
+    } catch {
+      showNotification('Nie udało się usunąć dostawcy w backendzie.', 'error')
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false
+
+    queueMicrotask(() => {
+      if (cancelled) return
+
+      setLoading(true)
+      setError(null)
+
+      getVendors({ token: token ?? undefined })
+        .then((items) => {
+          if (cancelled) return
+          dispatch(setVendors(items.map(toVendor)))
+        })
+        .catch(() => {
+          if (!cancelled) setError('Nie udało się pobrać dostawców z backendu.')
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false)
+        })
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [dispatch, token])
 
   return (
     <div style={{ display: 'grid', gap: '1.5rem' }}>
@@ -118,6 +243,16 @@ export function VendorsPage() {
           animation: 'fadeIn 0.3s ease'
         }}>
           {vendorsNotification.text}
+        </div>
+      )}
+      {loading && (
+        <div style={{ padding: '1rem', borderRadius: '12px', background: '#fff8ed', color: '#8c5a12', border: '1px solid #f4da8b', fontWeight: 600, textAlign: 'center' }}>
+          Pobieramy dostawców z backendu...
+        </div>
+      )}
+      {error && (
+        <div style={{ padding: '1rem', borderRadius: '12px', background: '#fff2f2', color: '#c53030', border: '1px solid #f4c1c1', fontWeight: 600, textAlign: 'center' }}>
+          {error}
         </div>
       )}
       
@@ -232,7 +367,7 @@ export function VendorsPage() {
               }}
             >
               <option value="All">Kategoria: Wszystkie</option>
-              {vendorCategories.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+              {categories.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
             </select>
             <select 
               value={statusFilter}
@@ -258,6 +393,11 @@ export function VendorsPage() {
               onSelectVendor={(v) => setSelectedVendorId(v.id)} 
               selectedVendorId={selectedVendorId}
             />
+            {!loading && filteredVendors.length === 0 && (
+              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--muted)' }}>
+                Brak dostawców spełniających kryteria.
+              </div>
+            )}
             
             <div style={{ 
               padding: '1.25rem', 
@@ -275,8 +415,9 @@ export function VendorsPage() {
 
         {/* Sidebar details panel */}
         <VendorSidebar 
-          categories={vendorCategories} 
+          categories={categories} 
           budgetLimit={budgetLimit}
+          plannedExpenses={plannedExpenses}
           onBudgetLimitChange={setBudgetLimit}
           selectedVendor={selectedVendor}
           onStatusChange={(newStatus) => {
@@ -284,6 +425,7 @@ export function VendorsPage() {
               dispatch(updateVendorStatus({ id: selectedVendorId, status: newStatus }))
             }
           }}
+          onDelete={() => void handleDeleteVendor()}
           onClose={() => setSelectedVendorId(null)}
           userRole={userRole}
         />
