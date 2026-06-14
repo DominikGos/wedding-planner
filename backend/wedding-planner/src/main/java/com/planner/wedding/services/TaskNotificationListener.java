@@ -19,12 +19,21 @@ public class TaskNotificationListener {
     public void onTaskStatusChanged(TaskStatusChangedEvent event) {
         Notification notification = Notification.builder()
                 .user(event.task().getEvent().getUser())
-                .message("Status zadania \"" + event.task().getName() + "\" zmieniono z "
-                        + event.previousStatus() + " na " + event.newStatus())
+                .message("Zmieniono status zadania \"" + event.task().getName() + "\": "
+                        + statusLabel(event.previousStatus()) + " -> " + statusLabel(event.newStatus()))
                 .isRead(false)
                 .createdAt(LocalDateTime.now())
                 .build();
 
         notificationRepository.save(notification);
+    }
+
+    private String statusLabel(String status) {
+        return switch (status) {
+            case "PENDING" -> "Do zrobienia";
+            case "IN_PROGRESS" -> "W trakcie";
+            case "COMPLETED" -> "Zrobione";
+            default -> status;
+        };
     }
 }

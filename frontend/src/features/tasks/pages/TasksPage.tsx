@@ -158,6 +158,7 @@ export function TasksPage() {
     if (!activeWeddingId || !token) return
     try {
       await updateTaskStatus(activeWeddingId, taskId, status, { token })
+      window.dispatchEvent(new Event('notifications:refresh'))
       await loadTasks()
     } catch {
       setError('Nie udało się zmienić statusu zadania.')
