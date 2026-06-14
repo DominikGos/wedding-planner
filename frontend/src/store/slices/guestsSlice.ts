@@ -1,6 +1,5 @@
 import { createSlice } from '@reduxjs/toolkit'
 import type { PayloadAction } from '@reduxjs/toolkit'
-import { initialGuests } from '../../features/guests/data/guestsMock'
 import type { Guest, GuestStatus } from '../../features/guests/data/guestsMock'
 
 interface GuestsState {
@@ -8,13 +7,16 @@ interface GuestsState {
 }
 
 const initialState: GuestsState = {
-  items: initialGuests,
+  items: [],
 }
 
 const guestsSlice = createSlice({
   name: 'guests',
   initialState,
   reducers: {
+    setGuests: (state, action: PayloadAction<Guest[]>) => {
+      state.items = action.payload
+    },
     addGuest: (state, action: PayloadAction<Guest>) => {
       state.items.unshift(action.payload)
     },
@@ -36,5 +38,5 @@ const guestsSlice = createSlice({
   }
 })
 
-export const { addGuest, updateGuest, deleteGuest, updateGuestStatus } = guestsSlice.actions
+export const { setGuests, addGuest, updateGuest, deleteGuest, updateGuestStatus } = guestsSlice.actions
 export const guestsReducer = guestsSlice.reducer
