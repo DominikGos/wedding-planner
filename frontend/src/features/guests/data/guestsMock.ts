@@ -7,6 +7,8 @@ export type Guest = {
   status: GuestStatus
   table: string
   allergy: string
+  declineReason?: string
+  guestCode?: string
 }
 
 export const initialGuests: Guest[] = [

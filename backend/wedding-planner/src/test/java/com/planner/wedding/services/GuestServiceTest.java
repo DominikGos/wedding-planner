@@ -92,6 +92,8 @@ class GuestServiceTest {
 
         assertSame(event, result.getEvent());
         assertEquals("John", result.getFirstName());
+        assertNotNull(result.getGuestCode());
+        assertEquals("PENDING", result.getRsvpStatus());
         verify(guestRepository).save(guest);
     }
 
@@ -100,7 +102,15 @@ class GuestServiceTest {
         User user = User.builder().id(1L).build();
         Event event = Event.builder().id(10L).user(user).build();
         Guest guest = Guest.builder().id(100L).firstName("OldFirst").lastName("OldLast").event(event).build();
-        Guest changes = Guest.builder().firstName("NewFirst").lastName("NewLast").email("new@example.com").rsvpStatus("CONFIRMED").build();
+        Guest changes = Guest.builder()
+                .firstName("NewFirst")
+                .lastName("NewLast")
+                .email("new@example.com")
+                .rsvpStatus("CONFIRMED")
+                .tableName("Stół 3")
+                .allergies("orzechy")
+                .declineReason("wyjazd")
+                .build();
 
         when(eventService.requireOwnedEvent(10L, user)).thenReturn(event);
         when(guestRepository.findById(100L)).thenReturn(Optional.of(guest));
@@ -112,6 +122,9 @@ class GuestServiceTest {
         assertEquals("NewLast", result.getLastName());
         assertEquals("new@example.com", result.getEmail());
         assertEquals("CONFIRMED", result.getRsvpStatus());
+        assertEquals("Stół 3", result.getTableName());
+        assertEquals("orzechy", result.getAllergies());
+        assertEquals("wyjazd", result.getDeclineReason());
     }
 
     @Test

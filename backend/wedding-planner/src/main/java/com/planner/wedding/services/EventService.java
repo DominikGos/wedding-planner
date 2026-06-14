@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class EventService {
@@ -19,7 +20,9 @@ public class EventService {
     }
 
     public List<Event> findAll(User user) {
-        return eventRepository.findByUserId(user.getId());
+        List<Event> events = eventRepository.findByUserId(user.getId());
+        events.stream().filter(this::ensureEventCode).forEach(eventRepository::save);
+        return events;
     }
 
     public Event findById(Long id, User user) {
@@ -29,6 +32,7 @@ public class EventService {
     public Event create(Event event, User user) {
         event.setId(null);
         event.setUser(user);
+        event.setEventCode(UUID.randomUUID().toString());
         return eventRepository.save(event);
     }
 
@@ -46,7 +50,19 @@ public class EventService {
     }
 
     public Event requireOwnedEvent(Long id, User user) {
-        return eventRepository.findByIdAndUserId(id, user.getId())
+        Event event = eventRepository.findByIdAndUserId(id, user.getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Event not found"));
+        if (ensureEventCode(event)) {
+            return eventRepository.save(event);
+        }
+        return event;
+    }
+
+    private boolean ensureEventCode(Event event) {
+        if (event.getEventCode() != null && !event.getEventCode().isBlank()) {
+            return false;
+        }
+        event.setEventCode(UUID.randomUUID().toString());
+        return true;
     }
 }

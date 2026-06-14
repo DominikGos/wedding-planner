@@ -7,6 +7,7 @@ export interface Wedding {
   date: string
   venue: string
   status: string
+  eventCode: string
 }
 
 export interface User {
