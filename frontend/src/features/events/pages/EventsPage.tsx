@@ -1,582 +1,250 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
-
-import { CalendarGrid } from '../components/CalendarGrid'
-import { EventIcon } from '../components/EventIcon'
-import { FilterTab } from '../components/FilterTab'
-import { ReminderItem } from '../components/ReminderItem'
+import { getTaskSchedule, type TaskResponse, type TaskStatus, type TaskType } from '../../../api/taskApi'
+import type { RootState } from '../../../store'
+import { setTasks } from '../../../store/slices/tasksSlice'
 import { TimelineCard } from '../components/TimelineCard'
-import {
-  filterTabs,
-  initialReminders,
-  initialTimelineItems,
-  tabToSubtitleMap,
-  type TimelineItem,
-} from '../data/eventsMock'
 
-const monthNamesPL = [
-  'Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec',
-  'Lipiec', 'Sierpień', 'Wrzesień', 'Październik', 'Listopad', 'Grudzień'
+type ScheduleGroup = {
+  date: string | null
+  label: string
+  tasks: TaskResponse[]
+}
+
+const statusOptions: Array<{ value: TaskStatus | 'ALL'; label: string }> = [
+  { value: 'ALL', label: 'Wszystkie statusy' },
+  { value: 'PENDING', label: 'Do zrobienia' },
+  { value: 'IN_PROGRESS', label: 'W trakcie' },
+  { value: 'COMPLETED', label: 'Zrobione' },
 ]
 
-const generateCalendarGrid = (year: number, monthIndex: number): string[][] => {
-  const firstDayOfMonth = new Date(year, monthIndex, 1)
-  let startDayOfWeek = firstDayOfMonth.getDay()
-  startDayOfWeek = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1
+const typeOptions: Array<{ value: TaskType | 'ALL'; label: string }> = [
+  { value: 'ALL', label: 'Wszystkie typy' },
+  { value: 'CATERING', label: 'Catering' },
+  { value: 'DECORATION', label: 'Dekoracje' },
+  { value: 'ENTERTAINMENT', label: 'Rozrywka' },
+]
 
-  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate()
-  const daysInPrevMonth = new Date(year, monthIndex, 0).getDate()
+const priorityOptions = [
+  { value: 'ALL', label: 'Wszystkie priorytety' },
+  { value: '1', label: 'Niski' },
+  { value: '2', label: 'Średni' },
+  { value: '3', label: 'Wysoki' },
+]
 
-  const days: string[] = []
+function formatDateLabel(date: string) {
+  return new Intl.DateTimeFormat('pl-PL', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date(`${date}T00:00:00`))
+}
 
-  for (let i = startDayOfWeek - 1; i >= 0; i--) {
-    days.push(String(daysInPrevMonth - i))
-  }
+function getMonthDays(year: number, month: number) {
+  const firstDay = new Date(year, month, 1).getDay()
+  const leadingEmptyDays = firstDay === 0 ? 6 : firstDay - 1
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
 
-  for (let i = 1; i <= daysInMonth; i++) {
-    days.push(String(i))
-  }
-
-  const remainingCells = 42 - days.length
-  for (let i = 1; i <= remainingCells; i++) {
-    days.push(String(i))
-  }
-
-  const rows: string[][] = []
-  for (let i = 0; i < 42; i += 7) {
-    rows.push(days.slice(i, i + 7))
-  }
-  return rows
+  return [
+    ...Array.from({ length: leadingEmptyDays }, () => null),
+    ...Array.from({ length: daysInMonth }, (_, index) => index + 1),
+  ]
 }
 
 export function EventsPage() {
+  const dispatch = useDispatch()
   const navigate = useNavigate()
+  const tasks = useSelector((state: RootState) => state.tasks.items)
+  const { user, token, activeWeddingId } = useSelector((state: RootState) => state.auth)
+  const [loadedWeddingId, setLoadedWeddingId] = useState<number | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState<TaskStatus | 'ALL'>('ALL')
+  const [typeFilter, setTypeFilter] = useState<TaskType | 'ALL'>('ALL')
+  const [priorityFilter, setPriorityFilter] = useState('ALL')
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [calendarDate, setCalendarDate] = useState(() => new Date())
+  const loading = Boolean(activeWeddingId && token && loadedWeddingId !== activeWeddingId)
 
-  const [selectedItem, setSelectedItem] = useState<string>('task-1')
-  const [selectedReminder, setSelectedReminder] = useState<string>(initialReminders[0].id)
-  const [showRemindersModal, setShowRemindersModal] = useState(false)
-  const [activeDate, setActiveDate] = useState('25')
-  const [filterByCalendarDay, setFilterByCalendarDay] = useState(false)
-  
-  const [currentYear, setCurrentYear] = useState(2026)
-  const [currentMonthIndex, setCurrentMonthIndex] = useState(2) // March
+  useEffect(() => {
+    if (!activeWeddingId || !token) return
 
-  const calendarRows = useMemo(() => {
-    return generateCalendarGrid(currentYear, currentMonthIndex)
-  }, [currentYear, currentMonthIndex])
+    getTaskSchedule(activeWeddingId, { token })
+      .then(schedule => {
+        dispatch(setTasks(schedule))
+        setError(null)
+      })
+      .catch(() => setError('Nie udało się pobrać harmonogramu z backendu.'))
+      .finally(() => setLoadedWeddingId(activeWeddingId))
+  }, [activeWeddingId, dispatch, token])
 
-  const handlePrevMonth = () => {
-    setFilterByCalendarDay(false)
-    if (currentMonthIndex === 0) {
-      setCurrentMonthIndex(11)
-      setCurrentYear(prev => prev - 1)
-    } else {
-      setCurrentMonthIndex(prev => prev - 1)
-    }
+  const today = new Intl.DateTimeFormat('en-CA').format(new Date())
+  const summary = {
+    all: tasks.length,
+    upcoming: tasks.filter(task => task.status !== 'COMPLETED' && task.dueDate && task.dueDate.split('T')[0] >= today).length,
+    withoutDate: tasks.filter(task => !task.dueDate).length,
+    completed: tasks.filter(task => task.status === 'COMPLETED').length,
   }
+  const summaryCards = [
+    { label: 'Wszystkie zadania', value: summary.all, color: '#db7e45' },
+    { label: 'Najbliższe zadania', value: summary.upcoming, color: '#2f6db5' },
+    { label: 'Bez terminu', value: summary.withoutDate, color: '#8c5a12' },
+    { label: 'Zrobione', value: summary.completed, color: '#35684f' },
+  ]
 
-  const handleNextMonth = () => {
-    setFilterByCalendarDay(false)
-    if (currentMonthIndex === 11) {
-      setCurrentMonthIndex(0)
-      setCurrentYear(prev => prev + 1)
-    } else {
-      setCurrentMonthIndex(prev => prev + 1)
-    }
-  }
+  const filteredTasks = useMemo(() => {
+    const phrase = search.trim().toLowerCase()
 
-  const [showAll, setShowAll] = useState(false)
-  const [formState, setFormState] = useState({
-    tab: 'Wszystkie',
-    category: 'Wszystkie kategorie',
-  })
+    return [...tasks]
+      .filter(task => !phrase
+        || task.name.toLowerCase().includes(phrase)
+        || (task.description ?? '').toLowerCase().includes(phrase))
+      .filter(task => statusFilter === 'ALL' || task.status === statusFilter)
+      .filter(task => typeFilter === 'ALL' || task.type === typeFilter)
+      .filter(task => priorityFilter === 'ALL' || task.priority === Number(priorityFilter))
+      .filter(task => !selectedDate || task.dueDate?.split('T')[0] === selectedDate)
+      .sort((a, b) => {
+        if (!a.dueDate && !b.dueDate) return (b.priority ?? 0) - (a.priority ?? 0)
+        if (!a.dueDate) return 1
+        if (!b.dueDate) return -1
+        return a.dueDate.localeCompare(b.dueDate) || (b.priority ?? 0) - (a.priority ?? 0)
+      })
+  }, [priorityFilter, search, selectedDate, statusFilter, tasks, typeFilter])
 
-  // Filter based on tabs & category
-  const visibleEvents = useMemo(() => {
-    return initialTimelineItems.filter((item: TimelineItem) => {
-      const selectedSubtitle = tabToSubtitleMap[formState.tab]
-      const matchesTab = selectedSubtitle === null || item.subtitle === selectedSubtitle
-      const matchesCategory =
-        formState.category === 'Wszystkie kategorie' || item.category === formState.category
-      
-      const selectedDateString = `${currentYear}-${String(currentMonthIndex + 1).padStart(2, '0')}-${String(activeDate).padStart(2, '0')}`
-      const matchesCalendar = !filterByCalendarDay || item.date === selectedDateString
-      
-      return matchesTab && matchesCategory && matchesCalendar
+  const groups = useMemo<ScheduleGroup[]>(() => {
+    const result: ScheduleGroup[] = []
+
+    filteredTasks.forEach(task => {
+      const date = task.dueDate?.split('T')[0] ?? null
+      const lastGroup = result[result.length - 1]
+
+      if (!lastGroup || lastGroup.date !== date) {
+        result.push({
+          date,
+          label: date ? formatDateLabel(date) : 'Bez terminu',
+          tasks: [task],
+        })
+      } else {
+        lastGroup.tasks.push(task)
+      }
     })
-  }, [formState.category, formState.tab, filterByCalendarDay, activeDate, currentYear, currentMonthIndex])
 
-  const displayedEvents = showAll ? visibleEvents : visibleEvents.slice(0, 5)
+    return result
+  }, [filteredTasks])
 
-  const handleAddNewEvent = () => {
-    navigate('/tasks', { state: { openForm: true } })
+  const calendarYear = calendarDate.getFullYear()
+  const calendarMonth = calendarDate.getMonth()
+  const monthDays = getMonthDays(calendarYear, calendarMonth)
+  const monthLabel = new Intl.DateTimeFormat('pl-PL', { month: 'long', year: 'numeric' }).format(calendarDate)
+  const taskCountByDate = tasks.reduce<Record<string, number>>((counts, task) => {
+    const date = task.dueDate?.split('T')[0]
+    if (date) counts[date] = (counts[date] ?? 0) + 1
+    return counts
+  }, {})
+
+  const clearFilters = () => {
+    setSearch('')
+    setStatusFilter('ALL')
+    setTypeFilter('ALL')
+    setPriorityFilter('ALL')
+    setSelectedDate(null)
+  }
+
+  if (!user) {
+    return <section className='page-card' style={{ padding: '2rem', textAlign: 'center' }}>Zaloguj się, aby zobaczyć harmonogram.</section>
+  }
+
+  if (!activeWeddingId) {
+    return <section className='page-card' style={{ padding: '2rem', textAlign: 'center' }}>Wybierz aktywne wesele, aby zobaczyć harmonogram.</section>
+  }
+
+  if (!token) {
+    return <section className='page-card' style={{ padding: '2rem', textAlign: 'center' }}>Harmonogram z backendu jest dostępny po zalogowaniu przez Google.</section>
   }
 
   return (
     <section style={{ display: 'grid', gap: '1rem' }}>
-      <article
-        className='page-card'
-        style={{
-          padding: '1.6rem',
-          background: 'linear-gradient(180deg, #fffdf9 0%, #fff8f1 100%)',
-        }}
-      >
-        <h1 className='page-title' style={{ fontSize: '2rem' }}>
-          Harmonogram przygotowań
-        </h1>
-        <p className='page-subtitle' style={{ fontSize: '1.05rem' }}>
-          Zobacz plan przygotowań do ślubu i nadchodzące kamienie milowe.
-        </p>
+      <article className='page-card' style={{ padding: '1.6rem', background: 'linear-gradient(180deg, #fffdf9 0%, #fff8f1 100%)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div>
+            <h1 className='page-title' style={{ fontSize: '2rem' }}>Harmonogram</h1>
+            <p className='page-subtitle'>Plan zadań aktywnego wesela uporządkowany według terminów.</p>
+          </div>
+          <button type='button' onClick={() => navigate('/tasks', { state: { openForm: true } })} className='button-primary'>
+            Dodaj nowe zadanie
+          </button>
+        </div>
+
+        <div style={{ marginTop: '1.2rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.8rem' }}>
+          {summaryCards.map(card => (
+            <div key={card.label} style={{ padding: '1rem', borderRadius: '14px', border: '1px solid #efe1d0', background: '#fffdfa' }}>
+              <span style={{ display: 'block', color: 'var(--muted)', fontSize: '0.85rem' }}>{card.label}</span>
+              <strong style={{ display: 'block', marginTop: '0.35rem', fontSize: '1.55rem', color: card.color }}>{card.value}</strong>
+            </div>
+          ))}
+        </div>
       </article>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(320px, 1.9fr) minmax(260px, 0.75fr)',
-          gap: '1rem',
-          alignItems: 'start',
-        }}
-      >
-        <article className='page-card' style={{ padding: 0, overflow: 'hidden' }}>
-          <div
-            style={{
-              padding: '1.15rem 1.2rem',
-              borderBottom: '1px solid #f1e8dc',
-              display: 'flex',
-              justifyContent: 'space-between',
-              gap: '1rem',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-            }}
-          >
-            <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-              {filterTabs.map((tab) => (
-                <FilterTab
-                  key={tab}
-                  label={tab}
-                  active={formState.tab === tab}
-                  onClick={() =>
-                    setFormState((current) => ({
-                      ...current,
-                      tab,
-                    }))
-                  }
-                />
-              ))}
-            </div>
+      {error && <div style={{ padding: '1rem', borderRadius: '12px', background: '#fff2f2', color: '#c53030', fontWeight: 600, textAlign: 'center' }}>{error}</div>}
 
-            <div style={{ display: 'flex', gap: '0.7rem', flexWrap: 'wrap' }}>
-              <select
-                value={formState.category}
-                onChange={(event) =>
-                  setFormState((current) => ({
-                    ...current,
-                    category: event.target.value,
-                  }))
-                }
-                style={{
-                  minHeight: '44px',
-                  border: '1px solid #efe1d0',
-                  borderRadius: '12px',
-                  background: '#fffdfa',
-                  padding: '0 0.9rem',
-                  color: 'var(--muted)',
-                  minWidth: '190px',
-                }}
-              >
-                <option>Wszystkie kategorie</option>
-                <option>Catering</option>
-                <option>Dekoracje</option>
-                <option>Fotografia</option>
-                <option>Muzyka</option>
-              </select>
-
-              <button
-                type='button'
-                onClick={() =>
-                  setFormState((current) => ({
-                    ...current,
-                    category: current.category === 'Wszystkie kategorie' ? 'Catering' : 'Wszystkie kategorie',
-                  }))
-                }
-                style={{
-                  minHeight: '44px',
-                  border: '1px solid #efe1d0',
-                  borderRadius: '12px',
-                  background: '#fffdfa',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  padding: '0 0.9rem',
-                  cursor: 'pointer',
-                }}
-              >
-                <EventIcon name='filter' color='var(--muted)' size={16} />
-                <span>Filtry</span>
-              </button>
-            </div>
+      <div className='schedule-layout'>
+        <article className='page-card' style={{ padding: '1.2rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+            <button type='button' onClick={() => setCalendarDate(new Date(calendarYear, calendarMonth - 1, 1))} className='button-secondary' style={{ minHeight: '38px', padding: '0.45rem 0.7rem' }}>Poprzedni</button>
+            <strong style={{ textTransform: 'capitalize' }}>{monthLabel}</strong>
+            <button type='button' onClick={() => setCalendarDate(new Date(calendarYear, calendarMonth + 1, 1))} className='button-secondary' style={{ minHeight: '38px', padding: '0.45rem 0.7rem' }}>Następny</button>
           </div>
 
-          <div style={{ padding: '1.2rem', display: 'grid', gap: '1rem' }}>
-            {filterByCalendarDay && (
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '0.65rem 0.95rem',
-                borderRadius: '10px',
-                background: '#fff8f1',
-                border: '1px solid #efe1d0',
-                fontSize: '0.88rem',
-                color: '#db7e45',
-                fontWeight: 600,
-                animation: 'fadeIn 0.25s ease'
-              }}>
-                <span>📅 Wyświetlasz tylko wydarzenia na dzień: {activeDate} {monthNamesPL[currentMonthIndex]} {currentYear}</span>
-                <button
-                  type="button"
-                  onClick={() => setFilterByCalendarDay(false)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#db7e45',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    textDecoration: 'underline'
-                  }}
-                >
-                  Pokaż wszystkie dni
+          <div style={{ marginTop: '1rem', display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.35rem', textAlign: 'center' }}>
+            {['Pon', 'Wt', 'Śr', 'Czw', 'Pt', 'Sob', 'Nd'].map(day => <strong key={day} style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>{day}</strong>)}
+            {monthDays.map((day, index) => {
+              const date = day ? `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}` : ''
+              const count = taskCountByDate[date] ?? 0
+              const selected = selectedDate === date
+
+              return day ? (
+                <button key={date} type='button' onClick={() => setSelectedDate(selected ? null : date)} style={{ minHeight: '48px', padding: '0.25rem', borderRadius: '10px', border: selected ? '1px solid #db7e45' : '1px solid transparent', background: selected ? '#fff1e7' : count ? '#fffaf4' : 'transparent', cursor: 'pointer' }}>
+                  <span style={{ display: 'block', fontWeight: selected ? 700 : 500 }}>{day}</span>
+                  {count > 0 && <span style={{ display: 'block', marginTop: '0.15rem', color: '#db7e45', fontSize: '0.65rem', fontWeight: 600 }}>{count} zad.</span>}
                 </button>
-              </div>
-            )}
-            {displayedEvents.map((item: TimelineItem) => (
-              <TimelineCard
-                key={item.id}
-                item={item}
-                isSelected={selectedItem === item.id}
-                onClick={() => {
-                  setSelectedItem(item.id)
-                  setActiveDate(item.day)
-                  console.log('events:select', item.id)
-                }}
-              />
-            ))}
-
-            {visibleEvents.length > 5 && (
-              <button
-                type='button'
-                onClick={() => setShowAll((current) => !current)}
-                style={{
-                  textAlign: 'center',
-                  paddingTop: '0.35rem',
-                  color: 'var(--muted)',
-                  fontWeight: 600,
-                  border: 'none',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                }}
-              >
-                {showAll ? 'Pokaż mniej' : 'Pokaż więcej'}
-              </button>
-            )}
-
-            {visibleEvents.length === 0 && (
-              <div style={{ padding: '2rem 1rem', color: 'var(--muted)', textAlign: 'center', display: 'grid', gap: '0.75rem' }}>
-                <span>
-                  {filterByCalendarDay 
-                    ? `Brak zaplanowanych wydarzeń na dzień ${activeDate} ${monthNamesPL[currentMonthIndex]} ${currentYear}.`
-                    : 'Brak zadań w wybranej kategorii.'}
-                </span>
-                {filterByCalendarDay && (
-                  <button
-                    type="button"
-                    onClick={() => setFilterByCalendarDay(false)}
-                    style={{
-                      margin: '0 auto',
-                      padding: '0.45rem 0.95rem',
-                      borderRadius: '8px',
-                      border: '1px solid #d6a061',
-                      background: '#fff',
-                      color: '#d6a061',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      fontSize: '0.85rem'
-                    }}
-                  >
-                    Pokaż cały harmonogram
-                  </button>
-                )}
-              </div>
-            )}
+              ) : <span key={`empty-${index}`} />
+            })}
           </div>
+
+          {selectedDate && <button type='button' onClick={() => setSelectedDate(null)} className='button-secondary' style={{ marginTop: '1rem', width: '100%' }}>Pokaż wszystkie</button>}
         </article>
 
         <div style={{ display: 'grid', gap: '1rem' }}>
-          <article className='page-card' style={{ padding: '1.2rem' }}>
-            <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Kalendarz</h2>
-
-            <div
-              style={{
-                marginTop: '1rem',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <button 
-                type='button' 
-                onClick={handlePrevMonth}
-                style={{ border: 'none', background: 'transparent', color: 'var(--muted)', cursor: 'pointer', padding: '0 0.5rem', fontWeight: 'bold', fontSize: '1.1rem' }}
-              >
-                {'<'}
-              </button>
-              <strong>{monthNamesPL[currentMonthIndex]} {currentYear}</strong>
-              <button 
-                type='button' 
-                onClick={handleNextMonth}
-                style={{ border: 'none', background: 'transparent', color: 'var(--muted)', cursor: 'pointer', padding: '0 0.5rem', fontWeight: 'bold', fontSize: '1.1rem' }}
-              >
-                {'>'}
-              </button>
+          <article className='page-card schedule-filter-panel' style={{ padding: '1rem' }}>
+            <input value={search} onChange={event => setSearch(event.target.value)} placeholder='Szukaj po nazwie lub opisie...' className='filter-control schedule-filter-search' />
+            <div className='schedule-filter-row'>
+              <select value={statusFilter} onChange={event => setStatusFilter(event.target.value as TaskStatus | 'ALL')} className='filter-control'>{statusOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>
+              <select value={typeFilter} onChange={event => setTypeFilter(event.target.value as TaskType | 'ALL')} className='filter-control'>{typeOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>
+              <select value={priorityFilter} onChange={event => setPriorityFilter(event.target.value)} className='filter-control'>{priorityOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>
+              <button type='button' onClick={clearFilters} className='button-secondary'>Wyczyść filtry</button>
             </div>
-
-            <div
-              style={{
-                marginTop: '1rem',
-                display: 'grid',
-                gridTemplateColumns: 'repeat(7, 1fr)',
-                gap: '0.6rem',
-                textAlign: 'center',
-                color: 'var(--muted)',
-                fontSize: '0.9rem',
-              }}
-            >
-              {['Pn', 'Wt', 'Sr', 'Cz', 'Pt', 'Sb', 'Nd'].map((day) => (
-                <span key={day}>{day}</span>
-              ))}
-            </div>
-
-            <CalendarGrid
-              calendarRows={calendarRows}
-              activeDate={filterByCalendarDay ? activeDate : ''}
-              onSelectDate={(day) => {
-                if (activeDate === day && filterByCalendarDay) {
-                  setFilterByCalendarDay(false)
-                } else {
-                  setActiveDate(day)
-                  setFilterByCalendarDay(true)
-                }
-                console.log('events:calendar-day', day)
-              }}
-            />
           </article>
 
-          <article className='page-card' style={{ padding: '1.2rem' }}>
-            <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Najbliższe przypomnienia</h2>
+          <article className='page-card' style={{ padding: '1.2rem', display: 'grid', gap: '1.5rem' }}>
+            {loading && <div style={{ padding: '1rem', color: 'var(--muted)' }}>Ładowanie harmonogramu...</div>}
 
-            <div style={{ marginTop: '1rem', display: 'grid', gap: '1rem' }}>
-              {initialReminders.map((item) => (
-                <ReminderItem
-                  key={item.id}
-                  {...item}
-                  isSelected={selectedReminder === item.id}
-                  onClick={() => {
-                    setSelectedReminder(item.id)
-                  }}
-                />
-              ))}
-            </div>
+            {!loading && !error && groups.map(group => (
+              <section key={group.label} style={{ display: 'grid', gap: '0.9rem' }}>
+                <h2 style={{ margin: 0, paddingBottom: '0.65rem', borderBottom: '1px solid #f1e8dc', fontSize: '1.05rem', textTransform: group.date ? 'capitalize' : 'none' }}>{group.label}</h2>
+                {group.tasks.map(task => <TimelineCard key={task.id} task={task} />)}
+              </section>
+            ))}
 
-            {selectedReminder && (
-              <div style={{
-                marginTop: '1rem',
-                padding: '1rem',
-                borderRadius: '12px',
-                border: '1px solid #f2e2d0',
-                background: '#fffbf7',
-                fontSize: '0.88rem',
-                lineHeight: '1.5',
-                color: '#6f6559',
-                animation: 'fadeIn 0.25s ease'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                  <strong style={{ color: '#db7e45' }}>📝 Szczegóły:</strong>
-                  <button 
-                    onClick={() => setSelectedReminder('')}
-                    style={{ background: 'none', border: 'none', color: '#db7e45', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}
-                  >
-                    Zamknij
-                  </button>
-                </div>
-                {selectedReminder === 'r1' && 'Omówienie ostatecznego menu weselnego z managerem cateringu. Ustalenie godzin podawania ciepłych posiłków (17:30, 20:00, 22:30) oraz przekazanie zapotrzebowań dietetycznych (wege/gluten-free).'}
-                {selectedReminder === 'r2' && 'Próba smaków wybranych dań weselnych w restauracji partnerskiej. Dobór deserów, ciast oraz degustacja weselnego tortu wegańskiego.'}
-                {selectedReminder === 'r3' && 'Ostateczne zatwierdzenie kompozycji kwiatowych z florystką. Wybór koloru obrusów, świeczników oraz dekoracji ścianki Pary Młodej.'}
+            {!loading && !error && groups.length === 0 && (
+              <div style={{ padding: '2rem 1rem', color: 'var(--muted)', textAlign: 'center' }}>
+                {selectedDate ? 'Brak zadań w wybranym dniu.' : tasks.length === 0 ? 'Brak zadań w harmonogramie aktywnego wesela.' : 'Brak wyników dla wybranych filtrów.'}
               </div>
             )}
-
-            <button
-              type='button'
-              onClick={() => setShowRemindersModal(true)}
-              style={{
-                marginTop: '1.2rem',
-                border: '1px solid #efe1d0',
-                borderRadius: '12px',
-                padding: '0.85rem 1rem',
-                textAlign: 'center',
-                color: '#db7e45',
-                fontWeight: 600,
-                background: '#fffdfa',
-                cursor: 'pointer',
-                width: '100%',
-              }}
-            >
-              Zobacz wszystkie
-            </button>
           </article>
         </div>
       </div>
-
-      <article
-        className='page-card'
-        style={{
-          padding: '1.2rem',
-          display: 'flex',
-          justifyContent: 'space-between',
-          gap: '1rem',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-        }}
-      >
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <div
-            style={{
-              width: '3rem',
-              height: '3rem',
-              borderRadius: '16px',
-              background: '#fff3df',
-              display: 'grid',
-              placeItems: 'center',
-            }}
-          >
-            <EventIcon name='clock' color='#db8f29' size={20} />
-          </div>
-          <div>
-            <strong style={{ display: 'block', fontSize: '1rem' }}>
-              Dobrze zaplanowany harmonogram to klucz do udanego wesela!
-            </strong>
-            <p style={{ margin: '0.35rem 0 0', color: 'var(--muted)', fontSize: '0.9rem' }}>
-              Zadania dodane tutaj automatycznie synchronizują się z Twoim planerem i budżetem.
-            </p>
-          </div>
-        </div>
-
-        <button
-          type='button'
-          onClick={handleAddNewEvent}
-          style={{
-            padding: '0.9rem 1.2rem',
-            borderRadius: '14px',
-            border: '1px solid #e8b089',
-            color: '#db7e45',
-            fontWeight: 700,
-            background: '#fffdfa',
-            cursor: 'pointer',
-          }}
-        >
-          Dodaj nowe zadanie
-        </button>
-      </article>
-
-      {/* LUXURIOUS ALL REMINDERS MODAL */}
-      {showRemindersModal && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(47, 42, 36, 0.4)',
-          backdropFilter: 'blur(5px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          animation: 'fadeIn 0.2s ease'
-        }}>
-          <div className="page-card" style={{
-            width: '100%',
-            maxWidth: '480px',
-            background: '#fff',
-            padding: '2.5rem',
-            borderRadius: '20px',
-            boxShadow: '0 20px 50px rgba(47, 42, 36, 0.15)',
-            position: 'relative'
-          }}>
-            <button 
-              onClick={() => setShowRemindersModal(false)}
-              style={{
-                position: 'absolute',
-                top: '15px',
-                right: '15px',
-                background: 'none',
-                border: 'none',
-                fontSize: '1.2rem',
-                color: 'var(--muted)',
-                cursor: 'pointer',
-                fontWeight: 'bold'
-              }}
-            >
-              ✕
-            </button>
-
-            <header style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-              <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.15em', color: '#db7e45', fontWeight: 600 }}>Powiadomienia Weselne</span>
-              <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.8rem', margin: '0.25rem 0', fontWeight: 500 }}>
-                Wszystkie Przypomnienia
-              </h2>
-              <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.85rem' }}>Śledź nadchodzące terminy i ważne kamienie milowe.</p>
-            </header>
-
-            <div style={{ display: 'grid', gap: '1rem', maxHeight: '320px', overflowY: 'auto', paddingRight: '0.5rem' }}>
-              {initialReminders.map(item => (
-                <div key={item.id} style={{
-                  padding: '1rem',
-                  borderRadius: '12px',
-                  border: '1px solid #efe4d7',
-                  background: '#fffdfa',
-                  display: 'grid',
-                  gap: '0.35rem'
-                }}>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: item.color }} />
-                    <strong style={{ fontSize: '0.95rem' }}>{item.title}</strong>
-                  </div>
-                  <span style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>📅 Termin: {item.date} o godzinie {item.time}</span>
-                  <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: '#6f6559', lineHeight: '1.4' }}>
-                    {item.id === 'r1' && 'Omówienie ostatecznego menu weselnego z managerem cateringu. Ustalenie godzin podawania posiłków.'}
-                    {item.id === 'r2' && 'Próba smaków wybranych dań weselnych w restauracji partnerskiej. Dobór deserów i ciast.'}
-                    {item.id === 'r3' && 'Ostateczne zatwierdzenie kompozycji kwiatowych z florystką. Wybór dekoracji ścianki Pary Młodej.'}
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            <button 
-              onClick={() => setShowRemindersModal(false)}
-              style={{
-                width: '100%',
-                marginTop: '1.5rem',
-                padding: '0.75rem',
-                borderRadius: '10px',
-                border: 'none',
-                background: '#db7e45',
-                color: '#fff',
-                fontWeight: 700,
-                cursor: 'pointer'
-              }}
-            >
-              Zamknij widok
-            </button>
-          </div>
-        </div>
-      )}
     </section>
   )
 }
