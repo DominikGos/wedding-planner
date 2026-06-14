@@ -1,6 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
+import { getEventCostSummary, type EventCostSummaryResponse } from '../../../api/eventCostApi'
+import { getGuests, type GuestResponse } from '../../../api/guestApi'
+import { getTasks, type TaskResponse } from '../../../api/taskApi'
 import type { RootState } from '../../../store'
 import { setActiveWeddingId } from '../../../store/slices/authSlice'
 
@@ -8,7 +11,65 @@ import { BudgetLegendItem } from '../components/BudgetLegendItem'
 import { EventCard } from '../components/EventCard'
 import { GuestStatCard } from '../components/GuestStatCard'
 import { TopStatCard } from '../components/TopStatCard'
-import { budgetItems, events, guestStats, topCards } from '../data/dashboardMock'
+import type { BudgetItem, DashboardEvent, GuestStat, TopCardItem } from '../data/dashboardMock'
+
+const budgetColors = ['#d9a15f', '#dcc2ff', '#c9bca5', '#f5d9eb', '#f39bd0', '#8fc7b5']
+
+function formatCurrency(value: number) {
+  return `${value.toLocaleString('pl-PL', { maximumFractionDigits: 0 })} PLN`
+}
+
+function getCostValue(value: unknown) {
+  if (typeof value === 'number') return value
+  if (typeof value === 'string') return Number(value) || 0
+  return 0
+}
+
+function getTaskCost(task: TaskResponse) {
+  if (task.totalPrice != null) return Number(task.totalPrice)
+  if (task.pricePerGuest != null && task.numberOfGuests != null) {
+    return Number(task.pricePerGuest) * Number(task.numberOfGuests)
+  }
+  return 0
+}
+
+function getDaysUntil(date: string) {
+  if (!date) return null
+
+  const target = new Date(`${date}T00:00:00`)
+  if (Number.isNaN(target.getTime())) return null
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+}
+
+function getGuestBucket(guest: GuestResponse) {
+  const status = (guest.rsvpStatus ?? '').toUpperCase()
+
+  if (['CONFIRMED', 'ACCEPTED', 'YES', 'POTWIERDZONY'].includes(status)) return 'confirmed'
+  if (['REJECTED', 'DECLINED', 'NO', 'ODRZUCONY'].includes(status)) return 'rejected'
+  return 'waiting'
+}
+
+function getTimelineStatus(task: TaskResponse) {
+  if (task.status === 'COMPLETED') return 'Zrobione'
+  if (task.priority != null && task.priority <= 1) return 'Wazne'
+  if (task.status === 'IN_PROGRESS') return 'W trakcie'
+  return 'Zaplanowane'
+}
+
+function getTaskDateParts(task: TaskResponse) {
+  if (!task.dueDate) {
+    return { date: 'Brak terminu', time: '-' }
+  }
+
+  const [date, rawTime] = task.dueDate.split('T')
+  return {
+    date: date || 'Brak terminu',
+    time: rawTime?.slice(0, 5) || '-',
+  }
+}
 
 export function DashboardPage() {
   const dispatch = useDispatch()
@@ -20,12 +81,172 @@ export function DashboardPage() {
   const { user, token, activeWeddingId, weddings, eventsLoading, eventsError } = useSelector((state: RootState) => state.auth)
   const activeWedding = weddings.find(w => w.id === activeWeddingId)
   const greetingName = user?.email?.split('@')[0] || 'Użytkownik'
+  const [dashboardLoading, setDashboardLoading] = useState(false)
+  const [dashboardError, setDashboardError] = useState<string | null>(null)
+  const [costSummary, setCostSummary] = useState<EventCostSummaryResponse | null>(null)
+  const [dashboardTasks, setDashboardTasks] = useState<TaskResponse[]>([])
+  const [dashboardGuests, setDashboardGuests] = useState<GuestResponse[]>([])
 
   // Hover states for the active dashboard
   const [hoveredCard, setHoveredCard] = useState<string | null>(null)
-  const [hoveredBudgetItem, setHoveredBudgetItem] = useState<string | null>(budgetItems[0]?.id || null)
-  const [hoveredEvent, setHoveredEvent] = useState<string | null>(events[0]?.id || null)
-  const [hoveredGuestStat, setHoveredGuestStat] = useState<string | null>(guestStats[0]?.id || null)
+  const [hoveredBudgetItem, setHoveredBudgetItem] = useState<string | null>(null)
+  const [hoveredEvent, setHoveredEvent] = useState<string | null>(null)
+  const [hoveredGuestStat, setHoveredGuestStat] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!activeWeddingId || !token) {
+      return
+    }
+
+    let cancelled = false
+    queueMicrotask(() => {
+      if (cancelled) return
+
+      setDashboardLoading(true)
+      setDashboardError(null)
+
+      Promise.all([
+        getEventCostSummary(activeWeddingId, { token }),
+        getTasks(activeWeddingId, { token }),
+        getGuests(activeWeddingId, { token }),
+      ])
+        .then(([summary, tasks, guests]) => {
+          if (cancelled) return
+          setCostSummary(summary)
+          setDashboardTasks(tasks)
+          setDashboardGuests(guests)
+        })
+        .catch(() => {
+          if (cancelled) return
+          setDashboardError('Nie udało się pobrać kompletu danych pulpitu z backendu.')
+          setCostSummary(null)
+          setDashboardTasks([])
+          setDashboardGuests([])
+        })
+        .finally(() => {
+          if (!cancelled) setDashboardLoading(false)
+        })
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [activeWeddingId, token])
+
+  const budgetItems = useMemo<BudgetItem[]>(() => {
+    const costTasks = costSummary?.tasks ?? []
+    const groupedCosts = costTasks.reduce<Record<string, number>>((acc, task) => {
+      const key = task.taskType || 'OTHER'
+      acc[key] = (acc[key] ?? 0) + getCostValue(task.cost)
+      return acc
+    }, {})
+
+    return Object.entries(groupedCosts)
+      .filter(([, amount]) => amount > 0)
+      .map(([type, amount], index) => ({
+        id: type.toLowerCase(),
+        name: type === 'CATERING' ? 'Catering' : type === 'DECORATION' ? 'Dekoracje' : type === 'ENTERTAINMENT' ? 'Rozrywka' : 'Inne',
+        amount: formatCurrency(amount),
+        color: budgetColors[index % budgetColors.length],
+      }))
+  }, [costSummary])
+
+  const budgetGradient = useMemo(() => {
+    const costTasks = costSummary?.tasks ?? []
+    const groupedCosts = Object.values(costTasks.reduce<Record<string, number>>((acc, task) => {
+      const key = task.taskType || 'OTHER'
+      acc[key] = (acc[key] ?? 0) + getCostValue(task.cost)
+      return acc
+    }, {})).filter(amount => amount > 0)
+    const total = groupedCosts.reduce((sum, amount) => sum + amount, 0)
+
+    if (total <= 0) return 'conic-gradient(#efe4d7 0 100%)'
+
+    let start = 0
+    const segments = groupedCosts.map((amount, index) => {
+      const end = start + (amount / total) * 100
+      const segment = `${budgetColors[index % budgetColors.length]} ${start.toFixed(2)}% ${end.toFixed(2)}%`
+      start = end
+      return segment
+    })
+
+    return `conic-gradient(${segments.join(', ')})`
+  }, [costSummary])
+
+  const totalCost = getCostValue(costSummary?.totalCost)
+  const taskTotalCost = dashboardTasks.reduce((sum, task) => sum + getTaskCost(task), 0)
+  const visibleTotalCost = totalCost || taskTotalCost
+  const completedTasks = dashboardTasks.filter(task => task.status === 'COMPLETED').length
+  const guestBuckets = dashboardGuests.reduce(
+    (acc, guest) => {
+      acc[getGuestBucket(guest)] += 1
+      return acc
+    },
+    { confirmed: 0, waiting: 0, rejected: 0 },
+  )
+  const allGuests = dashboardGuests.length
+  const daysUntilWedding = getDaysUntil(activeWedding?.date ?? '')
+  const guestConfirmationRate = allGuests > 0 ? Math.round((guestBuckets.confirmed / allGuests) * 100) : 0
+  const taskProgressRate = dashboardTasks.length > 0 ? Math.round((completedTasks / dashboardTasks.length) * 100) : 0
+
+  const topCards = useMemo<TopCardItem[]>(() => [
+    {
+      id: 'budget',
+      title: 'Całkowity Budżet',
+      value: visibleTotalCost > 0 ? formatCurrency(visibleTotalCost) : 'Brak kosztów',
+      note: visibleTotalCost > 0 ? 'Wyliczone z zadań' : 'Dodaj koszty do zadań',
+      color: '#d6a061',
+      icon: 'trend',
+    },
+    {
+      id: 'guests',
+      title: 'Potwierdzeni Goście',
+      value: `${guestBuckets.confirmed}/${allGuests}`,
+      note: `${guestConfirmationRate}% potwierdzeń`,
+      color: '#0ea44b',
+      icon: 'users',
+    },
+    {
+      id: 'tasks',
+      title: 'Zadania Ukończone',
+      value: `${completedTasks}/${dashboardTasks.length}`,
+      note: `${taskProgressRate}% postępu`,
+      color: '#2c67f6',
+      icon: 'check',
+    },
+    {
+      id: 'days',
+      title: 'Dni do Ślubu',
+      value: daysUntilWedding == null ? '-' : String(daysUntilWedding),
+      note: activeWedding?.date || 'Brak daty wydarzenia',
+      color: '#ff3d6c',
+      icon: 'calendar',
+    },
+  ], [activeWedding?.date, allGuests, completedTasks, dashboardTasks.length, daysUntilWedding, guestBuckets.confirmed, guestConfirmationRate, taskProgressRate, visibleTotalCost])
+
+  const timelineEvents = useMemo<DashboardEvent[]>(() => {
+    return [...dashboardTasks]
+      .filter(task => task.dueDate)
+      .sort((first, second) => (first.dueDate ?? '').localeCompare(second.dueDate ?? ''))
+      .slice(0, 4)
+      .map((task) => {
+        const { date, time } = getTaskDateParts(task)
+        return {
+          id: String(task.id),
+          title: task.name,
+          date,
+          time,
+          status: getTimelineStatus(task),
+        }
+      })
+  }, [dashboardTasks])
+
+  const guestStats = useMemo<GuestStat[]>(() => [
+    { id: 'confirmed', value: String(guestBuckets.confirmed), label: 'Potwierdzeni', color: '#0ea44b', background: '#eefbf2', icon: 'check-circle' },
+    { id: 'waiting', value: String(guestBuckets.waiting), label: 'Oczekujący', color: '#ef8a00', background: '#fff9e9', icon: 'clock' },
+    { id: 'rejected', value: String(guestBuckets.rejected), label: 'Odrzuceni', color: '#eb1d1d', background: '#fff3f3', icon: 'alert' },
+    { id: 'all', value: String(allGuests), label: 'Suma', color: '#d6a061', background: '#fcf7f0', icon: 'group' },
+  ], [allGuests, guestBuckets.confirmed, guestBuckets.rejected, guestBuckets.waiting])
 
   // ----------------------------------------------------
   // CASE 1: NOT LOGGED IN - PUBLIC LANDING PAGE
@@ -427,6 +648,16 @@ export function DashboardPage() {
             Szczegóły wydarzenia zostały zapisane.
           </div>
         )}
+        {dashboardLoading && (
+          <div style={{ padding: '0.85rem 1rem', borderRadius: '10px', background: '#fff8ed', color: '#8c5a12', border: '1px solid #f4da8b' }}>
+            Odświeżamy dane pulpitu z backendu...
+          </div>
+        )}
+        {dashboardError && (
+          <div style={{ padding: '0.85rem 1rem', borderRadius: '10px', background: '#fff2f2', color: '#c53030', border: '1px solid #f4c1c1' }}>
+            {dashboardError}
+          </div>
+        )}
         
         {/* Dynamic Header Panel */}
         <article
@@ -523,8 +754,7 @@ export function DashboardPage() {
                   height: '220px',
                   margin: '0 auto 1.4rem',
                   borderRadius: '50%',
-                  background:
-                    'conic-gradient(#d9a15f 0 33%, #dcc2ff 33% 42%, #c9bca5 42% 55%, #f5d9eb 55% 73%, #f39bd0 73% 100%)',
+                  background: budgetGradient,
                   position: 'relative',
                 }}
               >
@@ -564,7 +794,9 @@ export function DashboardPage() {
                 }}
               >
                 <strong style={{ fontSize: '1rem' }}>Suma całkowita</strong>
-                <strong style={{ color: '#d6a061', fontSize: '1.8rem' }}>45 000 PLN</strong>
+                <strong style={{ color: '#d6a061', fontSize: '1.8rem' }}>
+                  {visibleTotalCost > 0 ? formatCurrency(visibleTotalCost) : '0 PLN'}
+                </strong>
               </div>
             </div>
           </article>
@@ -576,7 +808,7 @@ export function DashboardPage() {
             </div>
 
             <div style={{ padding: '1.35rem', display: 'grid', gap: '1rem' }}>
-              {events.map((event) => (
+              {timelineEvents.map((event) => (
                 <EventCard
                   key={event.id}
                   {...event}
@@ -585,6 +817,11 @@ export function DashboardPage() {
                   onHoverEnd={() => setHoveredEvent(null)}
                 />
               ))}
+              {timelineEvents.length === 0 && (
+                <div style={{ padding: '1rem', borderRadius: '12px', background: '#fffdfa', color: 'var(--muted)', border: '1px solid #f2e6d8', textAlign: 'center' }}>
+                  Brak zadań z terminem dla aktywnego wydarzenia.
+                </div>
+              )}
             </div>
           </article>
         </div>
