@@ -13,6 +13,7 @@ import {
   type PaymentStatus,
   type PaymentSummaryResponse,
 } from '../../../api/paymentApi'
+import { getEventCostSummary, type EventCostSummaryResponse } from '../../../api/eventCostApi'
 
 import { BudgetStatCard } from '../components/BudgetStatCard'
 import { PaymentTable, type PaymentTableAction, type PaymentTablePayment } from '../components/PaymentTable'
@@ -29,6 +30,18 @@ const emptySummary: PaymentSummaryResponse = {
   cancelledAmount: 0,
   offlineAmount: 0,
   offlineApprovedAmount: 0,
+}
+
+const emptyCostSummary: EventCostSummaryResponse = {
+  eventId: 0,
+  tasks: [],
+  totalCost: 0,
+}
+
+const taskTypeLabels: Record<EventCostSummaryResponse['tasks'][number]['taskType'], string> = {
+  CATERING: 'Catering',
+  DECORATION: 'Dekoracje',
+  ENTERTAINMENT: 'Rozrywka',
 }
 
 const initialCreatePaymentForm = {
@@ -65,13 +78,17 @@ function mapPaymentToTable(payment: PaymentResponse): PaymentTablePayment {
 export function BudgetPage() {
   const user = useSelector((state: RootState) => state.auth.user)
   const token = useSelector((state: RootState) => state.auth.token)
+  const activeWeddingId = useSelector((state: RootState) => state.auth.activeWeddingId)
   const userRole = user?.role || 'couple'
 
   const [payments, setPayments] = useState<PaymentResponse[]>([])
   const [summary, setSummary] = useState<PaymentSummaryResponse>(emptySummary)
+  const [costSummary, setCostSummary] = useState<EventCostSummaryResponse>(emptyCostSummary)
   const [filter, setFilter] = useState<PaymentStatus | 'all'>('all')
   const [isLoading, setIsLoading] = useState(true)
+  const [isCostLoading, setIsCostLoading] = useState(Boolean(activeWeddingId && token))
   const [error, setError] = useState<string | null>(null)
+  const [costError, setCostError] = useState<string | null>(null)
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null)
   const [isCreateFormOpen, setIsCreateFormOpen] = useState(false)
   const [isCreatingPayment, setIsCreatingPayment] = useState(false)
@@ -106,9 +123,34 @@ export function BudgetPage() {
     }
   }, [token])
 
+  const loadEventCosts = useCallback(async () => {
+    if (!activeWeddingId || !token) {
+      setCostSummary(emptyCostSummary)
+      setIsCostLoading(false)
+      setCostError(null)
+      return
+    }
+
+    setIsCostLoading(true)
+    setCostError(null)
+
+    try {
+      setCostSummary(await getEventCostSummary(activeWeddingId, { token }))
+    } catch {
+      setCostSummary({ ...emptyCostSummary, eventId: activeWeddingId })
+      setCostError('Nie udało się pobrać podsumowania kosztów zadań dla aktywnego wydarzenia.')
+    } finally {
+      setIsCostLoading(false)
+    }
+  }, [activeWeddingId, token])
+
   useEffect(() => {
     loadPayments()
   }, [loadPayments])
+
+  useEffect(() => {
+    loadEventCosts()
+  }, [loadEventCosts])
 
   const stats = useMemo(() => {
     const paid = summary.successAmount + summary.offlineApprovedAmount
@@ -119,13 +161,30 @@ export function BudgetPage() {
 
     return {
       total: summary.totalAmount,
+      taskTotal: costSummary.totalCost,
       paid,
       pending,
       overdue,
       paidCount,
       totalCount,
     }
-  }, [payments, summary])
+  }, [costSummary.totalCost, payments, summary])
+
+  const taskCostStats = useMemo(() => {
+    const costsByType = costSummary.tasks.reduce<Record<string, number>>((groups, task) => {
+      groups[task.taskType] = (groups[task.taskType] ?? 0) + task.cost
+      return groups
+    }, {})
+
+    return Object.entries(costsByType)
+      .map(([type, amount]) => ({
+        type,
+        label: taskTypeLabels[type as keyof typeof taskTypeLabels] ?? type,
+        amount,
+        percentage: costSummary.totalCost > 0 ? Math.round((amount / costSummary.totalCost) * 100) : 0,
+      }))
+      .sort((a, b) => b.amount - a.amount)
+  }, [costSummary])
 
   const filteredPayments = useMemo(() => {
     const list = filter === 'all' ? payments : payments.filter(payment => payment.status === filter)
@@ -392,6 +451,12 @@ export function BudgetPage() {
           icon="trend"
         />
         <BudgetStatCard
+          title="Koszt zadań"
+          value={`${stats.taskTotal.toLocaleString('pl-PL')} PLN`}
+          color="#2f6db5"
+          icon="wallet"
+        />
+        <BudgetStatCard
           title="Opłacone"
           value={`${stats.paid.toLocaleString()} PLN`}
           color="#35684f"
@@ -410,6 +475,98 @@ export function BudgetPage() {
           icon="alert"
         />
       </div>
+
+      <section className='page-card' style={{ padding: '1.25rem', display: 'grid', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Koszty zadań wydarzenia</h2>
+            <p className='page-subtitle'>
+              Suma kosztów zadań
+            </p>
+          </div>
+          <div style={{
+            padding: '0.7rem 1rem',
+            borderRadius: '12px',
+            background: '#eef4ff',
+            color: '#2f6db5',
+            border: '1px solid #d7e5ff',
+            fontWeight: 800,
+            whiteSpace: 'nowrap',
+          }}>
+            {isCostLoading ? 'Liczenie...' : `${costSummary.totalCost.toLocaleString('pl-PL')} PLN`}
+          </div>
+        </div>
+
+        {!activeWeddingId && (
+          <div style={{ padding: '1rem', borderRadius: '12px', background: '#fcfaf7', border: '1px solid #f1e8dc', color: 'var(--muted)' }}>
+            Wybierz aktywne wydarzenie, aby zobaczyć koszty zadań.
+          </div>
+        )}
+
+        {activeWeddingId && !token && (
+          <div style={{ padding: '1rem', borderRadius: '12px', background: '#fcfaf7', border: '1px solid #f1e8dc', color: 'var(--muted)' }}>
+            Podsumowanie kosztów zadań jest dostępne po zalogowaniu przez Google.
+          </div>
+        )}
+
+        {costError && (
+          <div style={{ padding: '1rem', borderRadius: '12px', background: '#fff2f2', color: '#c53030', border: '1px solid #ffdfdf', fontWeight: 600 }}>
+            {costError}
+          </div>
+        )}
+
+        {isCostLoading && (
+          <div style={{ padding: '1rem', color: 'var(--muted)' }}>Ładowanie kosztów zadań...</div>
+        )}
+
+        {!isCostLoading && activeWeddingId && token && !costError && costSummary.tasks.length === 0 && (
+          <div style={{ padding: '1rem', borderRadius: '12px', background: '#fcfaf7', border: '1px solid #f1e8dc', color: 'var(--muted)' }}>
+            Brak zadań z wyliczalnym kosztem dla tego wydarzenia.
+          </div>
+        )}
+
+        {!isCostLoading && costSummary.tasks.length > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.7fr) minmax(260px, 0.9fr)', gap: '1rem', alignItems: 'start' }}>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                    <th style={{ padding: '0.8rem 0.75rem', color: 'var(--muted)', fontSize: '0.85rem' }}>Zadanie</th>
+                    <th style={{ padding: '0.8rem 0.75rem', color: 'var(--muted)', fontSize: '0.85rem' }}>Typ</th>
+                    <th style={{ padding: '0.8rem 0.75rem', color: 'var(--muted)', fontSize: '0.85rem', textAlign: 'right' }}>Koszt</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {costSummary.tasks.map(task => (
+                    <tr key={task.taskId} style={{ borderBottom: '1px solid #f6f3ed' }}>
+                      <td style={{ padding: '0.9rem 0.75rem', fontWeight: 650 }}>{task.taskName}</td>
+                      <td style={{ padding: '0.9rem 0.75rem', color: 'var(--muted)' }}>{taskTypeLabels[task.taskType]}</td>
+                      <td style={{ padding: '0.9rem 0.75rem', textAlign: 'right', fontWeight: 800, color: '#2f6db5' }}>
+                        {task.cost.toLocaleString('pl-PL')} PLN
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div style={{ display: 'grid', gap: '0.75rem' }}>
+              {taskCostStats.map(stat => (
+                <div key={stat.type} style={{ padding: '0.95rem', borderRadius: '12px', border: '1px solid #f1e8dc', background: '#fcfaf7' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontWeight: 700 }}>
+                    <span>{stat.label}</span>
+                    <span>{stat.amount.toLocaleString('pl-PL')} PLN</span>
+                  </div>
+                  <div style={{ height: '8px', borderRadius: '999px', background: '#ede0d4', overflow: 'hidden', marginTop: '0.75rem' }}>
+                    <div style={{ height: '100%', width: `${stat.percentage}%`, background: '#2f6db5' }} />
+                  </div>
+                  <div style={{ marginTop: '0.4rem', color: 'var(--muted)', fontSize: '0.85rem' }}>{stat.percentage}% kosztów zadań</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
 
       <div style={{
         display: 'grid',
