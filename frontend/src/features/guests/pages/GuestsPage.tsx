@@ -1,34 +1,100 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
+import {
+  createGuest as createGuestRequest,
+  deleteGuest as deleteGuestRequest,
+  getGuests,
+  updateGuest as updateGuestRequest,
+  type GuestRequest,
+  type GuestResponse,
+} from '../../../api/guestApi'
 import type { RootState } from '../../../store'
-import { addGuest, updateGuest, deleteGuest } from '../../../store/slices/guestsSlice'
+import { addGuest, deleteGuest, setGuests, updateGuest } from '../../../store/slices/guestsSlice'
 
 import { GuestRow } from '../components/GuestRow'
 import { SummaryCard } from '../components/SummaryCard'
 import { ToolbarButton } from '../components/ToolbarButton'
 import type { Guest, GuestStatus } from '../data/guestsMock'
 
+const statusOptions: GuestStatus[] = ['Potwierdzony', 'Oczekuje', 'Odrzucony']
+
+function toUiStatus(status: string | null | undefined): GuestStatus {
+  const normalized = (status ?? '').toUpperCase()
+
+  if (['CONFIRMED', 'ACCEPTED', 'YES', 'POTWIERDZONY'].includes(normalized)) return 'Potwierdzony'
+  if (['REJECTED', 'DECLINED', 'NO', 'ODRZUCONY'].includes(normalized)) return 'Odrzucony'
+  return 'Oczekuje'
+}
+
+function toApiStatus(status: GuestStatus) {
+  if (status === 'Potwierdzony') return 'CONFIRMED'
+  if (status === 'Odrzucony') return 'REJECTED'
+  return 'PENDING'
+}
+
+function getGuestName(response: GuestResponse) {
+  return [response.firstName, response.lastName].filter(Boolean).join(' ').trim() || 'Gosc bez nazwy'
+}
+
+function toGuest(response: GuestResponse): Guest {
+  return {
+    id: String(response.id),
+    name: getGuestName(response),
+    email: response.email ?? '',
+    status: toUiStatus(response.rsvpStatus),
+    table: '-',
+    allergy: 'Brak danych',
+  }
+}
+
+function splitName(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  const firstName = parts.shift() ?? ''
+
+  return {
+    firstName,
+    lastName: parts.join(' '),
+  }
+}
+
+function toGuestRequest(form: {
+  name: string
+  email: string
+  status: GuestStatus
+}): GuestRequest {
+  const { firstName, lastName } = splitName(form.name)
+
+  return {
+    firstName,
+    lastName,
+    email: form.email.trim(),
+    rsvpStatus: toApiStatus(form.status),
+  }
+}
+
 export function GuestsPage() {
   const dispatch = useDispatch()
   const listState = useSelector((state: RootState) => state.guests.items)
+  const { activeWeddingId, token } = useSelector((state: RootState) => state.auth)
 
-  const [selectedItem, setSelectedItem] = useState<string | null>(listState[0]?.id || null)
+  const [selectedItem, setSelectedItem] = useState<string | null>(null)
   const [formState, setFormState] = useState({
     search: '',
     status: 'Wszystkie',
   })
-
-  // Modal State
   const [showModal, setShowModal] = useState(false)
   const [editingGuest, setEditingGuest] = useState<Guest | null>(null)
+  const [loading, setLoading] = useState(Boolean(activeWeddingId && token))
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [guestsNotification, setGuestsNotification] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
 
   const [guestForm, setGuestForm] = useState({
     name: '',
     email: '',
     status: 'Oczekuje' as GuestStatus,
-    table: '1',
-    allergy: 'Brak'
+    table: '-',
+    allergy: 'Brak danych',
   })
 
   const showNotification = (text: string, type: 'success' | 'error' = 'success') => {
@@ -38,9 +104,44 @@ export function GuestsPage() {
     }, 4500)
   }
 
+  const loadGuests = useCallback(async () => {
+    if (!activeWeddingId || !token) return
+
+    setLoading(true)
+    setError(null)
+    try {
+      const guests = await getGuests(activeWeddingId, { token })
+      const mappedGuests = guests.map(toGuest)
+      dispatch(setGuests(mappedGuests))
+      setSelectedItem(current => current && mappedGuests.some(guest => guest.id === current)
+        ? current
+        : mappedGuests[0]?.id ?? null)
+    } catch {
+      setError('Nie udalo sie pobrac gosci z backendu.')
+      dispatch(setGuests([]))
+    } finally {
+      setLoading(false)
+    }
+  }, [activeWeddingId, dispatch, token])
+
+  useEffect(() => {
+    if (!activeWeddingId || !token) {
+      dispatch(setGuests([]))
+      setSelectedItem(null)
+      setLoading(false)
+      return
+    }
+
+    void loadGuests()
+  }, [activeWeddingId, dispatch, loadGuests, token])
+
   const filteredGuests = useMemo(() => {
+    const phrase = formState.search.trim().toLowerCase()
+
     return listState.filter((guest) => {
-      const matchesSearch = guest.name.toLowerCase().includes(formState.search.toLowerCase())
+      const matchesSearch = !phrase
+        || guest.name.toLowerCase().includes(phrase)
+        || guest.email.toLowerCase().includes(phrase)
       const matchesStatus = formState.status === 'Wszystkie' || guest.status === formState.status
       return matchesSearch && matchesStatus
     })
@@ -65,8 +166,8 @@ export function GuestsPage() {
       name: '',
       email: '',
       status: 'Oczekuje',
-      table: '1',
-      allergy: 'Brak'
+      table: '-',
+      allergy: 'Brak danych',
     })
     setShowModal(true)
   }
@@ -78,62 +179,86 @@ export function GuestsPage() {
       email: guest.email || '',
       status: guest.status,
       table: guest.table,
-      allergy: guest.allergy
+      allergy: guest.allergy,
     })
     setShowModal(true)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!activeWeddingId || !token) return
     if (!guestForm.name.trim()) {
-      showNotification('Proszę podać imię i nazwisko gościa!', 'error')
+      showNotification('Prosze podac imie i nazwisko goscia.', 'error')
       return
     }
     if (!guestForm.email.trim()) {
-      showNotification('Proszę podać adres e-mail gościa!', 'error')
+      showNotification('Prosze podac adres e-mail goscia.', 'error')
       return
     }
 
-    if (editingGuest) {
-      // Edit mode
-      const updated: Guest = {
-        id: editingGuest.id,
-        name: guestForm.name,
-        email: guestForm.email,
-        status: guestForm.status,
-        table: guestForm.table,
-        allergy: guestForm.allergy
-      }
-      dispatch(updateGuest(updated))
-      showNotification(`Zaktualizowano pomyślnie dane gościa "${updated.name}"!`, 'success')
-    } else {
-      // Add mode
-      const created: Guest = {
-        id: `guest-${Date.now()}`,
-        name: guestForm.name,
-        email: guestForm.email,
-        status: 'Oczekuje',
-        table: guestForm.table,
-        allergy: guestForm.allergy
-      }
-      dispatch(addGuest(created))
-      showNotification(`Dodano gościa "${created.name}" i automatycznie wysłano zaproszenie RSVP na adres ${created.email}! ✉️`, 'success')
-    }
+    setSaving(true)
+    try {
+      if (editingGuest) {
+        const guestId = Number(editingGuest.id)
+        if (!Number.isFinite(guestId)) {
+          showNotification('Ten gosc nie ma poprawnego identyfikatora z backendu.', 'error')
+          return
+        }
 
-    setShowModal(false)
+        const updated = toGuest(await updateGuestRequest(activeWeddingId, guestId, toGuestRequest(guestForm), { token }))
+        dispatch(updateGuest(updated))
+        showNotification(`Zaktualizowano dane goscia "${updated.name}".`, 'success')
+      } else {
+        const created = toGuest(await createGuestRequest(activeWeddingId, toGuestRequest(guestForm), { token }))
+        dispatch(addGuest(created))
+        setSelectedItem(created.id)
+        showNotification(`Dodano goscia "${created.name}".`, 'success')
+      }
+
+      setShowModal(false)
+      setEditingGuest(null)
+    } catch {
+      showNotification('Nie udalo sie zapisac goscia w backendzie.', 'error')
+    } finally {
+      setSaving(false)
+    }
   }
 
-  const handleDeleteGuest = () => {
-    if (editingGuest) {
-      dispatch(deleteGuest(editingGuest.id))
-      showNotification(`Usunięto gościa "${editingGuest.name}" z listy!`, 'success')
-      setShowModal(false)
+  const handleDeleteGuest = async () => {
+    if (!activeWeddingId || !token || !editingGuest) return
+
+    const guestId = Number(editingGuest.id)
+    if (!Number.isFinite(guestId)) {
+      showNotification('Ten gosc nie ma poprawnego identyfikatora z backendu.', 'error')
+      return
     }
+    if (!window.confirm(`Czy na pewno usunac goscia "${editingGuest.name}"?`)) return
+
+    setSaving(true)
+    try {
+      await deleteGuestRequest(activeWeddingId, guestId, { token })
+      dispatch(deleteGuest(editingGuest.id))
+      setSelectedItem(current => current === editingGuest.id ? null : current)
+      showNotification(`Usunieto goscia "${editingGuest.name}" z listy.`, 'success')
+      setShowModal(false)
+      setEditingGuest(null)
+    } catch {
+      showNotification('Nie udalo sie usunac goscia w backendzie.', 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!activeWeddingId) {
+    return <section className='page-card' style={{ padding: '2rem', textAlign: 'center' }}>Wybierz aktywne wydarzenie, aby zobaczyc gosci.</section>
+  }
+
+  if (!token) {
+    return <section className='page-card' style={{ padding: '2rem', textAlign: 'center' }}>Lista gosci z backendu jest dostepna po zalogowaniu przez Google.</section>
   }
 
   return (
     <section style={{ display: 'grid', gap: '1rem' }}>
-      
       {guestsNotification && (
         <div style={{
           padding: '1rem',
@@ -143,9 +268,21 @@ export function GuestsPage() {
           border: `1px solid ${guestsNotification.type === 'success' ? '#bfeecf' : '#f4c1c1'}`,
           fontWeight: 600,
           textAlign: 'center',
-          animation: 'fadeIn 0.3s ease'
+          animation: 'fadeIn 0.3s ease',
         }}>
           {guestsNotification.text}
+        </div>
+      )}
+
+      {loading && (
+        <div style={{ padding: '1rem', borderRadius: '12px', background: '#fff8ed', color: '#8c5a12', border: '1px solid #f4da8b', fontWeight: 600, textAlign: 'center' }}>
+          Pobieramy gosci z backendu...
+        </div>
+      )}
+
+      {error && (
+        <div style={{ padding: '1rem', borderRadius: '12px', background: '#fff2f2', color: '#c53030', border: '1px solid #f4c1c1', fontWeight: 600, textAlign: 'center' }}>
+          {error}
         </div>
       )}
 
@@ -170,7 +307,7 @@ export function GuestsPage() {
               Lista Gosci
             </h1>
             <p className='page-subtitle' style={{ fontSize: '1.05rem' }}>
-              Zarzadzaj lista gosci i sledz potwierdzenia RSVP
+              Zarzadzaj lista gosci aktywnego wydarzenia z bazy danych.
             </p>
           </div>
 
@@ -213,7 +350,6 @@ export function GuestsPage() {
                   ...current,
                   status: card.id === 'all' ? 'Wszystkie' : card.id,
                 }))
-                console.log('guests:summary', card.id)
               }}
             />
           ))}
@@ -235,7 +371,7 @@ export function GuestsPage() {
           <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Goscie ({filteredGuests.length})</h2>
 
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <ToolbarButton label='Eksportuj' onClick={() => showNotification('Pomyślnie wyeksportowano listę gości do pliku CSV!', 'success')} />
+            <ToolbarButton label='Odswiez' onClick={() => void loadGuests()} />
             <ToolbarButton
               label='Filtry'
               onClick={() =>
@@ -265,7 +401,7 @@ export function GuestsPage() {
                   search: event.target.value,
                 }))
               }
-              placeholder='Szukaj po imieniu i nazwisku...'
+              placeholder='Szukaj po imieniu, nazwisku lub e-mailu...'
               style={{
                 minHeight: '52px',
                 borderRadius: '14px',
@@ -298,9 +434,7 @@ export function GuestsPage() {
               }}
             >
               <option value='Wszystkie'>Wszystkie statusy</option>
-              <option value='Potwierdzony'>Potwierdzony</option>
-              <option value='Oczekuje'>Oczekuje</option>
-              <option value='Odrzucony'>Odrzucony</option>
+              {statusOptions.map(status => <option key={status} value={status}>{status}</option>)}
             </select>
           </div>
 
@@ -329,29 +463,25 @@ export function GuestsPage() {
               <span style={{ textAlign: 'right' }}>Akcje</span>
             </div>
 
-            {filteredGuests.map((guest) => (
+            {!loading && filteredGuests.map((guest) => (
               <GuestRow
                 key={guest.id}
                 guest={guest}
                 isSelected={selectedItem === guest.id}
-                onSelect={() => {
-                  setSelectedItem(guest.id)
-                  console.log('guests:select', guest.id)
-                }}
+                onSelect={() => setSelectedItem(guest.id)}
                 onEdit={() => handleOpenEdit(guest)}
               />
             ))}
 
-            {filteredGuests.length === 0 && (
+            {!loading && filteredGuests.length === 0 && (
               <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--muted)' }}>
-                Brak gości spełniających kryteria wyszukiwania.
+                Brak gosci spelniajacych kryteria wyszukiwania.
               </div>
             )}
           </div>
         </div>
       </article>
 
-      {/* LUXURIOUS ADD/EDIT GUEST MODAL */}
       {showModal && (
         <div style={{
           position: 'fixed',
@@ -362,11 +492,11 @@ export function GuestsPage() {
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 1000,
-          animation: 'fadeIn 0.2s ease'
+          animation: 'fadeIn 0.2s ease',
         }}>
-          <form 
+          <form
             onSubmit={handleSubmit}
-            className="page-card" 
+            className='page-card'
             style={{
               width: '100%',
               maxWidth: '460px',
@@ -376,11 +506,11 @@ export function GuestsPage() {
               boxShadow: '0 20px 50px rgba(47, 42, 36, 0.15)',
               display: 'grid',
               gap: '1.2rem',
-              position: 'relative'
+              position: 'relative',
             }}
           >
-            <button 
-              type="button"
+            <button
+              type='button'
               onClick={() => setShowModal(false)}
               style={{
                 position: 'absolute',
@@ -391,25 +521,25 @@ export function GuestsPage() {
                 fontSize: '1.2rem',
                 color: 'var(--muted)',
                 cursor: 'pointer',
-                fontWeight: 'bold'
+                fontWeight: 'bold',
               }}
             >
-              ✕
+              x
             </button>
 
             <header style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
-              <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.15em', color: '#d6a061', fontWeight: 600 }}>Karta Gościa</span>
+              <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.15em', color: '#d6a061', fontWeight: 600 }}>Karta Goscia</span>
               <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.8rem', margin: '0.25rem 0', fontWeight: 500 }}>
-                {editingGuest ? 'Edytuj Gościa' : 'Nowy Gość'}
+                {editingGuest ? 'Edytuj Goscia' : 'Nowy Gosc'}
               </h2>
-              <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.85rem' }}>Wprowadź dane gościa do weselnego RSVP.</p>
+              <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.85rem' }}>Dane sa zapisywane w bazie aktywnego wydarzenia.</p>
             </header>
 
             <label style={{ display: 'grid', gap: '0.4rem' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)' }}>Imię i Nazwisko</span>
-              <input 
-                type="text"
-                placeholder="np. Anna Nowak"
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)' }}>Imie i Nazwisko</span>
+              <input
+                type='text'
+                placeholder='np. Anna Nowak'
                 value={guestForm.name}
                 onChange={(e) => setGuestForm(prev => ({ ...prev, name: e.target.value }))}
                 required
@@ -419,9 +549,9 @@ export function GuestsPage() {
 
             <label style={{ display: 'grid', gap: '0.4rem' }}>
               <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)' }}>Adres E-mail</span>
-              <input 
-                type="email"
-                placeholder="np. anna.nowak@gmail.com"
+              <input
+                type='email'
+                placeholder='np. anna.nowak@gmail.com'
                 value={guestForm.email}
                 onChange={(e) => setGuestForm(prev => ({ ...prev, email: e.target.value }))}
                 required
@@ -429,56 +559,55 @@ export function GuestsPage() {
               />
             </label>
 
-            {editingGuest && (
-              <label style={{ display: 'grid', gap: '0.4rem' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)' }}>Status RSVP</span>
-                <select 
-                  value={guestForm.status}
-                  onChange={(e) => setGuestForm(prev => ({ ...prev, status: e.target.value as GuestStatus }))}
-                  style={{ 
-                    padding: '0.7rem', 
-                    borderRadius: '8px', 
-                    border: '1px solid var(--border)', 
-                    fontSize: '0.95rem', 
-                    background: '#fff', 
-                    fontWeight: 600,
-                    color: guestForm.status === 'Potwierdzony' ? '#0ea44b' : guestForm.status === 'Odrzucony' ? '#eb1d1d' : '#ef8a00'
-                  }}
-                >
-                  <option value="Potwierdzony" style={{ color: '#0ea44b', fontWeight: 600 }}>Potwierdzony</option>
-                  <option value="Oczekuje" style={{ color: '#ef8a00', fontWeight: 600 }}>Oczekuje</option>
-                  <option value="Odrzucony" style={{ color: '#eb1d1d', fontWeight: 600 }}>Odrzucony</option>
-                </select>
-              </label>
-            )}
+            <label style={{ display: 'grid', gap: '0.4rem' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)' }}>Status RSVP</span>
+              <select
+                value={guestForm.status}
+                onChange={(e) => setGuestForm(prev => ({ ...prev, status: e.target.value as GuestStatus }))}
+                style={{
+                  padding: '0.7rem',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border)',
+                  fontSize: '0.95rem',
+                  background: '#fff',
+                  fontWeight: 600,
+                  color: guestForm.status === 'Potwierdzony' ? '#0ea44b' : guestForm.status === 'Odrzucony' ? '#eb1d1d' : '#ef8a00',
+                }}
+              >
+                {statusOptions.map(status => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
+              </select>
+            </label>
 
             <label style={{ display: 'grid', gap: '0.4rem' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)' }}>Przypisany Stół</span>
-              <input 
-                type="text"
-                placeholder="np. 1 lub '-' dla braku"
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)' }}>Przypisany Stol</span>
+              <input
+                type='text'
+                placeholder='Pole lokalne, backend go nie zapisuje'
                 value={guestForm.table}
-                onChange={(e) => setGuestForm(prev => ({ ...prev, table: e.target.value }))}
-                style={{ padding: '0.7rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.95rem' }}
+                disabled
+                style={{ padding: '0.7rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.95rem', background: '#f7f4ef', color: 'var(--muted)' }}
               />
             </label>
 
             <label style={{ display: 'grid', gap: '0.4rem' }}>
               <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)' }}>Alergie / Wymagania Dietetyczne</span>
-              <input 
-                type="text"
-                placeholder="np. Brak, Gluten, Laktoza, Orzechy"
+              <input
+                type='text'
+                placeholder='Pole lokalne, backend go nie zapisuje'
                 value={guestForm.allergy}
-                onChange={(e) => setGuestForm(prev => ({ ...prev, allergy: e.target.value }))}
-                style={{ padding: '0.7rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.95rem' }}
+                disabled
+                style={{ padding: '0.7rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.95rem', background: '#f7f4ef', color: 'var(--muted)' }}
               />
             </label>
 
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
               {editingGuest ? (
-                <button 
-                  type="button" 
-                  onClick={handleDeleteGuest}
+                <button
+                  type='button'
+                  onClick={() => void handleDeleteGuest()}
+                  disabled={saving}
                   style={{
                     padding: '0.75rem 1rem',
                     borderRadius: '10px',
@@ -486,16 +615,18 @@ export function GuestsPage() {
                     background: '#fff',
                     color: '#eb1d1d',
                     fontWeight: 600,
-                    cursor: 'pointer'
+                    cursor: saving ? 'wait' : 'pointer',
+                    opacity: saving ? 0.65 : 1,
                   }}
                 >
-                  Usuń
+                  Usun
                 </button>
               ) : null}
-              
-              <button 
-                type="button" 
+
+              <button
+                type='button'
                 onClick={() => setShowModal(false)}
+                disabled={saving}
                 style={{
                   flex: 1,
                   padding: '0.75rem',
@@ -504,13 +635,14 @@ export function GuestsPage() {
                   background: '#fff',
                   color: 'var(--muted)',
                   fontWeight: 600,
-                  cursor: 'pointer'
+                  cursor: saving ? 'wait' : 'pointer',
                 }}
               >
                 Anuluj
               </button>
-              <button 
-                type="submit"
+              <button
+                type='submit'
+                disabled={saving}
                 style={{
                   flex: 2,
                   padding: '0.75rem',
@@ -519,18 +651,17 @@ export function GuestsPage() {
                   background: '#d6a061',
                   color: '#fff',
                   fontWeight: 700,
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(214, 160, 97, 0.2)'
+                  cursor: saving ? 'wait' : 'pointer',
+                  opacity: saving ? 0.65 : 1,
+                  boxShadow: '0 4px 12px rgba(214, 160, 97, 0.2)',
                 }}
               >
-                {editingGuest ? 'Zapisz zmiany' : 'Dodaj'}
+                {saving ? 'Zapisywanie...' : editingGuest ? 'Zapisz zmiany' : 'Dodaj'}
               </button>
             </div>
-
           </form>
         </div>
       )}
-
     </section>
   )
 }
