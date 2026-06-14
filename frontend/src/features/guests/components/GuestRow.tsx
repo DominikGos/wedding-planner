@@ -14,13 +14,16 @@ export function GuestRow({
   onSelect,
   onEdit,
 }: GuestRowProps) {
+  const isDeclined = guest.status === 'Odrzucony'
+
   return (
     <div
       onClick={onSelect}
       style={{
         display: 'grid',
-        gridTemplateColumns: '2.1fr 1.3fr 0.55fr 1fr 0.7fr',
+        gridTemplateColumns: '1.5fr 1.5fr 0.8fr 1fr 1.2fr 1fr 0.6fr',
         gap: '1rem',
+        minWidth: '1120px',
         padding: '0.95rem 0.9rem',
         borderTop: '1px solid #f4eadf',
         alignItems: 'center',
@@ -31,25 +34,32 @@ export function GuestRow({
       }}
     >
       <span style={{ fontSize: '0.98rem' }}>{guest.name}</span>
-      <span>
-        <StatusBadge status={guest.status} />
-      </span>
-      <span>
+      <span style={{ color: 'var(--muted)', overflowWrap: 'anywhere' }}>{guest.email || '—'}</span>
+      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <span
           style={{
-            width: '2.2rem',
-            height: '2.2rem',
+            minWidth: '72px',
+            minHeight: '2.2rem',
+            padding: '0.35rem 0.75rem',
             borderRadius: '999px',
             background: '#faf3ee',
             color: '#d6a061',
-            display: 'inline-grid',
-            placeItems: 'center',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            whiteSpace: 'nowrap',
+            fontWeight: 600,
+            textAlign: 'center',
           }}
         >
-          {guest.table}
+          {guest.table || '—'}
         </span>
       </span>
-      <span>{guest.allergy}</span>
+      <span>{isDeclined ? '—' : guest.allergy || '—'}</span>
+      <span>{isDeclined ? guest.declineReason || '—' : '—'}</span>
+      <span>
+        <StatusBadge status={guest.status} />
+      </span>
       <span style={{ textAlign: 'right' }}>
         <button
           type='button'

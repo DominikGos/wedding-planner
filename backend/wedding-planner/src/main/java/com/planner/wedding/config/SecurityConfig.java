@@ -50,6 +50,7 @@ public class SecurityConfig {
                                 "/error",
                                 "/login/**",
                                 "/oauth2/**",
+                                "/api/public/rsvp/**",
                                 "/api/payments/**",
                                 "/api/expenses/**",
                                 "/api/vendors/**"

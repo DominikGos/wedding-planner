@@ -6,6 +6,10 @@ export type GuestResponse = {
   lastName: string | null
   email: string | null
   rsvpStatus: string | null
+  guestCode: string
+  tableName: string | null
+  allergies: string | null
+  declineReason: string | null
 }
 
 export type GuestRequest = {
@@ -13,6 +17,9 @@ export type GuestRequest = {
   lastName: string
   email: string
   rsvpStatus: string
+  tableName: string
+  allergies: string
+  declineReason: string
 }
 
 type GuestRequestOptions = {

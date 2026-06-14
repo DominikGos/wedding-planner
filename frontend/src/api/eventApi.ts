@@ -7,6 +7,7 @@ export type EventResponse = {
   eventDate: string
   location: string | null
   status: string
+  eventCode: string
 }
 
 export type CreateEventRequest = {
@@ -34,6 +35,7 @@ export function toWedding(event: EventResponse): Wedding {
     date: event.eventDate?.split('T')[0] ?? '',
     venue: event.location ?? 'Nie określono',
     status: event.status,
+    eventCode: event.eventCode,
   }
 }
 

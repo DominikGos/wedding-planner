@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -23,7 +24,9 @@ public class GuestService {
     @Transactional(readOnly = true)
     public List<Guest> findByEventId(Long eventId, User user) {
         eventService.requireOwnedEvent(eventId, user);
-        return guestRepository.findByEventId(eventId);
+        List<Guest> guests = guestRepository.findByEventId(eventId);
+        guests.stream().filter(this::ensureGuestCode).forEach(guestRepository::save);
+        return guests;
     }
 
     @Transactional(readOnly = true)
@@ -41,6 +44,10 @@ public class GuestService {
         Event event = eventService.requireOwnedEvent(eventId, user);
         guest.setId(null);
         guest.setEvent(event);
+        guest.setGuestCode(UUID.randomUUID().toString());
+        if (guest.getRsvpStatus() == null || guest.getRsvpStatus().isBlank()) {
+            guest.setRsvpStatus("PENDING");
+        }
         return guestRepository.save(guest);
     }
 
@@ -50,11 +57,22 @@ public class GuestService {
         guest.setLastName(changes.getLastName());
         guest.setEmail(changes.getEmail());
         guest.setRsvpStatus(changes.getRsvpStatus());
+        guest.setTableName(changes.getTableName());
+        guest.setAllergies(changes.getAllergies());
+        guest.setDeclineReason(changes.getDeclineReason());
         return guestRepository.save(guest);
     }
 
     public void delete(Long eventId, Long guestId, User user) {
         Guest guest = findById(eventId, guestId, user);
         guestRepository.delete(guest);
+    }
+
+    private boolean ensureGuestCode(Guest guest) {
+        if (guest.getGuestCode() != null && !guest.getGuestCode().isBlank()) {
+            return false;
+        }
+        guest.setGuestCode(UUID.randomUUID().toString());
+        return true;
     }
 }

@@ -28,7 +28,11 @@ export const router = createBrowserRouter([
   },
   {
     path: '/rsvp',
-    element: <GuestRsvpPage />, // Standalone public RSVP page for guests
+    element: <GuestRsvpPage />,
+  },
+  {
+    path: '/rsvp/:eventCode/:guestCode',
+    element: <GuestRsvpPage />,
   },
   {
     path: '/',

@@ -34,6 +34,9 @@ public class Event {
 
     private String status;
 
+    @Column(unique = true)
+    private String eventCode;
+
     @OneToMany(mappedBy = "event")
     private List<Task> tasks;
 

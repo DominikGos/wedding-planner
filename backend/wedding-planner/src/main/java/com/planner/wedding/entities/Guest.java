@@ -29,4 +29,13 @@ public class Guest {
     private String email;
 
     private String rsvpStatus;
+
+    private String tableName;
+
+    private String allergies;
+
+    private String declineReason;
+
+    @Column(unique = true)
+    private String guestCode;
 }

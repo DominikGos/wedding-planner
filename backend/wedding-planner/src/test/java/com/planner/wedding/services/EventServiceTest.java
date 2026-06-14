@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -45,5 +46,17 @@ class EventServiceTest {
 
         assertSame(user, updated.getUser());
         verify(eventRepository).findByIdAndUserId(1L, 7L);
+    }
+
+    @Test
+    void createGeneratesEventCode() {
+        User user = User.builder().id(7L).build();
+        Event event = Event.builder().name("Wedding").build();
+        when(eventRepository.save(event)).thenReturn(event);
+
+        Event created = new EventService(eventRepository).create(event, user);
+
+        assertNotNull(created.getEventCode());
+        assertSame(user, created.getUser());
     }
 }

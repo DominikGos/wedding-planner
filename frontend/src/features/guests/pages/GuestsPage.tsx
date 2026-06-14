@@ -28,12 +28,12 @@ function toUiStatus(status: string | null | undefined): GuestStatus {
 
 function toApiStatus(status: GuestStatus) {
   if (status === 'Potwierdzony') return 'CONFIRMED'
-  if (status === 'Odrzucony') return 'REJECTED'
+  if (status === 'Odrzucony') return 'DECLINED'
   return 'PENDING'
 }
 
 function getGuestName(response: GuestResponse) {
-  return [response.firstName, response.lastName].filter(Boolean).join(' ').trim() || 'Gosc bez nazwy'
+  return [response.firstName, response.lastName].filter(Boolean).join(' ').trim() || 'Gość bez nazwy'
 }
 
 function toGuest(response: GuestResponse): Guest {
@@ -42,8 +42,10 @@ function toGuest(response: GuestResponse): Guest {
     name: getGuestName(response),
     email: response.email ?? '',
     status: toUiStatus(response.rsvpStatus),
-    table: '-',
-    allergy: 'Brak danych',
+    table: response.tableName || '—',
+    allergy: response.allergies || '—',
+    declineReason: response.declineReason ?? '',
+    guestCode: response.guestCode,
   }
 }
 
@@ -61,6 +63,9 @@ function toGuestRequest(form: {
   name: string
   email: string
   status: GuestStatus
+  table: string
+  allergy: string
+  declineReason: string
 }): GuestRequest {
   const { firstName, lastName } = splitName(form.name)
 
@@ -69,6 +74,9 @@ function toGuestRequest(form: {
     lastName,
     email: form.email.trim(),
     rsvpStatus: toApiStatus(form.status),
+    tableName: form.table.trim(),
+    allergies: form.allergy.trim(),
+    declineReason: form.status === 'Odrzucony' ? form.declineReason.trim() : '',
   }
 }
 
@@ -76,6 +84,7 @@ export function GuestsPage() {
   const dispatch = useDispatch()
   const listState = useSelector((state: RootState) => state.guests.items)
   const { activeWeddingId, token } = useSelector((state: RootState) => state.auth)
+  const activeWedding = useSelector((state: RootState) => state.auth.weddings.find(wedding => wedding.id === state.auth.activeWeddingId))
 
   const [selectedItem, setSelectedItem] = useState<string | null>(null)
   const [formState, setFormState] = useState({
@@ -93,8 +102,9 @@ export function GuestsPage() {
     name: '',
     email: '',
     status: 'Oczekuje' as GuestStatus,
-    table: '-',
-    allergy: 'Brak danych',
+    table: '',
+    allergy: '',
+    declineReason: '',
   })
 
   const showNotification = (text: string, type: 'success' | 'error' = 'success') => {
@@ -117,7 +127,7 @@ export function GuestsPage() {
         ? current
         : mappedGuests[0]?.id ?? null)
     } catch {
-      setError('Nie udalo sie pobrac gosci z backendu.')
+      setError('Nie udało się pobrać gości z backendu.')
       dispatch(setGuests([]))
     } finally {
       setLoading(false)
@@ -127,12 +137,10 @@ export function GuestsPage() {
   useEffect(() => {
     if (!activeWeddingId || !token) {
       dispatch(setGuests([]))
-      setSelectedItem(null)
-      setLoading(false)
       return
     }
 
-    void loadGuests()
+    queueMicrotask(() => void loadGuests())
   }, [activeWeddingId, dispatch, loadGuests, token])
 
   const filteredGuests = useMemo(() => {
@@ -153,9 +161,9 @@ export function GuestsPage() {
     const rejected = listState.filter((guest) => guest.status === 'Odrzucony').length
 
     return [
-      { id: 'all', title: 'Wszyscy Goscie', value: String(listState.length), color: 'var(--text)', border: 'var(--border)' },
+      { id: 'all', title: 'Wszyscy Goście', value: String(listState.length), color: 'var(--text)', border: 'var(--border)' },
       { id: 'Potwierdzony', title: 'Potwierdzeni', value: String(confirmed), color: '#0ea44b', border: '#bfeecf' },
-      { id: 'Oczekuje', title: 'Oczekujacy', value: String(waiting), color: '#ef8a00', border: '#f4da8b' },
+      { id: 'Oczekuje', title: 'Oczekujący', value: String(waiting), color: '#ef8a00', border: '#f4da8b' },
       { id: 'Odrzucony', title: 'Odrzuceni', value: String(rejected), color: '#eb1d1d', border: '#f4c1c1' },
     ]
   }, [listState])
@@ -166,8 +174,9 @@ export function GuestsPage() {
       name: '',
       email: '',
       status: 'Oczekuje',
-      table: '-',
-      allergy: 'Brak danych',
+      table: '',
+      allergy: '',
+      declineReason: '',
     })
     setShowModal(true)
   }
@@ -178,8 +187,9 @@ export function GuestsPage() {
       name: guest.name,
       email: guest.email || '',
       status: guest.status,
-      table: guest.table,
-      allergy: guest.allergy,
+      table: guest.table === '—' ? '' : guest.table,
+      allergy: guest.allergy === '—' ? '' : guest.allergy,
+      declineReason: guest.declineReason ?? '',
     })
     setShowModal(true)
   }
@@ -188,11 +198,7 @@ export function GuestsPage() {
     e.preventDefault()
     if (!activeWeddingId || !token) return
     if (!guestForm.name.trim()) {
-      showNotification('Prosze podac imie i nazwisko goscia.', 'error')
-      return
-    }
-    if (!guestForm.email.trim()) {
-      showNotification('Prosze podac adres e-mail goscia.', 'error')
+      showNotification('Proszę podać imię i nazwisko gościa.', 'error')
       return
     }
 
@@ -201,24 +207,24 @@ export function GuestsPage() {
       if (editingGuest) {
         const guestId = Number(editingGuest.id)
         if (!Number.isFinite(guestId)) {
-          showNotification('Ten gosc nie ma poprawnego identyfikatora z backendu.', 'error')
+          showNotification('Ten gość nie ma poprawnego identyfikatora z backendu.', 'error')
           return
         }
 
         const updated = toGuest(await updateGuestRequest(activeWeddingId, guestId, toGuestRequest(guestForm), { token }))
         dispatch(updateGuest(updated))
-        showNotification(`Zaktualizowano dane goscia "${updated.name}".`, 'success')
+        showNotification(`Zaktualizowano dane gościa "${updated.name}".`, 'success')
       } else {
         const created = toGuest(await createGuestRequest(activeWeddingId, toGuestRequest(guestForm), { token }))
         dispatch(addGuest(created))
         setSelectedItem(created.id)
-        showNotification(`Dodano goscia "${created.name}".`, 'success')
+        showNotification(`Dodano gościa "${created.name}".`, 'success')
       }
 
       setShowModal(false)
       setEditingGuest(null)
     } catch {
-      showNotification('Nie udalo sie zapisac goscia w backendzie.', 'error')
+      showNotification('Nie udało się zapisać gościa w backendzie.', 'error')
     } finally {
       setSaving(false)
     }
@@ -229,32 +235,45 @@ export function GuestsPage() {
 
     const guestId = Number(editingGuest.id)
     if (!Number.isFinite(guestId)) {
-      showNotification('Ten gosc nie ma poprawnego identyfikatora z backendu.', 'error')
+      showNotification('Ten gość nie ma poprawnego identyfikatora z backendu.', 'error')
       return
     }
-    if (!window.confirm(`Czy na pewno usunac goscia "${editingGuest.name}"?`)) return
+    if (!window.confirm(`Czy na pewno usunąć gościa "${editingGuest.name}"?`)) return
 
     setSaving(true)
     try {
       await deleteGuestRequest(activeWeddingId, guestId, { token })
       dispatch(deleteGuest(editingGuest.id))
       setSelectedItem(current => current === editingGuest.id ? null : current)
-      showNotification(`Usunieto goscia "${editingGuest.name}" z listy.`, 'success')
+      showNotification(`Usunięto gościa "${editingGuest.name}" z listy.`, 'success')
       setShowModal(false)
       setEditingGuest(null)
     } catch {
-      showNotification('Nie udalo sie usunac goscia w backendzie.', 'error')
+      showNotification('Nie udało się usunąć gościa w backendzie.', 'error')
     } finally {
       setSaving(false)
     }
   }
 
+  const handleCopyEventCode = async () => {
+    if (!activeWedding?.eventCode) {
+      showNotification('Kod zaproszenia nie jest jeszcze dostępny.', 'error')
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(activeWedding.eventCode)
+      showNotification('Skopiowano kod zaproszenia.', 'success')
+    } catch {
+      showNotification('Nie udało się skopiować kodu zaproszenia.', 'error')
+    }
+  }
+
   if (!activeWeddingId) {
-    return <section className='page-card' style={{ padding: '2rem', textAlign: 'center' }}>Wybierz aktywne wydarzenie, aby zobaczyc gosci.</section>
+    return <section className='page-card' style={{ padding: '2rem', textAlign: 'center' }}>Wybierz aktywne wydarzenie, aby zobaczyć gości.</section>
   }
 
   if (!token) {
-    return <section className='page-card' style={{ padding: '2rem', textAlign: 'center' }}>Lista gosci z backendu jest dostepna po zalogowaniu przez Google.</section>
+    return <section className='page-card' style={{ padding: '2rem', textAlign: 'center' }}>Lista gości z backendu jest dostępna po zalogowaniu przez Google.</section>
   }
 
   return (
@@ -276,7 +295,7 @@ export function GuestsPage() {
 
       {loading && (
         <div style={{ padding: '1rem', borderRadius: '12px', background: '#fff8ed', color: '#8c5a12', border: '1px solid #f4da8b', fontWeight: 600, textAlign: 'center' }}>
-          Pobieramy gosci z backendu...
+          Pobieramy gości z backendu...
         </div>
       )}
 
@@ -304,29 +323,34 @@ export function GuestsPage() {
         >
           <div>
             <h1 className='page-title' style={{ fontSize: '2rem' }}>
-              Lista Gosci
+              Lista Gości
             </h1>
             <p className='page-subtitle' style={{ fontSize: '1.05rem' }}>
-              Zarzadzaj lista gosci aktywnego wydarzenia z bazy danych.
+              Zarządzaj listą gości aktywnego wydarzenia z bazy danych.
             </p>
           </div>
 
-          <button
-            type='button'
-            onClick={handleOpenAdd}
-            style={{
-              padding: '0.85rem 1.25rem',
-              borderRadius: '14px',
-              background: '#d6a061',
-              color: '#fff',
-              fontWeight: 700,
-              boxShadow: '0 10px 24px rgba(214, 160, 97, 0.24)',
-              border: 'none',
-              cursor: 'pointer',
-            }}
-          >
-            + Dodaj Goscia
-          </button>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <button type='button' onClick={() => void handleCopyEventCode()} className='button-secondary'>
+              Kopiuj kod zaproszenia
+            </button>
+            <button
+              type='button'
+              onClick={handleOpenAdd}
+              style={{
+                padding: '0.85rem 1.25rem',
+                borderRadius: '14px',
+                background: '#d6a061',
+                color: '#fff',
+                fontWeight: 700,
+                boxShadow: '0 10px 24px rgba(214, 160, 97, 0.24)',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              + Dodaj gościa
+            </button>
+          </div>
         </div>
 
         <div
@@ -368,10 +392,10 @@ export function GuestsPage() {
             flexWrap: 'wrap',
           }}
         >
-          <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Goscie ({filteredGuests.length})</h2>
+          <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Goście ({filteredGuests.length})</h2>
 
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <ToolbarButton label='Odswiez' onClick={() => void loadGuests()} />
+            <ToolbarButton label='Odśwież' onClick={() => void loadGuests()} />
             <ToolbarButton
               label='Filtry'
               onClick={() =>
@@ -385,14 +409,7 @@ export function GuestsPage() {
         </div>
 
         <div style={{ padding: '1.1rem' }}>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'minmax(220px, 1fr) 280px',
-              gap: '1rem',
-              marginBottom: '1rem',
-            }}
-          >
+          <div className='filter-toolbar' style={{ marginBottom: '1rem' }}>
             <input
               value={formState.search}
               onChange={(event) =>
@@ -402,17 +419,7 @@ export function GuestsPage() {
                 }))
               }
               placeholder='Szukaj po imieniu, nazwisku lub e-mailu...'
-              style={{
-                minHeight: '52px',
-                borderRadius: '14px',
-                border: '1px solid #efe4d7',
-                background: '#fffdfa',
-                color: 'var(--text)',
-                display: 'flex',
-                alignItems: 'center',
-                padding: '0 1rem',
-                fontSize: '1rem',
-              }}
+              className='filter-control'
             />
 
             <select
@@ -423,15 +430,7 @@ export function GuestsPage() {
                   status: event.target.value,
                 }))
               }
-              style={{
-                minHeight: '52px',
-                borderRadius: '14px',
-                border: '1px solid #efe4d7',
-                background: '#fffdfa',
-                padding: '0 1rem',
-                fontSize: '1rem',
-                color: 'var(--text)',
-              }}
+              className='filter-control'
             >
               <option value='Wszystkie'>Wszystkie statusy</option>
               {statusOptions.map(status => <option key={status} value={status}>{status}</option>)}
@@ -442,24 +441,27 @@ export function GuestsPage() {
             style={{
               border: '1px solid #efe4d7',
               borderRadius: '18px',
-              overflow: 'hidden',
+              overflowX: 'auto',
               background: '#fffdfa',
             }}
           >
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: '2.1fr 1.3fr 0.55fr 1fr 0.7fr',
+                gridTemplateColumns: '1.5fr 1.5fr 0.8fr 1fr 1.2fr 1fr 0.6fr',
                 gap: '1rem',
+                minWidth: '1120px',
                 padding: '1rem 0.9rem',
                 background: '#fbf8f3',
                 fontWeight: 700,
               }}
             >
-              <span>Imie i Nazwisko</span>
-              <span>Status RSVP</span>
-              <span>Stol</span>
+              <span>Imię i nazwisko</span>
+              <span>Email</span>
+              <span style={{ textAlign: 'center' }}>Stół</span>
               <span>Alergie</span>
+              <span>Powód odmowy</span>
+              <span>Status RSVP</span>
               <span style={{ textAlign: 'right' }}>Akcje</span>
             </div>
 
@@ -475,7 +477,7 @@ export function GuestsPage() {
 
             {!loading && filteredGuests.length === 0 && (
               <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--muted)' }}>
-                Brak gosci spelniajacych kryteria wyszukiwania.
+                Brak gości spełniających kryteria wyszukiwania.
               </div>
             )}
           </div>
@@ -528,15 +530,15 @@ export function GuestsPage() {
             </button>
 
             <header style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
-              <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.15em', color: '#d6a061', fontWeight: 600 }}>Karta Goscia</span>
+              <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.15em', color: '#d6a061', fontWeight: 600 }}>Karta gościa</span>
               <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.8rem', margin: '0.25rem 0', fontWeight: 500 }}>
-                {editingGuest ? 'Edytuj Goscia' : 'Nowy Gosc'}
+                {editingGuest ? 'Edytuj gościa' : 'Nowy gość'}
               </h2>
-              <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.85rem' }}>Dane sa zapisywane w bazie aktywnego wydarzenia.</p>
+              <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.85rem' }}>Dane są zapisywane w bazie aktywnego wydarzenia.</p>
             </header>
 
             <label style={{ display: 'grid', gap: '0.4rem' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)' }}>Imie i Nazwisko</span>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)' }}>Imię i nazwisko</span>
               <input
                 type='text'
                 placeholder='np. Anna Nowak'
@@ -581,13 +583,13 @@ export function GuestsPage() {
             </label>
 
             <label style={{ display: 'grid', gap: '0.4rem' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)' }}>Przypisany Stol</span>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)' }}>Stół</span>
               <input
                 type='text'
-                placeholder='Pole lokalne, backend go nie zapisuje'
+                placeholder='Opcjonalnie, np. Stół 5'
                 value={guestForm.table}
-                disabled
-                style={{ padding: '0.7rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.95rem', background: '#f7f4ef', color: 'var(--muted)' }}
+                onChange={(e) => setGuestForm(prev => ({ ...prev, table: e.target.value }))}
+                style={{ padding: '0.7rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.95rem' }}
               />
             </label>
 
@@ -595,10 +597,10 @@ export function GuestsPage() {
               <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)' }}>Alergie / Wymagania Dietetyczne</span>
               <input
                 type='text'
-                placeholder='Pole lokalne, backend go nie zapisuje'
+                placeholder='Opcjonalnie'
                 value={guestForm.allergy}
-                disabled
-                style={{ padding: '0.7rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.95rem', background: '#f7f4ef', color: 'var(--muted)' }}
+                onChange={(e) => setGuestForm(prev => ({ ...prev, allergy: e.target.value }))}
+                style={{ padding: '0.7rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.95rem' }}
               />
             </label>
 
@@ -619,7 +621,7 @@ export function GuestsPage() {
                     opacity: saving ? 0.65 : 1,
                   }}
                 >
-                  Usun
+                  Usuń
                 </button>
               ) : null}
 
