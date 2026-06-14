@@ -5,6 +5,7 @@ import type { RootState } from '../../store'
 import { getEvents, toWedding } from '../../api/eventApi'
 import { logout, setActiveWeddingId, setEvents, setEventsError, setEventsLoading } from '../../store/slices/authSlice'
 import { MainNav } from './MainNav'
+import { NotificationsPanel } from './NotificationsPanel'
 
 export function AppShell() {
   const navigate = useNavigate()
@@ -162,6 +163,7 @@ export function AppShell() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderLeft: '1px solid var(--border)', paddingLeft: '1.5rem', flexShrink: 0 }}>
               {user ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                  <NotificationsPanel token={token} />
                   <div style={{ textAlign: 'right', maxWidth: '120px' }}>
                     <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {userDisplayName}

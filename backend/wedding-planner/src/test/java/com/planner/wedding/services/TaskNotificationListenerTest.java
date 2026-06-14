@@ -39,8 +39,8 @@ class TaskNotificationListenerTest {
         Notification notification = captor.getValue();
         assertSame(owner, notification.getUser());
         assertTrue(notification.getMessage().contains("Wybór menu"));
-        assertTrue(notification.getMessage().contains("PENDING"));
-        assertTrue(notification.getMessage().contains("COMPLETED"));
+        assertTrue(notification.getMessage().contains("Do zrobienia"));
+        assertTrue(notification.getMessage().contains("Zrobione"));
         assertEquals(false, notification.getIsRead());
     }
 }
