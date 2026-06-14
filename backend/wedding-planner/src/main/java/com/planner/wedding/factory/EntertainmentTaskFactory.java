@@ -25,6 +25,7 @@ public class EntertainmentTaskFactory extends TaskFactory {
                 .priority(dto.getPriority() != null ? dto.getPriority() : 0)
                 .performerName(dto.getPerformerName())
                 .totalPrice(dto.getTotalPrice())
+                .duration(dto.getDuration())
                 .build();
     }
 
@@ -42,6 +43,7 @@ public class EntertainmentTaskFactory extends TaskFactory {
         dto.put("priority", task.getPriority());
         dto.put("performerName", task.getPerformerName());
         dto.put("totalPrice", task.getTotalPrice());
+        dto.put("duration", task.getDuration());
         return dto;
     }
 
@@ -52,6 +54,9 @@ public class EntertainmentTaskFactory extends TaskFactory {
         }
         if (dto.getTotalPrice() != null && dto.getTotalPrice().signum() < 0) {
             throw new IllegalArgumentException("Entertainment: totalPrice cannot be negative");
+        }
+        if (dto.getDuration() != null && dto.getDuration() < 0) {
+            throw new IllegalArgumentException("Entertainment: duration cannot be negative");
         }
     }
 }
