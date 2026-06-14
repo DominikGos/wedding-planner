@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react'
-import { type VendorCategory, type Vendor, vendorStats } from '../data/vendorsMock'
+import { type VendorCategory, type Vendor } from '../data/vendorsMock'
 import { VendorIcon, type VendorIconName } from './VendorIcon'
 
 type VendorSidebarProps = {
   categories: VendorCategory[]
   budgetLimit: number
+  plannedExpenses: number
   onBudgetLimitChange: (value: number) => void
   selectedVendor: Vendor | null
   onStatusChange: (status: Vendor['status']) => void
+  onDelete: () => void
   onClose: () => void
   userRole?: string
 }
@@ -15,9 +17,11 @@ type VendorSidebarProps = {
 export function VendorSidebar({ 
   categories, 
   budgetLimit, 
+  plannedExpenses,
   onBudgetLimitChange,
   selectedVendor,
   onStatusChange,
+  onDelete,
   onClose,
   userRole = 'couple'
 }: VendorSidebarProps) {
@@ -25,10 +29,10 @@ export function VendorSidebar({
   const [inputValue, setInputValue] = useState(budgetLimit.toString())
   
   useEffect(() => {
-    setInputValue(budgetLimit.toString())
+    queueMicrotask(() => setInputValue(budgetLimit.toString()))
   }, [budgetLimit])
 
-  const percentage = Math.round((vendorStats.plannedExpenses / budgetLimit) * 100)
+  const percentage = Math.round((plannedExpenses / budgetLimit) * 100)
   const displayPercentage = Math.min(100, percentage)
 
   const handleSave = () => {
@@ -120,7 +124,7 @@ export function VendorSidebar({
             <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)' }}>Status współpracy:</label>
             <select 
               value={selectedVendor.status}
-              onChange={(e) => onStatusChange(e.target.value as any)}
+              onChange={(e) => onStatusChange(e.target.value as Vendor['status'])}
               disabled={userRole === 'couple'}
               style={{
                 width: '100%',
@@ -138,6 +142,24 @@ export function VendorSidebar({
               <option value="unavailable">Niedostępny</option>
             </select>
           </div>
+
+          <button
+            type='button'
+            onClick={onDelete}
+            style={{
+              width: '100%',
+              marginTop: '1rem',
+              padding: '0.7rem 1rem',
+              borderRadius: '10px',
+              border: '1px solid #f4c1c1',
+              background: '#fff2f2',
+              color: '#c53030',
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            Usuń dostawcę
+          </button>
         </section>
       )}
 
@@ -173,7 +195,7 @@ export function VendorSidebar({
         
         <div style={{ marginBottom: '1.25rem' }}>
           <strong style={{ fontSize: '1.6rem', color: 'var(--text)' }}>
-            {vendorStats.plannedExpenses.toLocaleString()} PLN
+            {plannedExpenses.toLocaleString('pl-PL')} PLN
           </strong>
         </div>
 
