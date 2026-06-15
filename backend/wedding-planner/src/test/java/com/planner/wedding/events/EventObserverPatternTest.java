@@ -10,19 +10,32 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Import;
+import org.springframework.stereotype.Component;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(SpringExtension.class)
-@Import({GuestNotificationListener.class, TaskNotificationListener.class})
+@Import({GuestNotificationListener.class, TaskNotificationListener.class, EventObserverPatternTest.TestMultiObserverListener.class})
 class EventObserverPatternTest {
+
+    @Component
+    static class TestMultiObserverListener {
+        boolean received = false;
+
+        @org.springframework.context.event.EventListener
+        void onTaskStatusChanged(TaskStatusChangedEvent event) {
+            received = true;
+        }
+    }
 
     @Autowired
     private ApplicationEventPublisher eventPublisher;
+
+    @Autowired
+    private TestMultiObserverListener testMultiObserverListener;
 
     @MockitoBean
     private NotificationRepository notificationRepository;
@@ -77,5 +90,22 @@ class EventObserverPatternTest {
         assertEquals(user, notification.getUser());
         assertEquals("Zmieniono status zadania \"Book Photographer\": Do zrobienia -> Zrobione", notification.getMessage());
         assertFalse(notification.getIsRead());
+    }
+
+    @Test
+    void multiObserverBroadcastingDeliversEventToAllListeners() {
+        User user = User.builder().id(1L).email("user@example.com").build();
+        Event weddingEvent = Event.builder().id(10L).user(user).build();
+        Task task = Task.builder()
+                .id(20L)
+                .name("Book Photographer")
+                .event(weddingEvent)
+                .build();
+
+        TaskStatusChangedEvent event = new TaskStatusChangedEvent(task, "PENDING", "COMPLETED");
+
+        eventPublisher.publishEvent(event);
+
+        assertTrue(testMultiObserverListener.received);
     }
 }
