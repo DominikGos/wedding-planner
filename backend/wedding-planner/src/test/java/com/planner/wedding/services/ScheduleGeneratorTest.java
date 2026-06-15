@@ -3,6 +3,7 @@ package com.planner.wedding.services;
 import com.planner.wedding.entities.Task;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Constructor;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -91,6 +92,19 @@ class ScheduleGeneratorTest {
         ScheduleGenerator generator = ScheduleGenerator.getInstance();
         List<Task> sorted = generator.generateSchedule(new ArrayList<>());
         assertTrue(sorted.isEmpty());
+    }
+
+    @Test
+    void reflectionAttackDoesNotBreakSingleton() throws Exception {
+        Constructor<ScheduleGenerator> constructor = ScheduleGenerator.class.getDeclaredConstructor();
+        constructor.setAccessible(true);
+        ScheduleGenerator reflectionInstance = constructor.newInstance();
+
+        ScheduleGenerator singletonInstance = ScheduleGenerator.getInstance();
+
+        assertNotNull(reflectionInstance);
+        assertNotNull(singletonInstance);
+        assertNotSame(reflectionInstance, singletonInstance);
     }
 
     @Test
