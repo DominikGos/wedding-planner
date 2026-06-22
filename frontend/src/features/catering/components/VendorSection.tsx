@@ -8,7 +8,7 @@ function DocumentIcon() {
       viewBox='0 0 24 24'
       fill='none'
       xmlns='http://www.w3.org/2000/svg'
-      stroke='#d6a061'
+      stroke='var(--primary)'
       strokeWidth='1.8'
       strokeLinecap='round'
       strokeLinejoin='round'
@@ -44,7 +44,7 @@ export function VendorSection({
       <div
         style={{
           padding: '1.2rem 1.35rem',
-          borderBottom: '1px solid #f1e8dc',
+          borderBottom: '1px solid var(--border)',
           display: 'flex',
           alignItems: 'center',
           gap: '0.9rem',
@@ -55,7 +55,7 @@ export function VendorSection({
             width: '3rem',
             height: '3rem',
             borderRadius: '14px',
-            background: '#faf3ee',
+            background: 'var(--surface-soft)',
             display: 'grid',
             placeItems: 'center',
           }}
@@ -73,9 +73,10 @@ export function VendorSection({
             onChange={(event) => onVendorChange(event.target.value)}
             style={{
               minHeight: '50px',
-              border: '1px solid #efe4d7',
+              border: '1px solid var(--border)',
               borderRadius: '14px',
-              background: '#fffdfa',
+              background: 'var(--surface)',
+              color: 'var(--text)',
               padding: '0 1rem',
               width: '100%',
             }}
@@ -90,9 +91,9 @@ export function VendorSection({
 
         <div
           style={{
-            border: '1px solid #efe4d7',
+            border: '1px solid var(--border)',
             borderRadius: '16px',
-            background: '#fffdfa',
+            background: 'var(--surface-soft)',
             padding: '1.25rem',
             display: 'grid',
             gap: '0.9rem',
@@ -117,8 +118,8 @@ export function VendorSection({
               style={{
                 padding: '0.3rem 0.8rem',
                 borderRadius: '999px',
-                background: '#d9f9e5',
-                color: '#14834b',
+                background: 'color-mix(in srgb, var(--ok) 14%, var(--surface))',
+                color: 'var(--ok)',
                 fontWeight: 600,
                 alignSelf: 'flex-start',
               }}
@@ -153,9 +154,9 @@ export function VendorSection({
             placeholder='Dodaj uwagi dotyczace menu, ograniczen dietetycznych, lub preferencji...'
             style={{
               minHeight: '140px',
-              border: '1px solid #efe4d7',
+              border: '1px solid var(--border)',
               borderRadius: '16px',
-              background: '#fbfaf8',
+              background: 'var(--surface)',
               color: 'var(--text)',
               padding: '1rem',
               width: '100%',

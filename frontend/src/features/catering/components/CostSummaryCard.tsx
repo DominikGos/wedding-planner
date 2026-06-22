@@ -14,7 +14,7 @@ function MoneyIcon() {
       viewBox='0 0 24 24'
       fill='none'
       xmlns='http://www.w3.org/2000/svg'
-      stroke='#d6a061'
+      stroke='var(--primary)'
       strokeWidth='1.8'
       strokeLinecap='round'
       strokeLinejoin='round'
@@ -37,7 +37,7 @@ export function CostSummaryCard({
       <div
         style={{
           padding: '1.2rem 1.35rem',
-          borderBottom: '1px solid #f1e8dc',
+          borderBottom: '1px solid var(--border)',
           display: 'flex',
           alignItems: 'center',
           gap: '0.9rem',
@@ -48,7 +48,7 @@ export function CostSummaryCard({
             width: '3rem',
             height: '3rem',
             borderRadius: '14px',
-            background: '#faf3ee',
+            background: 'var(--surface-soft)',
             display: 'grid',
             placeItems: 'center',
           }}
@@ -63,7 +63,7 @@ export function CostSummaryCard({
           style={{
             padding: '1.2rem',
             borderRadius: '16px',
-            background: '#fbf8f3',
+            background: 'var(--surface-soft)',
           }}
         >
           <p style={{ margin: 0, color: 'var(--muted)' }}>Koszt na osobe</p>
@@ -72,7 +72,7 @@ export function CostSummaryCard({
               display: 'block',
               marginTop: '0.3rem',
               fontSize: '2rem',
-              color: '#d6a061',
+              color: 'var(--primary)',
             }}
           >
             {costPerPerson} PLN
@@ -90,7 +90,7 @@ export function CostSummaryCard({
           </div>
         </div>
 
-        <div style={{ borderTop: '1px solid #f1e8dc', paddingTop: '1rem' }}>
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
           <div
             style={{
               display: 'flex',
@@ -100,7 +100,7 @@ export function CostSummaryCard({
             }}
           >
             <strong style={{ fontSize: '1rem' }}>Suma calkowita</strong>
-            <strong style={{ fontSize: '1.8rem', color: '#d6a061' }}>
+            <strong style={{ fontSize: '1.8rem', color: 'var(--primary)' }}>
               {totalCost.toLocaleString('pl-PL')} PLN
             </strong>
           </div>

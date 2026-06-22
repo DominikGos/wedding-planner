@@ -8,7 +8,7 @@ function MenuIcon() {
       viewBox='0 0 24 24'
       fill='none'
       xmlns='http://www.w3.org/2000/svg'
-      stroke='#d6a061'
+      stroke='var(--primary)'
       strokeWidth='1.8'
       strokeLinecap='round'
       strokeLinejoin='round'
@@ -38,7 +38,7 @@ export function MenuSection({
       <div
         style={{
           padding: '1.2rem 1.35rem',
-          borderBottom: '1px solid #f1e8dc',
+          borderBottom: '1px solid var(--border)',
           display: 'flex',
           alignItems: 'center',
           gap: '0.9rem',
@@ -49,7 +49,7 @@ export function MenuSection({
             width: '3rem',
             height: '3rem',
             borderRadius: '14px',
-            background: '#faf3ee',
+            background: 'var(--surface-soft)',
             display: 'grid',
             placeItems: 'center',
           }}
@@ -70,14 +70,14 @@ export function MenuSection({
                   type='button'
                   onClick={() => onToggleItem(section.id, item.id)}
                   style={{
-                    border: `1px solid ${selectedItemId === item.id ? '#d6a061' : '#f0dfcf'}`,
+                    border: `1px solid ${selectedItemId === item.id ? 'var(--primary)' : 'var(--border)'}`,
                     borderRadius: '16px',
                     padding: '1rem 1.2rem',
                     display: 'flex',
                     justifyContent: 'space-between',
                     gap: '1rem',
                     alignItems: 'center',
-                    background: selectedItemId === item.id ? '#fff8f1' : '#fffdfa',
+                    background: selectedItemId === item.id ? 'var(--primary-soft)' : 'var(--surface)',
                     cursor: 'pointer',
                     textAlign: 'left',
                   }}
@@ -88,11 +88,11 @@ export function MenuSection({
                         width: '1.8rem',
                         height: '1.8rem',
                         borderRadius: '8px',
-                        border: item.checked ? '1px solid #d6a061' : '1px solid #efe1d0',
-                        background: item.checked ? '#d6a061' : '#fffdfa',
+                        border: item.checked ? '1px solid var(--primary)' : '1px solid var(--border)',
+                        background: item.checked ? 'var(--primary)' : 'var(--surface)',
                         display: 'grid',
                         placeItems: 'center',
-                        color: '#fff',
+                        color: 'var(--on-primary)',
                         flexShrink: 0,
                         fontSize: '0.95rem',
                         fontWeight: 700,
@@ -103,7 +103,7 @@ export function MenuSection({
                     <strong style={{ fontSize: '1rem', fontWeight: 600 }}>{item.name}</strong>
                   </span>
 
-                  <span style={{ color: '#d6a061', fontWeight: 700, fontSize: '1rem' }}>
+                  <span style={{ color: 'var(--primary)', fontWeight: 700, fontSize: '1rem' }}>
                     {item.price} PLN
                   </span>
                 </button>

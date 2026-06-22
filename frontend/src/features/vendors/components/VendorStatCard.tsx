@@ -15,9 +15,9 @@ export function VendorStatCard({ title, value, note, color, icon }: VendorStatCa
       alignItems: 'center', 
       gap: '1rem', 
       padding: '1.25rem',
-      background: '#fff'
+      background: 'var(--surface)',
     }}>
-      <div style={{
+      <div className='vendor-stat-icon' style={{
         width: '3.5rem',
         height: '3.5rem',
         borderRadius: '14px',
@@ -31,7 +31,7 @@ export function VendorStatCard({ title, value, note, color, icon }: VendorStatCa
       </div>
       <div>
         <span style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>{title}</span>
-        <strong style={{ display: 'block', color: '#2f2a24', fontSize: '1.6rem', lineHeight: '1.2', margin: '0.1rem 0' }}>
+        <strong style={{ display: 'block', color: 'var(--text)', fontSize: '1.6rem', lineHeight: '1.2', margin: '0.1rem 0' }}>
           {value}
         </strong>
         <span style={{ color: 'var(--muted)', fontSize: '0.75rem' }}>{note}</span>

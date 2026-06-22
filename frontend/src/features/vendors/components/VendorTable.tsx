@@ -11,19 +11,19 @@ export function VendorTable({ vendors, onSelectVendor, selectedVendorId }: Vendo
   const getStatusStyle = (status: Vendor['status']) => {
     switch (status) {
       case 'confirmed':
-        return { bg: '#eef8f3', text: '#35684f', label: 'Potwierdzony' }
+        return { className: 'status-pill status-pill-success', label: 'Potwierdzony' }
       case 'pending':
-        return { bg: '#fff9eb', text: '#8c5a12', label: 'Oczekujący' }
+        return { className: 'status-pill status-pill-warning', label: 'Oczekujący' }
       case 'unavailable':
-        return { bg: '#fff2f2', text: '#c53030', label: 'Niedostępny' }
+        return { className: 'status-pill status-pill-danger', label: 'Niedostępny' }
     }
   }
 
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+    <div className='data-table-wrapper'>
+      <table className='data-table'>
         <thead>
-          <tr style={{ borderBottom: '1px solid var(--border)' }}>
+          <tr>
             <th style={headerStyle}>Dostawca</th>
             <th style={headerStyle}>Kategoria</th>
             <th style={headerStyle}>Ocena</th>
@@ -42,8 +42,7 @@ export function VendorTable({ vendors, onSelectVendor, selectedVendorId }: Vendo
                 key={v.id} 
                 onClick={() => onSelectVendor(v)}
                 style={{ 
-                  borderBottom: '1px solid #f6f3ed',
-                  background: isSelected ? '#fff8f1' : 'transparent',
+                  background: isSelected ? 'var(--primary-soft)' : 'var(--surface)',
                   cursor: 'pointer',
                   transition: 'background 0.2s'
                 }}
@@ -76,16 +75,7 @@ export function VendorTable({ vendors, onSelectVendor, selectedVendorId }: Vendo
                   </div>
                 </td>
                 <td style={cellStyle}>
-                  <span
-                    style={{
-                      padding: '0.35rem 0.75rem',
-                      borderRadius: '999px',
-                      fontSize: '0.8rem',
-                      fontWeight: 600,
-                      background: status.bg,
-                      color: status.text,
-                    }}
-                  >
+                  <span className={status.className}>
                     {status.label}
                   </span>
                 </td>
@@ -114,13 +104,11 @@ export function VendorTable({ vendors, onSelectVendor, selectedVendorId }: Vendo
 }
 
 const headerStyle: React.CSSProperties = {
-  padding: '1.25rem 1rem',
   fontSize: '0.85rem',
   fontWeight: 600,
   color: 'var(--muted)',
 }
 
 const cellStyle: React.CSSProperties = {
-  padding: '1.25rem 1rem',
   fontSize: '0.95rem',
 }

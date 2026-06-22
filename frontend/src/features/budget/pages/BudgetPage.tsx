@@ -145,11 +145,11 @@ export function BudgetPage() {
   }, [activeWeddingId, token])
 
   useEffect(() => {
-    loadPayments()
+    queueMicrotask(() => void loadPayments())
   }, [loadPayments])
 
   useEffect(() => {
-    loadEventCosts()
+    queueMicrotask(() => void loadEventCosts())
   }, [loadEventCosts])
 
   const stats = useMemo(() => {
@@ -266,15 +266,7 @@ export function BudgetPage() {
       )}
 
       {error && (
-        <div style={{
-          padding: '1rem',
-          borderRadius: '12px',
-          background: '#fff2f2',
-          color: '#c53030',
-          border: '1px solid #ffdfdf',
-          fontWeight: 600,
-          textAlign: 'center',
-        }}>
+        <div className='app-alert app-alert-danger' style={{ textAlign: 'center' }}>
           {error}
         </div>
       )}
@@ -290,41 +282,11 @@ export function BudgetPage() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <button
-            onClick={handleExport}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              padding: '0.6rem 1rem',
-              background: '#fff',
-              border: '1px solid var(--border)',
-              borderRadius: '10px',
-              fontSize: '0.9rem',
-              fontWeight: 600,
-              cursor: 'pointer'
-            }}
-          >
+          <button onClick={handleExport} className='button-secondary'>
             <BudgetIcon name='file-text' color='var(--text)' size={18} />
             Eksportuj Raport
           </button>
-          <button
-            onClick={() => setIsCreateFormOpen((isOpen) => !isOpen)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              padding: '0.6rem 1rem',
-              background: 'var(--primary)',
-              color: '#fff',
-              border: '1px solid var(--primary)',
-              borderRadius: '10px',
-              fontSize: '0.9rem',
-              fontWeight: 700,
-              cursor: 'pointer'
-            }}
-          >
-            <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>+</span>
+          <button onClick={() => setIsCreateFormOpen((isOpen) => !isOpen)} className='button-primary'>
             Dodaj płatność
           </button>
         </div>
@@ -390,7 +352,7 @@ export function BudgetPage() {
               <select
                 value={createPaymentForm.method}
                 onChange={(event) => setCreatePaymentForm((form) => ({ ...form, method: event.target.value as PaymentMethod }))}
-                style={{ padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid var(--border)', background: '#fff' }}
+                style={{ padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
               >
                 <option value='ONLINE'>ONLINE</option>
                 <option value='OFFLINE'>OFFLINE</option>
@@ -410,16 +372,8 @@ export function BudgetPage() {
               <button
                 type='submit'
                 disabled={isCreatingPayment}
-                style={{
-                  padding: '0.7rem 1rem',
-                  borderRadius: '10px',
-                  border: '1px solid var(--primary)',
-                  background: 'var(--primary)',
-                  color: '#fff',
-                  fontWeight: 700,
-                  cursor: isCreatingPayment ? 'not-allowed' : 'pointer',
-                  opacity: isCreatingPayment ? 0.75 : 1,
-                }}
+                className='button-primary'
+                style={{ cursor: isCreatingPayment ? 'not-allowed' : 'pointer', opacity: isCreatingPayment ? 0.75 : 1 }}
               >
                 {isCreatingPayment ? 'Zapisywanie...' : 'Zapisz'}
               </button>
@@ -427,14 +381,8 @@ export function BudgetPage() {
                 type='button'
                 onClick={() => setIsCreateFormOpen(false)}
                 disabled={isCreatingPayment}
-                style={{
-                  padding: '0.7rem 1rem',
-                  borderRadius: '10px',
-                  border: '1px solid var(--border)',
-                  background: '#fff',
-                  fontWeight: 600,
-                  cursor: isCreatingPayment ? 'not-allowed' : 'pointer',
-                }}
+                className='button-secondary'
+                style={{ cursor: isCreatingPayment ? 'not-allowed' : 'pointer' }}
               >
                 Anuluj
               </button>
@@ -484,33 +432,25 @@ export function BudgetPage() {
               Suma kosztów zadań
             </p>
           </div>
-          <div style={{
-            padding: '0.7rem 1rem',
-            borderRadius: '12px',
-            background: '#eef4ff',
-            color: '#2f6db5',
-            border: '1px solid #d7e5ff',
-            fontWeight: 800,
-            whiteSpace: 'nowrap',
-          }}>
+          <div className='status-pill status-pill-info' style={{ padding: '0.7rem 1rem', fontWeight: 800, whiteSpace: 'nowrap' }}>
             {isCostLoading ? 'Liczenie...' : `${costSummary.totalCost.toLocaleString('pl-PL')} PLN`}
           </div>
         </div>
 
         {!activeWeddingId && (
-          <div style={{ padding: '1rem', borderRadius: '12px', background: '#fcfaf7', border: '1px solid #f1e8dc', color: 'var(--muted)' }}>
+          <div className='surface-panel' style={{ padding: '1rem', color: 'var(--muted)' }}>
             Wybierz aktywne wydarzenie, aby zobaczyć koszty zadań.
           </div>
         )}
 
         {activeWeddingId && !token && (
-          <div style={{ padding: '1rem', borderRadius: '12px', background: '#fcfaf7', border: '1px solid #f1e8dc', color: 'var(--muted)' }}>
+          <div className='surface-panel' style={{ padding: '1rem', color: 'var(--muted)' }}>
             Podsumowanie kosztów zadań jest dostępne po zalogowaniu przez Google.
           </div>
         )}
 
         {costError && (
-          <div style={{ padding: '1rem', borderRadius: '12px', background: '#fff2f2', color: '#c53030', border: '1px solid #ffdfdf', fontWeight: 600 }}>
+          <div className='app-alert app-alert-danger'>
             {costError}
           </div>
         )}
@@ -520,17 +460,17 @@ export function BudgetPage() {
         )}
 
         {!isCostLoading && activeWeddingId && token && !costError && costSummary.tasks.length === 0 && (
-          <div style={{ padding: '1rem', borderRadius: '12px', background: '#fcfaf7', border: '1px solid #f1e8dc', color: 'var(--muted)' }}>
+          <div className='surface-panel' style={{ padding: '1rem', color: 'var(--muted)' }}>
             Brak zadań z wyliczalnym kosztem dla tego wydarzenia.
           </div>
         )}
 
         {!isCostLoading && costSummary.tasks.length > 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.7fr) minmax(260px, 0.9fr)', gap: '1rem', alignItems: 'start' }}>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <div className="budget-cost-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.7fr) minmax(260px, 0.9fr)', gap: '1rem', alignItems: 'start' }}>
+            <div className='data-table-wrapper'>
+              <table className='data-table'>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                  <tr>
                     <th style={{ padding: '0.8rem 0.75rem', color: 'var(--muted)', fontSize: '0.85rem' }}>Zadanie</th>
                     <th style={{ padding: '0.8rem 0.75rem', color: 'var(--muted)', fontSize: '0.85rem' }}>Typ</th>
                     <th style={{ padding: '0.8rem 0.75rem', color: 'var(--muted)', fontSize: '0.85rem', textAlign: 'right' }}>Koszt</th>
@@ -538,10 +478,10 @@ export function BudgetPage() {
                 </thead>
                 <tbody>
                   {costSummary.tasks.map(task => (
-                    <tr key={task.taskId} style={{ borderBottom: '1px solid #f6f3ed' }}>
+                    <tr key={task.taskId}>
                       <td style={{ padding: '0.9rem 0.75rem', fontWeight: 650 }}>{task.taskName}</td>
                       <td style={{ padding: '0.9rem 0.75rem', color: 'var(--muted)' }}>{taskTypeLabels[task.taskType]}</td>
-                      <td style={{ padding: '0.9rem 0.75rem', textAlign: 'right', fontWeight: 800, color: '#2f6db5' }}>
+                      <td style={{ padding: '0.9rem 0.75rem', textAlign: 'right', fontWeight: 800, color: 'var(--info)' }}>
                         {task.cost.toLocaleString('pl-PL')} PLN
                       </td>
                     </tr>
@@ -552,13 +492,13 @@ export function BudgetPage() {
 
             <div style={{ display: 'grid', gap: '0.75rem' }}>
               {taskCostStats.map(stat => (
-                <div key={stat.type} style={{ padding: '0.95rem', borderRadius: '12px', border: '1px solid #f1e8dc', background: '#fcfaf7' }}>
+                <div key={stat.type} className='surface-panel' style={{ padding: '0.95rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontWeight: 700 }}>
                     <span>{stat.label}</span>
                     <span>{stat.amount.toLocaleString('pl-PL')} PLN</span>
                   </div>
-                  <div style={{ height: '8px', borderRadius: '999px', background: '#ede0d4', overflow: 'hidden', marginTop: '0.75rem' }}>
-                    <div style={{ height: '100%', width: `${stat.percentage}%`, background: '#2f6db5' }} />
+                  <div style={{ height: '8px', borderRadius: '999px', background: 'var(--border)', overflow: 'hidden', marginTop: '0.75rem' }}>
+                    <div style={{ height: '100%', width: `${stat.percentage}%`, background: 'var(--info)' }} />
                   </div>
                   <div style={{ marginTop: '0.4rem', color: 'var(--muted)', fontSize: '0.85rem' }}>{stat.percentage}% kosztów zadań</div>
                 </div>
@@ -568,14 +508,14 @@ export function BudgetPage() {
         )}
       </section>
 
-      <div style={{
+      <div className="budget-main-grid" style={{
         display: 'grid',
         gridTemplateColumns: 'minmax(0, 2.5fr) minmax(300px, 1fr)',
         gap: '1.5rem',
         alignItems: 'start'
       }}>
         <section className='page-card' style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #f1e8dc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Lista płatności</h2>
             <div style={{ display: 'flex', gap: '0.75rem' }}>
               <select
@@ -586,7 +526,8 @@ export function BudgetPage() {
                   borderRadius: '8px',
                   border: '1px solid var(--border)',
                   fontSize: '0.85rem',
-                  background: '#fff'
+                  background: 'var(--surface)',
+                  color: 'var(--text)'
                 }}
               >
                 <option value="all">Wszystkie statusy</option>
@@ -602,7 +543,8 @@ export function BudgetPage() {
                 height: '32px',
                 borderRadius: '8px',
                 border: '1px solid var(--border)',
-                background: '#fff',
+                background: 'var(--surface)',
+                color: 'var(--text)',
                 display: 'grid',
                 placeItems: 'center',
                 cursor: 'pointer'

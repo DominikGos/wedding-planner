@@ -69,7 +69,7 @@ export function LoginPage() {
   }
 
   return (
-    <div style={{ maxWidth: '480px', margin: '3rem auto', padding: '1rem' }}>
+    <div className='public-page' style={{ maxWidth: '480px', margin: '3rem auto', padding: '1rem' }}>
       
       {/* Decorative Brand Header */}
       <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>

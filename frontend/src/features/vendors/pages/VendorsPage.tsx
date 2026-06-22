@@ -235,9 +235,9 @@ export function VendorsPage() {
         <div style={{
           padding: '1rem',
           borderRadius: '12px',
-          background: vendorsNotification.type === 'success' ? '#daf6e5' : '#fff2f2',
-          color: vendorsNotification.type === 'success' ? '#14834b' : '#c53030',
-          border: `1px solid ${vendorsNotification.type === 'success' ? '#bfeecf' : '#f4c1c1'}`,
+          background: vendorsNotification.type === 'success' ? 'color-mix(in srgb, var(--ok) 14%, var(--surface))' : 'var(--danger-soft)',
+          color: vendorsNotification.type === 'success' ? 'var(--ok)' : 'var(--danger)',
+          border: `1px solid ${vendorsNotification.type === 'success' ? 'var(--ok)' : 'var(--danger)'}`,
           fontWeight: 600,
           textAlign: 'center',
           animation: 'fadeIn 0.3s ease'
@@ -246,12 +246,12 @@ export function VendorsPage() {
         </div>
       )}
       {loading && (
-        <div style={{ padding: '1rem', borderRadius: '12px', background: '#fff8ed', color: '#8c5a12', border: '1px solid #f4da8b', fontWeight: 600, textAlign: 'center' }}>
+        <div className='app-alert app-alert-info' style={{ textAlign: 'center' }}>
           Pobieramy dostawców z backendu...
         </div>
       )}
       {error && (
-        <div style={{ padding: '1rem', borderRadius: '12px', background: '#fff2f2', color: '#c53030', border: '1px solid #f4c1c1', fontWeight: 600, textAlign: 'center' }}>
+        <div className='app-alert app-alert-danger' style={{ textAlign: 'center' }}>
           {error}
         </div>
       )}
@@ -272,7 +272,7 @@ export function VendorsPage() {
                 gap: '0.5rem',
                 padding: '0.65rem 1.1rem',
                 background: 'var(--primary)',
-                color: '#fff',
+                color: 'var(--on-primary)',
                 border: 'none',
                 borderRadius: '10px',
                 fontSize: '0.9rem',
@@ -281,7 +281,7 @@ export function VendorsPage() {
                 boxShadow: '0 4px 12px rgba(184, 90, 31, 0.2)'
               }}
             >
-              <VendorIcon name='plus' color='#fff' size={18} strokeWidth={2.5} />
+              <VendorIcon name='plus' color='var(--on-primary)' size={18} strokeWidth={2.5} />
               Dodaj dostawcę
             </button>
           </div>
@@ -321,18 +321,18 @@ export function VendorsPage() {
       </div>
 
       {/* MAIN TWO-COLUMN CONTAINER */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'minmax(0, 2.5fr) minmax(300px, 1fr)', 
+      <div className="vendors-layout" style={{
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 2.5fr) minmax(300px, 1fr)',
         gap: '1.5rem',
         alignItems: 'start'
       }}>
         
         {/* Table & Filter list */}
         <div style={{ display: 'grid', gap: '1.25rem' }}>
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: '1.5fr 1fr 1fr', 
+          <div className="vendors-filters" style={{
+            display: 'grid',
+            gridTemplateColumns: '1.5fr 1fr 1fr',
             gap: '0.75rem',
             alignItems: 'center' 
           }}>
@@ -348,7 +348,8 @@ export function VendorsPage() {
                   borderRadius: '12px',
                   border: '1px solid var(--border)',
                   fontSize: '0.9rem',
-                  background: '#fff'
+                  background: 'var(--surface)',
+                  color: 'var(--text)'
                 }}
               />
               <div style={{ position: 'absolute', left: '0.8rem', top: '50%', transform: 'translateY(-50%)' }}>
@@ -363,7 +364,8 @@ export function VendorsPage() {
                 borderRadius: '12px',
                 border: '1px solid var(--border)',
                 fontSize: '0.9rem',
-                background: '#fff'
+                background: 'var(--surface)',
+                color: 'var(--text)'
               }}
             >
               <option value="All">Kategoria: Wszystkie</option>
@@ -377,7 +379,8 @@ export function VendorsPage() {
                 borderRadius: '12px',
                 border: '1px solid var(--border)',
                 fontSize: '0.9rem',
-                background: '#fff'
+                background: 'var(--surface)',
+                color: 'var(--text)'
               }}
             >
               <option value="All">Status: Wszystkie</option>
@@ -401,7 +404,7 @@ export function VendorsPage() {
             
             <div style={{ 
               padding: '1.25rem', 
-              borderTop: '1px solid #f6f3ed', 
+              borderTop: '1px solid var(--border)',
               display: 'flex', 
               justifyContent: 'space-between', 
               alignItems: 'center' 
@@ -433,7 +436,7 @@ export function VendorsPage() {
 
       {/* LUXURY ADD VENDOR MODAL */}
       {showAddModal && (
-        <div style={{
+        <div className="modal-backdrop" style={{
           position: 'fixed',
           inset: 0,
           background: 'rgba(47, 42, 36, 0.4)',
@@ -446,11 +449,11 @@ export function VendorsPage() {
         }}>
           <form 
             onSubmit={handleAddSubmit}
-            className="page-card" 
+            className="page-card modal-card"
             style={{
               width: '100%',
               maxWidth: '460px',
-              background: '#fff',
+              background: 'var(--surface)',
               padding: '2.5rem',
               borderRadius: '20px',
               boxShadow: '0 20px 50px rgba(47, 42, 36, 0.15)',
@@ -500,7 +503,7 @@ export function VendorsPage() {
               <select 
                 value={newVendor.serviceType}
                 onChange={(e) => setNewVendor(prev => ({ ...prev, serviceType: e.target.value }))}
-                style={{ padding: '0.7rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.95rem', background: '#fff' }}
+                style={{ padding: '0.7rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.95rem', background: 'var(--surface)', color: 'var(--text)' }}
               >
                 <option value="Catering">Catering</option>
                 <option value="Florystyka">Florystyka</option>
@@ -545,7 +548,7 @@ export function VendorsPage() {
                   padding: '0.75rem',
                   borderRadius: '10px',
                   border: '1px solid var(--border)',
-                  background: '#fff',
+                  background: 'var(--surface)',
                   color: 'var(--muted)',
                   fontWeight: 600,
                   cursor: 'pointer'
@@ -561,7 +564,7 @@ export function VendorsPage() {
                   borderRadius: '10px',
                   border: 'none',
                   background: 'var(--primary)',
-                  color: '#fff',
+                  color: 'var(--on-primary)',
                   fontWeight: 700,
                   cursor: 'pointer',
                   boxShadow: '0 4px 12px rgba(184, 90, 31, 0.2)'

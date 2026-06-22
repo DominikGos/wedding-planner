@@ -7,9 +7,6 @@ type TopStatCardProps = {
   note: string
   color: string
   icon: DashboardIconName
-  isHovered: boolean
-  onHoverStart: () => void
-  onHoverEnd: () => void
 }
 
 export function TopStatCard({
@@ -18,22 +15,13 @@ export function TopStatCard({
   note,
   color,
   icon,
-  isHovered,
-  onHoverStart,
-  onHoverEnd,
 }: TopStatCardProps) {
   return (
     <article
-      className='stat-item'
-      onMouseEnter={onHoverStart}
-      onMouseLeave={onHoverEnd}
+      className='stat-item dashboard-top-stat'
       style={{
         padding: '1.15rem',
         textAlign: 'left',
-        borderColor: isHovered ? color : 'var(--border)',
-        background: isHovered ? '#fff9f3' : '#fff',
-        boxShadow: isHovered ? '0 8px 24px rgba(47, 42, 36, 0.08)' : 'none',
-        transition: 'border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease',
       }}
     >
       <div
@@ -55,7 +43,7 @@ export function TopStatCard({
             width: '3.1rem',
             height: '3.1rem',
             borderRadius: '14px',
-            background: '#fcf6f1',
+            background: 'var(--surface-soft)',
             display: 'grid',
             placeItems: 'center',
             flexShrink: 0,

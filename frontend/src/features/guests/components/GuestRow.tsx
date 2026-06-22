@@ -3,33 +3,26 @@ import { StatusBadge } from './StatusBadge'
 
 type GuestRowProps = {
   guest: Guest
-  isSelected: boolean
-  onSelect: () => void
   onEdit: () => void
 }
 
 export function GuestRow({
   guest,
-  isSelected,
-  onSelect,
   onEdit,
 }: GuestRowProps) {
   const isDeclined = guest.status === 'Odrzucony'
 
   return (
     <div
-      onClick={onSelect}
+      className='data-table-row'
       style={{
         display: 'grid',
         gridTemplateColumns: '1.5fr 1.5fr 0.8fr 1fr 1.2fr 1fr 0.6fr',
         gap: '1rem',
         minWidth: '1120px',
         padding: '0.95rem 0.9rem',
-        borderTop: '1px solid #f4eadf',
         alignItems: 'center',
-        borderLeft: isSelected ? '3px solid #d6a061' : '3px solid transparent',
-        background: isSelected ? '#fff8f1' : '#fffdfa',
-        cursor: 'pointer',
+        borderLeft: '3px solid transparent',
         textAlign: 'left',
       }}
     >
@@ -42,8 +35,9 @@ export function GuestRow({
             minHeight: '2.2rem',
             padding: '0.35rem 0.75rem',
             borderRadius: '999px',
-            background: '#faf3ee',
-            color: '#d6a061',
+            background: 'var(--surface-soft)',
+            color: 'var(--text)',
+            border: '1px solid var(--border)',
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -67,14 +61,7 @@ export function GuestRow({
             event.stopPropagation()
             onEdit()
           }}
-          style={{
-            color: '#d6a061',
-            fontWeight: 500,
-            border: 'none',
-            background: 'transparent',
-            cursor: 'pointer',
-            padding: 0,
-          }}
+          className='table-action-link'
         >
           Edytuj
         </button>

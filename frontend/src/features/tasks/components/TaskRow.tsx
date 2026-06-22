@@ -18,12 +18,12 @@ export function TaskRow({ task, isSelected, onSelect, onStatusChange }: TaskRowP
   const type = taskTypes.find(item => item.value === task.type)?.label ?? task.type
 
   return (
-    <div onClick={onSelect} style={{ borderTop: '1px solid #f3e9de', background: isSelected ? '#fff8f1' : '#fffdfa', padding: '0.95rem 1rem', display: 'grid', gridTemplateColumns: 'minmax(220px, 2.2fr) 1fr 0.9fr 0.9fr 0.9fr', gap: '0.9rem', alignItems: 'center', cursor: 'pointer' }}>
+    <div className="task-row" onClick={onSelect} style={{ borderTop: '1px solid var(--border)', background: isSelected ? 'var(--primary-soft)' : 'var(--surface)', padding: '0.95rem 1rem', display: 'grid', gridTemplateColumns: 'minmax(220px, 2.2fr) 1fr 0.9fr 0.9fr 0.9fr', gap: '0.9rem', alignItems: 'center', cursor: 'pointer' }}>
       <span>
         <strong style={{ display: 'block', fontSize: '1rem' }}>{task.name}</strong>
         <span style={{ display: 'block', marginTop: '0.25rem', color: 'var(--muted)', fontSize: '0.85rem' }}>{task.description || 'Brak opisu'}</span>
       </span>
-      <span style={{ color: 'var(--primary)', fontWeight: 600 }}>{type}</span>
+      <span style={{ color: 'var(--text)', fontWeight: 600 }}>{type}</span>
       <span>{date}</span>
       <span onClick={event => event.stopPropagation()}>
         <select value={task.status} onChange={event => onStatusChange(event.target.value as TaskStatus)} className='task-status-select'>

@@ -20,9 +20,9 @@ export function TaskStats({
       type='button'
       onClick={onClick}
       style={{
-        border: `1px solid ${isActive ? color : '#efe1d0'}`,
+        border: `1px solid ${isActive ? color : 'var(--border)'}`,
         borderRadius: '16px',
-        background: isActive ? '#fff8f1' : '#fffdfa',
+        background: isActive ? 'var(--primary-soft)' : 'var(--surface)',
         padding: '1rem 1rem 0.95rem',
         display: 'grid',
         gap: '0.45rem',
@@ -44,7 +44,7 @@ export function TaskStats({
         />
         {title}
       </span>
-      <strong style={{ fontSize: '2rem', color: '#1f1a14' }}>{value}</strong>
+      <strong style={{ fontSize: '2rem', color: 'var(--text)' }}>{value}</strong>
       <span style={{ color: 'var(--muted)' }}>{note}</span>
     </button>
   )

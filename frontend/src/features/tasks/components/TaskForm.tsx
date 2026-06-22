@@ -31,15 +31,16 @@ export function TaskForm({ values, editing, onChange, onCancel, onSubmit, onDele
     width: '100%',
     minHeight: '48px',
     borderRadius: '12px',
-    border: '1px solid #efe4d7',
-    background: '#fffdfa',
+    border: '1px solid var(--border)',
+    background: 'var(--surface)',
+    color: 'var(--text)',
     padding: '0 1rem',
   }
   const selectStyle = { ...inputStyle, paddingRight: '2.5rem' }
 
   return (
     <article className='page-card' style={{ padding: 0, overflow: 'hidden' }}>
-      <div style={{ padding: '1.2rem 1.35rem', borderBottom: '1px solid #f1e8dc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="task-form-header" style={{ padding: '1.2rem 1.35rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{editing ? 'Edytuj zadanie' : 'Dodaj nowe zadanie'}</h2>
         <button type='button' onClick={onCancel} className='button-secondary' style={{ minHeight: '36px', padding: '0.4rem 0.75rem' }}>Zamknij</button>
       </div>
@@ -62,7 +63,7 @@ export function TaskForm({ values, editing, onChange, onCancel, onSubmit, onDele
           <textarea value={values.description} onChange={event => onChange('description', event.target.value)} style={{ ...inputStyle, minHeight: '100px', padding: '0.9rem 1rem', resize: 'vertical' }} />
         </label>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
+        <div className="form-two-columns" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
           <label style={{ display: 'grid', gap: '0.5rem' }}>
             <span style={{ fontWeight: 600 }}>Data</span>
             <input type='date' value={values.date} onChange={event => onChange('date', event.target.value)} style={inputStyle} />
@@ -82,7 +83,7 @@ export function TaskForm({ values, editing, onChange, onCancel, onSubmit, onDele
           </select>
         </label>
 
-        <div style={{ borderTop: '1px solid #f1e8dc', paddingTop: '1rem' }}>
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
           <strong>Szczegóły i koszt kategorii</strong>
           <span style={{ marginLeft: '0.5rem', color: 'var(--muted)', fontSize: '0.85rem' }}>Opcjonalne</span>
         </div>
@@ -110,7 +111,7 @@ export function TaskForm({ values, editing, onChange, onCancel, onSubmit, onDele
           <strong style={{ color: 'var(--primary)' }}>Szacowany koszt: {cateringCost.toLocaleString('pl-PL')} PLN</strong>
         )}
 
-        <div style={{ display: 'flex', gap: '0.8rem', marginTop: '0.35rem' }}>
+        <div className="form-actions" style={{ display: 'flex', gap: '0.8rem', marginTop: '0.35rem' }}>
           <button type='button' onClick={onCancel} className='button-secondary' style={{ flex: 1 }}>Anuluj</button>
           <button type='button' onClick={onSubmit} className='button-primary' style={{ flex: 1 }}>
             {editing ? 'Zapisz zmiany' : 'Dodaj zadanie'}
@@ -118,7 +119,7 @@ export function TaskForm({ values, editing, onChange, onCancel, onSubmit, onDele
         </div>
 
         {editing && onDelete && (
-          <button type='button' onClick={onDelete} style={{ minHeight: '44px', borderRadius: '12px', border: '1px solid #f4c1c1', background: '#fff2f2', color: '#c53030', fontWeight: 600, cursor: 'pointer' }}>
+          <button type='button' onClick={onDelete} style={{ minHeight: '44px', borderRadius: '12px', border: '1px solid var(--danger)', background: 'var(--danger-soft)', color: 'var(--danger)', fontWeight: 600, cursor: 'pointer' }}>
             Usuń zadanie
           </button>
         )}

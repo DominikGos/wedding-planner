@@ -12,6 +12,7 @@ import { VendorsPage } from '../features/vendors/pages/VendorsPage'
 import { CreateEventPage } from '../features/events/pages/CreateEventPage'
 import { EditEventPage } from '../features/events/pages/EditEventPage'
 import { GuestRsvpPage } from '../features/guests/pages/GuestRsvpPage'
+import { SettingsPage } from '../features/settings/pages/SettingsPage'
 
 export const router = createBrowserRouter([
   {
@@ -73,6 +74,10 @@ export const router = createBrowserRouter([
       {
         path: 'guests',
         element: <GuestsPage />,
+      },
+      {
+        path: 'settings',
+        element: <SettingsPage />,
       },
     ],
   },

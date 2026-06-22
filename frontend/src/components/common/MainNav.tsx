@@ -69,6 +69,21 @@ export function MainNav({ mobileCallback }: MainNavProps) {
         >
           {user.role === 'planner' ? 'Wybór Wesela' : 'Panel'}
         </NavLink>
+        <NavLink
+          to="/settings"
+          onClick={mobileCallback}
+          className={({ isActive }) => (isActive ? 'active' : '')}
+          style={({ isActive }) => ({
+            padding: '0.45rem 0.85rem',
+            borderRadius: '999px',
+            color: isActive ? 'var(--primary)' : 'var(--muted)',
+            background: isActive ? 'var(--primary-soft)' : 'transparent',
+            fontWeight: isActive ? 600 : 500,
+            fontSize: '0.92rem'
+          })}
+        >
+          ⚙ Ustawienia
+        </NavLink>
       </nav>
     )
   }
@@ -82,6 +97,7 @@ export function MainNav({ mobileCallback }: MainNavProps) {
     { to: '/vendors', label: 'Dostawcy' },
     { to: '/guests', label: 'Goście' },
     { to: '/catering', label: 'Catering' },
+    { to: '/settings', label: 'Ustawienia' },
   ]
 
   return (
