@@ -6,6 +6,8 @@ import com.planner.wedding.entities.Event;
 import com.planner.wedding.entities.Expense;
 import com.planner.wedding.entities.Task;
 import com.planner.wedding.entities.User;
+import com.planner.wedding.entities.TaskType;
+import com.planner.wedding.entities.PaymentStatus;
 import com.planner.wedding.repositories.ExpenseRepository;
 import com.planner.wedding.repositories.TaskRepository;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -25,7 +29,6 @@ public class ExpenseService {
     private final TaskRepository taskRepository;
     private final EventService eventService;
 
-    @Transactional(readOnly = true)
     public List<ExpenseResponse> getExpenses(Long taskId, Long eventId, User user) {
         List<Expense> expenses;
         if (user != null) {
@@ -36,6 +39,7 @@ public class ExpenseService {
                 expenses = expenseRepository.findByTaskId(taskId);
             } else if (eventId != null) {
                 eventService.requireOwnedEvent(eventId, user);
+                ensureExpensesForTasks(eventId);
                 List<Task> tasks = taskRepository.findByEventId(eventId);
                 List<Long> taskIds = tasks.stream().map(Task::getId).toList();
                 expenses = taskIds.isEmpty() ? List.of() : taskIds.stream()
@@ -56,6 +60,7 @@ public class ExpenseService {
             if (taskId != null) {
                 expenses = expenseRepository.findByTaskId(taskId);
             } else if (eventId != null) {
+                ensureExpensesForTasks(eventId);
                 List<Task> tasks = taskRepository.findByEventId(eventId);
                 List<Long> taskIds = tasks.stream().map(Task::getId).toList();
                 expenses = taskIds.isEmpty() ? List.of() : taskIds.stream()
@@ -144,5 +149,53 @@ public class ExpenseService {
                 .status(expense.getStatus())
                 .paymentId(expense.getPayment() != null ? expense.getPayment().getId() : null)
                 .build();
+    }
+
+    private void ensureExpensesForTasks(Long eventId) {
+        List<Task> tasks = taskRepository.findByEventId(eventId);
+        for (Task task : tasks) {
+            BigDecimal cost = calculateTaskCost(task);
+            if (cost.compareTo(BigDecimal.ZERO) > 0) {
+                List<Expense> existing = expenseRepository.findByTaskId(task.getId());
+                if (existing.isEmpty()) {
+                    Expense expense = Expense.builder()
+                            .task(task)
+                            .amount(cost)
+                            .description(task.getName())
+                            .category("TASK_COST")
+                            .date(LocalDateTime.now())
+                            .status("PENDING")
+                            .build();
+                    expenseRepository.save(expense);
+                } else {
+                    Expense expense = existing.get(0);
+                    if (expense.getPayment() == null || 
+                        (expense.getPayment().getStatus() != PaymentStatus.SUCCESS && 
+                         expense.getPayment().getStatus() != PaymentStatus.OFFLINE_APPROVED)) {
+                        expense.setAmount(cost);
+                        expense.setDescription(task.getName());
+                        expenseRepository.save(expense);
+                    }
+                }
+            }
+        }
+    }
+
+    private BigDecimal calculateTaskCost(Task task) {
+        if (task.getType() == null) return BigDecimal.ZERO;
+        switch (task.getType()) {
+            case CATERING:
+                if (task.getPricePerGuest() != null && task.getNumberOfGuests() != null) {
+                    return task.getPricePerGuest().multiply(BigDecimal.valueOf(task.getNumberOfGuests()));
+                }
+                break;
+            case DECORATION:
+            case ENTERTAINMENT:
+                if (task.getTotalPrice() != null) {
+                    return task.getTotalPrice();
+                }
+                break;
+        }
+        return BigDecimal.ZERO;
     }
 }

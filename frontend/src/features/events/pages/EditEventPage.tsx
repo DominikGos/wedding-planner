@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { getEvent, getEvents, toWedding, updateEvent } from '../../../api/eventApi'
 import type { RootState } from '../../../store'
 import { setActiveWeddingId, setEvents } from '../../../store/slices/authSlice'
 
 export function EditEventPage() {
+  const { t } = useTranslation()
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const { eventId: eventIdParam } = useParams()
@@ -23,7 +25,7 @@ export function EditEventPage() {
   const [isLoading, setIsLoading] = useState(isActiveEvent)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(
-    isActiveEvent ? null : 'Nie wskazano aktywnego wydarzenia do edycji.',
+    isActiveEvent ? null : t('editEvent.noActiveEvent'),
   )
 
   useEffect(() => {
@@ -45,14 +47,14 @@ export function EditEventPage() {
           status: event.status,
         })
       } catch {
-        setError('Nie udało się pobrać szczegółów wydarzenia.')
+        setError(t('editEvent.loadError'))
       } finally {
         setIsLoading(false)
       }
     }
 
     void loadEvent()
-  }, [eventId, isActiveEvent, token])
+  }, [eventId, isActiveEvent, token, t])
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target
@@ -62,7 +64,7 @@ export function EditEventPage() {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
     if (!isActiveEvent) {
-      setError('Brak aktywnego wydarzenia do zapisania.')
+      setError(t('editEvent.noActiveEventSave'))
       return
     }
 
@@ -82,19 +84,19 @@ export function EditEventPage() {
       dispatch(setActiveWeddingId(eventId))
       navigate('/?eventUpdated=1')
     } catch {
-      setError('Nie udało się zapisać zmian wydarzenia. Spróbuj ponownie.')
+      setError(t('editEvent.saveError'))
     } finally {
       setIsSaving(false)
     }
   }
 
-  const displayedError = isActiveEvent ? error : 'Nie wskazano aktywnego wydarzenia do edycji.'
+  const displayedError = isActiveEvent ? error : t('editEvent.noActiveEvent')
 
   if (isLoading) {
     return (
       <section className='page-card' style={{ maxWidth: '680px', margin: '3rem auto', padding: '2rem', textAlign: 'center' }}>
-        <h1 className='page-title'>Ładowanie wydarzenia...</h1>
-        <p className='page-subtitle'>Pobieramy aktualne szczegóły z backendu.</p>
+        <h1 className='page-title'>{t('editEvent.loading')}</h1>
+        <p className='page-subtitle'>{t('editEvent.loadingText')}</p>
       </section>
     )
   }
@@ -103,12 +105,12 @@ export function EditEventPage() {
     <section style={{ maxWidth: '680px', margin: '2rem auto', display: 'grid', gap: '1.5rem' }}>
       <header style={{ textAlign: 'center' }}>
         <span style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--primary)', fontWeight: 600 }}>
-          Aktywne wydarzenie
+          {t('editEvent.tag')}
         </span>
         <h1 className='page-title' style={{ fontFamily: 'Georgia, serif', fontSize: '2.3rem', fontWeight: 500 }}>
-          Edytuj szczegóły wesela
+          {t('editEvent.title')}
         </h1>
-        <p className='page-subtitle'>Zmień imiona, datę lub miejsce wydarzenia.</p>
+        <p className='page-subtitle'>{t('editEvent.subtitle')}</p>
       </header>
 
       <form onSubmit={handleSubmit} className='page-card' style={{ padding: '2.5rem', display: 'grid', gap: '1.4rem' }}>
@@ -116,26 +118,26 @@ export function EditEventPage() {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
           <label style={labelStyle}>
-            Twoje imię
+            {t('editEvent.fieldFirstName')}
             <input name='firstName' value={formData.firstName} onChange={handleChange} required style={inputStyle} />
           </label>
           <label style={labelStyle}>
-            Imię Partnera/Partnerki
+            {t('editEvent.fieldPartnerName')}
             <input name='partnerName' value={formData.partnerName} onChange={handleChange} required style={inputStyle} />
           </label>
         </div>
         <label style={labelStyle}>
-          Data ślubu
+          {t('editEvent.fieldDate')}
           <input type='date' name='date' value={formData.date} onChange={handleChange} required style={inputStyle} />
         </label>
         <label style={labelStyle}>
-          Miejsce / Sala Weselna (opcjonalnie)
+          {t('editEvent.fieldLocation')}
           <input name='location' value={formData.location} onChange={handleChange} style={inputStyle} />
         </label>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
           <Link to='/' style={{ padding: '0.75rem 1.5rem', borderRadius: '10px', border: '1px solid var(--border)', color: 'var(--muted)', fontWeight: 600 }}>
-            Anuluj
+            {t('editEvent.cancelBtn')}
           </Link>
           <button type='submit' disabled={isSaving || !isActiveEvent} style={{
             padding: '0.75rem 1.8rem',
@@ -147,7 +149,7 @@ export function EditEventPage() {
             cursor: isSaving ? 'wait' : 'pointer',
             opacity: isSaving || !isActiveEvent ? 0.7 : 1,
           }}>
-            {isSaving ? 'Zapisywanie...' : 'Zapisz zmiany'}
+            {isSaving ? t('editEvent.savingBtn') : t('editEvent.saveBtn')}
           </button>
         </div>
       </form>

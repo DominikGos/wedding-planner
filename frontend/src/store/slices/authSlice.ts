@@ -44,10 +44,10 @@ function getStoredAuthState(): StoredAuthState | null {
     const storedToken = window.localStorage.getItem(WEDDING_PLANNER_TOKEN_KEY)
     return storedToken
       ? {
-          user: googleOAuthUser,
-          token: storedToken,
-          activeWeddingId: null,
-        }
+        user: googleOAuthUser,
+        token: storedToken,
+        activeWeddingId: null,
+      }
       : null
   }
 
@@ -114,15 +114,16 @@ const authSlice = createSlice({
       state.eventsError = null
       clearStoredAuthState()
     },
-    oauthLoginSuccess: (state, action: PayloadAction<{ token: string; email: string }>) => {
+    oauthLoginSuccess: (state, action: PayloadAction<{ token: string; email: string; role: 'couple' | 'planner' }>) => {
       state.token = action.payload.token
       state.activeWeddingId = null
       state.weddings = []
       state.eventsLoading = false
       state.eventsError = null
       state.user = {
-        ...googleOAuthUser,
+        name: 'Użytkownik',
         email: action.payload.email,
+        role: action.payload.role, // dynamiczna rola przekazana z tokena
       }
       saveAuthState(state)
     },
@@ -138,6 +139,20 @@ const authSlice = createSlice({
       state.weddings = []
       state.eventsLoading = false
       state.eventsError = null
+      saveAuthState(state)
+    },
+    localAuthSuccess: (state, action: PayloadAction<{ token: string; email: string; role: 'couple' | 'planner'; name: string; weddingDate?: string }>) => {
+      state.token = action.payload.token
+      state.activeWeddingId = null
+      state.weddings = []
+      state.eventsLoading = false
+      state.eventsError = null
+      state.user = {
+        name: action.payload.name,
+        email: action.payload.email,
+        role: action.payload.role,
+        weddingDate: action.payload.weddingDate
+      }
       saveAuthState(state)
     },
     setEventsLoading: (state) => {
@@ -173,6 +188,7 @@ export const {
   logout,
   oauthLoginSuccess,
   registerCouple,
+  localAuthSuccess,
   setEventsLoading,
   setEvents,
   setEventsError,

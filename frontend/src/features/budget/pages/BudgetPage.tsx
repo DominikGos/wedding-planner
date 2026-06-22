@@ -4,6 +4,7 @@ import type { RootState } from '../../../store'
 import {
   approveOfflinePayment,
   cancelPayment,
+  confirmOnlinePayment,
   createPayment,
   getPayments,
   getPaymentSummary,
@@ -14,13 +15,15 @@ import {
   type PaymentSummaryResponse,
 } from '../../../api/paymentApi'
 import { getEventCostSummary, type EventCostSummaryResponse } from '../../../api/eventCostApi'
+import { getVendors, type VendorResponse } from '../../../api/vendorApi'
+import { getExpenses, type ExpenseResponse } from '../../../api/expenseApi'
 
 import { BudgetStatCard } from '../components/BudgetStatCard'
-import { PaymentTable, type PaymentTableAction, type PaymentTablePayment } from '../components/PaymentTable'
+import { PaymentTable, type PaymentTableAction } from '../components/PaymentTable'
 import { PaymentHistory } from '../components/PaymentHistory'
 import { BudgetSummary } from '../components/BudgetSummary'
 import { BudgetIcon } from '../components/BudgetIcon'
-import { history as initialHistory } from '../data/budgetMock'
+import { type HistoryEntry } from '../data/budgetMock'
 
 const emptySummary: PaymentSummaryResponse = {
   totalAmount: 0,
@@ -45,8 +48,8 @@ const taskTypeLabels: Record<EventCostSummaryResponse['tasks'][number]['taskType
 }
 
 const initialCreatePaymentForm = {
-  expenseId: '1',
-  vendorId: '1',
+  expenseId: '',
+  vendorId: '',
   amount: '',
   method: 'ONLINE' as PaymentMethod,
   currency: 'PLN',
@@ -58,22 +61,7 @@ function formatDate(value: string | null) {
   return new Date(value).toLocaleDateString('pl-PL')
 }
 
-function mapPaymentToTable(payment: PaymentResponse): PaymentTablePayment {
-  return {
-    id: payment.id,
-    vendor: payment.vendorId ? `Dostawca #${payment.vendorId}` : 'Dostawca nieokreślony',
-    invoiceNumber: `Płatność #${payment.id}`,
-    service: payment.expenseId ? `Wydatek #${payment.expenseId}` : 'Wydatek nieokreślony',
-    amount: payment.amount,
-    currency: payment.currency,
-    date: formatDate(payment.updatedAt || payment.createdAt),
-    paidAt: payment.status === 'SUCCESS' || payment.status === 'OFFLINE_APPROVED'
-      ? formatDate(payment.approvedAt || payment.updatedAt)
-      : undefined,
-    status: payment.status,
-    failureReason: payment.failureReason,
-  }
-}
+// mapPaymentToTable has been replaced with inline mapping in filteredPayments to resolve vendor and expense names.
 
 export function BudgetPage() {
   const user = useSelector((state: RootState) => state.auth.user)
@@ -93,8 +81,11 @@ export function BudgetPage() {
   const [isCreateFormOpen, setIsCreateFormOpen] = useState(false)
   const [isCreatingPayment, setIsCreatingPayment] = useState(false)
   const [createPaymentForm, setCreatePaymentForm] = useState(initialCreatePaymentForm)
-  const [history] = useState(initialHistory)
   const [budgetNotification, setBudgetNotification] = useState<{ text: string; type: 'success' | 'info' } | null>(null)
+  const [vendorsList, setVendorsList] = useState<VendorResponse[]>([])
+  const [expensesList, setExpensesList] = useState<ExpenseResponse[]>([])
+  const [onlinePaymentId, setOnlinePaymentId] = useState<number | null>(null)
+  const [isGatewaySimulating, setIsGatewaySimulating] = useState(false)
 
   const showNotification = (text: string, type: 'success' | 'info' = 'success') => {
     setBudgetNotification({ text, type })
@@ -109,8 +100,8 @@ export function BudgetPage() {
 
     try {
       const [paymentsResponse, summaryResponse] = await Promise.all([
-        getPayments({ token: token ?? undefined }),
-        getPaymentSummary({ token: token ?? undefined }),
+        getPayments({ token: token ?? undefined, eventId: activeWeddingId ?? undefined }),
+        getPaymentSummary({ token: token ?? undefined, eventId: activeWeddingId ?? undefined }),
       ])
       setPayments(paymentsResponse)
       setSummary(summaryResponse)
@@ -121,7 +112,21 @@ export function BudgetPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [token])
+  }, [token, activeWeddingId])
+
+  const loadDropdownData = useCallback(async () => {
+    if (!token) return
+    try {
+      const [vendorsData, expensesData] = await Promise.all([
+        getVendors({ token }),
+        getExpenses({ eventId: activeWeddingId ?? undefined }, { token }),
+      ])
+      setVendorsList(vendorsData)
+      setExpensesList(expensesData)
+    } catch (err) {
+      console.error('Błąd pobierania dostawców lub wydatków:', err)
+    }
+  }, [token, activeWeddingId])
 
   const loadEventCosts = useCallback(async () => {
     if (!activeWeddingId || !token) {
@@ -151,6 +156,10 @@ export function BudgetPage() {
   useEffect(() => {
     queueMicrotask(() => void loadEventCosts())
   }, [loadEventCosts])
+
+  useEffect(() => {
+    queueMicrotask(() => void loadDropdownData())
+  }, [loadDropdownData])
 
   const stats = useMemo(() => {
     const paid = summary.successAmount + summary.offlineApprovedAmount
@@ -188,10 +197,123 @@ export function BudgetPage() {
 
   const filteredPayments = useMemo(() => {
     const list = filter === 'all' ? payments : payments.filter(payment => payment.status === filter)
-    return list.map(mapPaymentToTable)
-  }, [payments, filter])
+    return list.map((payment) => {
+      const vendorObj = vendorsList.find(v => v.id === payment.vendorId)
+      const expenseObj = expensesList.find(e => e.id === payment.expenseId)
+      return {
+        id: payment.id,
+        vendor: vendorObj ? (vendorObj.companyName || `Dostawca #${payment.vendorId}`) : `Dostawca #${payment.vendorId}`,
+        invoiceNumber: `Płatność #${payment.id}`,
+        service: expenseObj ? (expenseObj.description || `Wydatek #${payment.expenseId}`) : `Wydatek #${payment.expenseId}`,
+        amount: payment.amount,
+        currency: payment.currency,
+        date: formatDate(payment.updatedAt || payment.createdAt),
+        paidAt: payment.status === 'SUCCESS' || payment.status === 'OFFLINE_APPROVED'
+          ? formatDate(payment.approvedAt || payment.updatedAt)
+          : undefined,
+        status: payment.status,
+        failureReason: payment.failureReason,
+      }
+    })
+  }, [payments, filter, vendorsList, expensesList])
+
+  const unpaidExpenses = useMemo(() => {
+    return expensesList.filter(exp => {
+      const hasPayment = payments.some(p => p.expenseId === exp.id)
+      return !hasPayment
+    })
+  }, [expensesList, payments])
+
+  const generatedHistory = useMemo(() => {
+    const entries: (HistoryEntry & { timestamp: number })[] = []
+
+    payments.forEach((payment) => {
+      const vendorObj = vendorsList.find(v => v.id === payment.vendorId)
+      const vendorName = vendorObj?.companyName || `Dostawca #${payment.vendorId}`
+      const formattedAmount = `${payment.amount.toLocaleString()} ${payment.currency}`
+
+      const createdTime = new Date(payment.createdAt).getTime()
+      const updatedTime = new Date(payment.updatedAt || payment.createdAt).getTime()
+
+      // 1. Log payment creation
+      entries.push({
+        id: `c-${payment.id}`,
+        type: 'invoice_created',
+        title: 'Utworzono płatność',
+        description: `Utworzono żądanie płatności dla ${vendorName} na kwotę ${formattedAmount} (${payment.method})`,
+        date: new Date(payment.createdAt).toLocaleString('pl-PL', { dateStyle: 'short', timeStyle: 'short' }),
+        timestamp: createdTime,
+        user: {
+          name: 'Wedding Planner',
+          initials: 'WP'
+        }
+      })
+
+      // 2. Log confirmation / status updates
+      if (payment.status === 'SUCCESS') {
+        entries.push({
+          id: `s-${payment.id}`,
+          type: 'payment_confirmed',
+          title: 'Opłacono online',
+          description: `Zatwierdzono transakcję online dla ${vendorName} na kwotę ${formattedAmount}`,
+          date: new Date(payment.approvedAt || payment.updatedAt).toLocaleString('pl-PL', { dateStyle: 'short', timeStyle: 'short' }),
+          timestamp: updatedTime,
+          user: {
+            name: 'Para Młoda',
+            initials: 'PM'
+          }
+        })
+      } else if (payment.status === 'OFFLINE_APPROVED') {
+        entries.push({
+          id: `a-${payment.id}`,
+          type: 'payment_confirmed',
+          title: 'Zatwierdzono offline',
+          description: `Płatność gotówkowa dla ${vendorName} została zatwierdzona przez ${payment.approvedBy || 'ADMIN'}`,
+          date: new Date(payment.approvedAt || payment.updatedAt).toLocaleString('pl-PL', { dateStyle: 'short', timeStyle: 'short' }),
+          timestamp: updatedTime,
+          user: {
+            name: payment.approvedBy || 'Wedding Planner',
+            initials: (payment.approvedBy || 'WP').substring(0, 2).toUpperCase()
+          }
+        })
+      } else if (payment.status === 'FAILED') {
+        entries.push({
+          id: `f-${payment.id}`,
+          type: 'reminder_sent',
+          title: 'Płatność nieudana',
+          description: `Błąd bramki dla ${vendorName}: ${payment.failureReason || 'Brak środków'}`,
+          date: new Date(payment.updatedAt).toLocaleString('pl-PL', { dateStyle: 'short', timeStyle: 'short' }),
+          timestamp: updatedTime,
+          user: {
+            name: 'System',
+            initials: 'SYS'
+          }
+        })
+      } else if (payment.status === 'CANCELLED') {
+        entries.push({
+          id: `x-${payment.id}`,
+          type: 'reminder_sent',
+          title: 'Anulowano płatność',
+          description: `Płatność dla ${vendorName} została anulowana`,
+          date: new Date(payment.updatedAt).toLocaleString('pl-PL', { dateStyle: 'short', timeStyle: 'short' }),
+          timestamp: updatedTime,
+          user: {
+            name: 'Użytkownik',
+            initials: 'U'
+          }
+        })
+      }
+    })
+
+    return entries.sort((a, b) => b.timestamp - a.timestamp)
+  }, [payments, vendorsList])
 
   const handlePaymentAction = async (id: number, action: PaymentTableAction) => {
+    if (action === 'pay-online') {
+      setOnlinePaymentId(id)
+      return
+    }
+
     setActionLoadingId(id)
     setError(null)
 
@@ -212,10 +334,46 @@ export function BudgetPage() {
       }
 
       await loadPayments()
+      await loadDropdownData()
     } catch {
       setError('Nie udało się wykonać akcji płatności. Spróbuj ponownie.')
     } finally {
       setActionLoadingId(null)
+    }
+  }
+
+  const handleOnlinePaymentConfirm = async (success: boolean, reason?: string) => {
+    if (!onlinePaymentId) return
+    setIsGatewaySimulating(true)
+    setError(null)
+
+    const payment = payments.find(p => p.id === onlinePaymentId)
+    const gatewayPaymentId = payment?.gatewayPaymentId ?? ''
+
+    try {
+      await confirmOnlinePayment(
+        onlinePaymentId,
+        {
+          success,
+          gatewayPaymentId,
+          ...(reason && { failureReason: reason }),
+        },
+        { token: token ?? undefined }
+      )
+
+      showNotification(
+        success
+          ? 'Płatność online zakończona sukcesem.'
+          : `Płatność nieudana: ${reason || 'Błąd bramki'}`,
+        success ? 'success' : 'info'
+      )
+      setOnlinePaymentId(null)
+      await loadPayments()
+      await loadDropdownData()
+    } catch {
+      setError('Nie udało się potwierdzić płatności w bramce.')
+    } finally {
+      setIsGatewaySimulating(false)
     }
   }
 
@@ -241,6 +399,7 @@ export function BudgetPage() {
       setIsCreateFormOpen(false)
       showNotification('Płatność została dodana.', 'success')
       await loadPayments()
+      await loadDropdownData()
     } catch {
       setError('Nie udało się dodać płatności. Sprawdź wpisane ID i spróbuj ponownie.')
     } finally {
@@ -286,105 +445,134 @@ export function BudgetPage() {
             <BudgetIcon name='file-text' color='var(--text)' size={18} />
             Eksportuj Raport
           </button>
-          <button onClick={() => setIsCreateFormOpen((isOpen) => !isOpen)} className='button-primary'>
-            Dodaj płatność
-          </button>
+          {userRole === 'planner' && (
+            <button onClick={() => setIsCreateFormOpen((isOpen) => !isOpen)} className='button-primary'>
+              Dodaj płatność
+            </button>
+          )}
         </div>
       </header>
 
-      {isCreateFormOpen && (
+      {isCreateFormOpen && userRole === 'planner' && (
         <section className='page-card' style={{ padding: '1.25rem', display: 'grid', gap: '1rem' }}>
           <div>
             <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Dodaj płatność</h2>
-            <p className='page-subtitle' style={{ marginTop: '0.35rem' }}>
-              Na potrzeby testów lokalnych użyj ID z seedera, np. expenseId 1, vendorId 1.
-            </p>
           </div>
 
           <form
             onSubmit={handleCreatePayment}
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-              gap: '1rem',
-              alignItems: 'end',
+              gap: '1.25rem',
             }}
           >
-            <label style={{ display: 'grid', gap: '0.4rem', fontWeight: 600 }}>
-              expenseId
-              <input
-                type='number'
-                min='1'
-                required
-                value={createPaymentForm.expenseId}
-                onChange={(event) => setCreatePaymentForm((form) => ({ ...form, expenseId: event.target.value }))}
-                style={{ padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid var(--border)' }}
-              />
-            </label>
+            {/* Row 1: Wide selectors */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: '1rem',
+            }}>
+              <label style={{ display: 'grid', gap: '0.4rem', fontWeight: 600 }}>
+                Wydatek / Zadanie
+                <select
+                  required
+                  value={createPaymentForm.expenseId}
+                  onChange={(event) => {
+                    const selectedId = event.target.value
+                    const exp = unpaidExpenses.find(e => e.id === Number(selectedId))
+                    setCreatePaymentForm((form) => ({
+                      ...form,
+                      expenseId: selectedId,
+                      amount: exp ? String(exp.amount) : form.amount,
+                    }))
+                  }}
+                  style={{ padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
+                >
+                  <option value="">Wybierz wydatek...</option>
+                  {unpaidExpenses.map(exp => (
+                    <option key={exp.id} value={exp.id}>
+                      {exp.description} ({exp.amount} PLN)
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-            <label style={{ display: 'grid', gap: '0.4rem', fontWeight: 600 }}>
-              vendorId
-              <input
-                type='number'
-                min='1'
-                required
-                value={createPaymentForm.vendorId}
-                onChange={(event) => setCreatePaymentForm((form) => ({ ...form, vendorId: event.target.value }))}
-                style={{ padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid var(--border)' }}
-              />
-            </label>
+              <label style={{ display: 'grid', gap: '0.4rem', fontWeight: 600 }}>
+                Dostawca
+                <select
+                  required
+                  value={createPaymentForm.vendorId}
+                  onChange={(event) => setCreatePaymentForm((form) => ({ ...form, vendorId: event.target.value }))}
+                  style={{ padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
+                >
+                  <option value="">Wybierz dostawcę...</option>
+                  {vendorsList.map(v => (
+                    <option key={v.id} value={v.id}>
+                      {v.companyName || `Dostawca #${v.id}`} ({v.serviceType})
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
 
-            <label style={{ display: 'grid', gap: '0.4rem', fontWeight: 600 }}>
-              Kwota
-              <input
-                type='number'
-                min='0.01'
-                step='0.01'
-                required
-                value={createPaymentForm.amount}
-                onChange={(event) => setCreatePaymentForm((form) => ({ ...form, amount: event.target.value }))}
-                style={{ padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid var(--border)' }}
-              />
-            </label>
+            {/* Row 2: Short inputs */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+              gap: '1rem',
+            }}>
+              <label style={{ display: 'grid', gap: '0.4rem', fontWeight: 600 }}>
+                Kwota
+                <input
+                  type='number'
+                  min='0.01'
+                  step='0.01'
+                  required
+                  value={createPaymentForm.amount}
+                  onChange={(event) => setCreatePaymentForm((form) => ({ ...form, amount: event.target.value }))}
+                  style={{ padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
+                />
+              </label>
 
-            <label style={{ display: 'grid', gap: '0.4rem', fontWeight: 600 }}>
-              Metoda
-              <select
-                value={createPaymentForm.method}
-                onChange={(event) => setCreatePaymentForm((form) => ({ ...form, method: event.target.value as PaymentMethod }))}
-                style={{ padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
-              >
-                <option value='ONLINE'>ONLINE</option>
-                <option value='OFFLINE'>OFFLINE</option>
-              </select>
-            </label>
+              <label style={{ display: 'grid', gap: '0.4rem', fontWeight: 600 }}>
+                Metoda
+                <select
+                  value={createPaymentForm.method}
+                  onChange={(event) => setCreatePaymentForm((form) => ({ ...form, method: event.target.value as PaymentMethod }))}
+                  style={{ padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
+                >
+                  <option value='ONLINE'>ONLINE</option>
+                  <option value='OFFLINE'>OFFLINE</option>
+                </select>
+              </label>
 
-            <label style={{ display: 'grid', gap: '0.4rem', fontWeight: 600 }}>
-              Waluta
-              <input
-                value={createPaymentForm.currency}
-                onChange={(event) => setCreatePaymentForm((form) => ({ ...form, currency: event.target.value }))}
-                style={{ padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid var(--border)' }}
-              />
-            </label>
+              <label style={{ display: 'grid', gap: '0.4rem', fontWeight: 600 }}>
+                Waluta
+                <input
+                  value={createPaymentForm.currency}
+                  onChange={(event) => setCreatePaymentForm((form) => ({ ...form, currency: event.target.value }))}
+                  style={{ padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
+                />
+              </label>
+            </div>
 
-            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-              <button
-                type='submit'
-                disabled={isCreatingPayment}
-                className='button-primary'
-                style={{ cursor: isCreatingPayment ? 'not-allowed' : 'pointer', opacity: isCreatingPayment ? 0.75 : 1 }}
-              >
-                {isCreatingPayment ? 'Zapisywanie...' : 'Zapisz'}
-              </button>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', borderTop: '1px solid var(--border)', paddingTop: '1.25rem', marginTop: '0.5rem' }}>
               <button
                 type='button'
                 onClick={() => setIsCreateFormOpen(false)}
                 disabled={isCreatingPayment}
                 className='button-secondary'
-                style={{ cursor: isCreatingPayment ? 'not-allowed' : 'pointer' }}
+                style={{ cursor: isCreatingPayment ? 'not-allowed' : 'pointer', minWidth: '100px' }}
               >
                 Anuluj
+              </button>
+              <button
+                type='submit'
+                disabled={isCreatingPayment}
+                className='button-primary'
+                style={{ cursor: isCreatingPayment ? 'not-allowed' : 'pointer', opacity: isCreatingPayment ? 0.75 : 1, minWidth: '130px' }}
+              >
+                {isCreatingPayment ? 'Zapisywanie...' : 'Zapisz płatność'}
               </button>
             </div>
           </form>
@@ -563,6 +751,7 @@ export function BudgetPage() {
                 payments={filteredPayments}
                 onAction={handlePaymentAction}
                 actionLoadingId={actionLoadingId}
+                userRole={userRole}
               />
             )}
           </div>
@@ -574,7 +763,7 @@ export function BudgetPage() {
               <BudgetIcon name='history' color='var(--primary)' size={20} />
               <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Historia Zmian i Akceptacji</h2>
             </div>
-            <PaymentHistory history={history} />
+            <PaymentHistory history={generatedHistory} />
           </section>
 
           <section className='page-card' style={{ padding: '1.25rem' }}>
@@ -588,6 +777,157 @@ export function BudgetPage() {
           </section>
         </div>
       </div>
+
+      {/* Sandbox Payment Gateway Modal */}
+      {onlinePaymentId !== null && (() => {
+        const payment = payments.find(p => p.id === onlinePaymentId)
+        if (!payment) return null
+
+        return (
+          <div style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(47, 42, 36, 0.65)',
+            display: 'grid',
+            placeItems: 'center',
+            zIndex: 1000,
+            backdropFilter: 'blur(4px)',
+            padding: '1rem'
+          }}>
+            <article className='page-card' style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: '22px',
+              padding: '2rem',
+              width: 'min(440px, 100% - 2rem)',
+              boxShadow: '0 20px 50px rgba(0,0,0,0.15)',
+              display: 'grid',
+              gap: '1.25rem',
+              animation: 'scaleUp 0.3s ease'
+            }}>
+              <header style={{ textAlign: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
+                <span style={{ fontSize: '1.8rem' }}>💳</span>
+                <h3 style={{ margin: '0.4rem 0 0', fontFamily: 'Georgia, serif', fontSize: '1.25rem' }}>
+                  Bramka Płatnicza (Sandbox)
+                </h3>
+                <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.85rem' }}>
+                  Symulacja bezpiecznej płatności online
+                </p>
+              </header>
+
+              {/* Mock Card design */}
+              <div style={{
+                background: 'linear-gradient(135deg, #1b2a2e 0%, #2f2a24 100%)',
+                color: '#f8e1d2',
+                padding: '1.25rem',
+                borderRadius: '14px',
+                display: 'grid',
+                gap: '1.5rem',
+                boxShadow: '0 8px 20px rgba(0,0,0,0.15)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '1.2rem', fontWeight: 'bold', fontFamily: 'monospace' }}>SECURE PAY</span>
+                  <span style={{ fontSize: '1.4rem' }}>🌸</span>
+                </div>
+                <div style={{ fontSize: '1.2rem', letterSpacing: '0.15em', fontFamily: 'monospace', textAlign: 'center', padding: '0.2rem 0' }}>
+                  ••••  ••••  ••••  {1000 + (onlinePaymentId % 9000)}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontFamily: 'monospace' }}>
+                  <div>
+                    <div style={{ opacity: 0.7, fontSize: '0.6rem' }}>WŁAŚCICIEL</div>
+                    <div>PARA MŁODA</div>
+                  </div>
+                  <div>
+                    <div style={{ opacity: 0.7, fontSize: '0.6rem' }}>DATA WAŻN.</div>
+                    <div>12 / 29</div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gap: '0.5rem', background: 'var(--surface-soft)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                {(() => {
+                  const vendorObj = vendorsList.find(v => v.id === payment.vendorId)
+                  const expenseObj = expensesList.find(e => e.id === payment.expenseId)
+                  return (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
+                        <span style={{ color: 'var(--muted)' }}>Usługa / Wydatek:</span>
+                        <strong>{expenseObj ? (expenseObj.description || `Wydatek #${payment.expenseId}`) : `Wydatek #${payment.expenseId}`}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
+                        <span style={{ color: 'var(--muted)' }}>Dla dostawcy:</span>
+                        <strong>{vendorObj ? (vendorObj.companyName || `Dostawca #${payment.vendorId}`) : `Dostawca #${payment.vendorId}`}</strong>
+                      </div>
+                    </>
+                  )
+                })()}
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem', fontWeight: 'bold', borderTop: '1px dashed var(--border)', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
+                  <span>Do zapłaty:</span>
+                  <span style={{ color: 'var(--primary)' }}>{payment.amount.toLocaleString()} {payment.currency}</span>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gap: '0.75rem' }}>
+                <button
+                  type="button"
+                  disabled={isGatewaySimulating}
+                  onClick={() => handleOnlinePaymentConfirm(true)}
+                  style={{
+                    width: '100%',
+                    minHeight: '44px',
+                    borderRadius: '12px',
+                    border: 'none',
+                    background: '#35684f',
+                    color: '#fff',
+                    fontWeight: 700,
+                    cursor: isGatewaySimulating ? 'wait' : 'pointer',
+                    boxShadow: '0 4px 12px rgba(53, 104, 79, 0.25)'
+                  }}
+                >
+                  {isGatewaySimulating ? 'Autoryzacja...' : '✓ Zakończ Płatność Sukcesem'}
+                </button>
+                
+                <button
+                  type="button"
+                  disabled={isGatewaySimulating}
+                  onClick={() => handleOnlinePaymentConfirm(false, 'Brak wystarczających środków na koncie')}
+                  style={{
+                    width: '100%',
+                    minHeight: '44px',
+                    borderRadius: '12px',
+                    border: 'none',
+                    background: '#c53030',
+                    color: '#fff',
+                    fontWeight: 700,
+                    cursor: isGatewaySimulating ? 'wait' : 'pointer',
+                    boxShadow: '0 4px 12px rgba(197, 48, 48, 0.25)'
+                  }}
+                >
+                  {isGatewaySimulating ? 'Autoryzacja...' : '✕ Symuluj Błąd (Brak Środków)'}
+                </button>
+
+                <button
+                  type="button"
+                  disabled={isGatewaySimulating}
+                  onClick={() => setOnlinePaymentId(null)}
+                  style={{
+                    width: '100%',
+                    minHeight: '44px',
+                    borderRadius: '12px',
+                    border: '1px solid var(--border)',
+                    background: 'var(--surface)',
+                    color: 'var(--text)',
+                    fontWeight: 600,
+                    cursor: isGatewaySimulating ? 'wait' : 'pointer'
+                  }}
+                >
+                  Anuluj i Wróć
+                </button>
+              </div>
+            </article>
+          </div>
+        )
+      })()}
     </div>
   )
 }

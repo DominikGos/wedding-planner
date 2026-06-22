@@ -5,18 +5,55 @@ import { createEvent, getEvents, toWedding } from '../../../api/eventApi'
 import { setActiveWeddingId, setEvents, setEventsError, setEventsLoading } from '../../../store/slices/authSlice'
 import type { RootState } from '../../../store'
 
+function parseCoupleNames(fullName: string | undefined): { partnerA: string; partnerB: string } {
+  if (!fullName || fullName === 'Użytkownik') {
+    return { partnerA: '', partnerB: '' }
+  }
+
+  const name = fullName.trim()
+
+  const splitters = [
+    /\s*&\s*/,
+    /\s+i\s+/i,
+    /\s+and\s+/i,
+    /\s*\+\s*/,
+    /\s+plus\s+/i,
+    /\s*,\s*/,
+    /\s*\/\s*/
+  ]
+
+  for (const regex of splitters) {
+    const parts = name.split(regex)
+    if (parts.length >= 2) {
+      const partnerA = parts[0].trim()
+      const partnerB = parts.slice(1).join(' ').trim()
+      if (partnerA && partnerB) {
+        return { partnerA, partnerB }
+      }
+    }
+  }
+
+  const words = name.split(/\s+/)
+  if (words.length === 2) {
+    return { partnerA: words[0].trim(), partnerB: words[1].trim() }
+  }
+
+  return { partnerA: name, partnerB: '' }
+}
+
 export function CreateEventPage() {
   const navigate = useNavigate()
   const dispatch = useDispatch()
   const { user, token } = useSelector((state: RootState) => state.auth)
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
-  const userNameForWedding = user?.name && user.name !== 'Użytkownik' ? user.name.split('&')[0].trim() : ''
+  
+  const parsedNames = parseCoupleNames(user?.name)
   
   const [step, setStep] = useState(1)
   const [formData, setFormData] = useState({
-    partnerA: userNameForWedding,
-    partnerB: '',
+    partnerA: parsedNames.partnerA,
+    partnerB: parsedNames.partnerB,
     date: user?.weddingDate || '',
     venue: '',
     budget: 50000,

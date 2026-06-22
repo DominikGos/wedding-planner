@@ -50,6 +50,7 @@ public class SecurityConfig {
                                 "/error",
                                 "/login/**",
                                 "/oauth2/**",
+                                "/api/auth/**",
                                 "/api/public/rsvp/**",
                                 "/api/payments/**",
                                 "/api/expenses/**",
@@ -75,5 +76,10 @@ public class SecurityConfig {
                 );
 
         return http.build();
+    }
+
+    @Bean
+    public org.springframework.security.crypto.password.PasswordEncoder passwordEncoder() {
+        return new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder();
     }
 }

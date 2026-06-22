@@ -1,12 +1,15 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSelector } from 'react-redux'
+import { useTranslation } from 'react-i18next'
 import type { RootState } from '../../../store'
+import { getEvent, updateEvent, type EventResponse } from '../../../api/eventApi'
 
 import { initialMenuSections } from '../data/cateringMock'
 import type { CateringMenuSectionData, CateringMenuItem } from '../data/cateringMock'
 import type { Vendor } from '../../vendors/data/vendorsMock'
 
 export function CateringPage() {
+  const { t } = useTranslation()
   // Redux state
   const reduxVendors = useSelector((state: RootState) => state.vendors.items)
   const reduxGuests = useSelector((state: RootState) => state.guests.items)
@@ -15,18 +18,82 @@ export function CateringPage() {
     return reduxVendors.filter((v: Vendor) => v.category === 'Catering')
   }, [reduxVendors])
 
+  const activeWeddingId = useSelector((state: RootState) => state.auth.activeWeddingId)
+  const token = useSelector((state: RootState) => state.auth.token)
+  
   // Local State
   const [menuSections, setMenuSections] = useState<CateringMenuSectionData[]>(initialMenuSections)
   const [selectedVendorId, setSelectedVendorId] = useState(caterers[0]?.id || 'delicious')
   const [notes, setNotes] = useState('')
   const [budgetLimit, setBudgetLimit] = useState(30000)
   const [cateringNotification, setCateringNotification] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
+  const [currentEvent, setCurrentEvent] = useState<EventResponse | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
   
   const showNotification = (text: string, type: 'success' | 'error' = 'success') => {
     setCateringNotification({ text, type })
     setTimeout(() => {
       setCateringNotification(null)
     }, 4000)
+  }
+
+  useEffect(() => {
+    if (!activeWeddingId || !token) return
+    let active = true
+
+    const loadEventCatering = async () => {
+      try {
+        const eventData = await getEvent(activeWeddingId, { token })
+        if (!active) return
+        setCurrentEvent(eventData)
+        if (eventData.cateringNotes) {
+          setNotes(eventData.cateringNotes)
+        }
+        if (eventData.cateringMenu) {
+          try {
+            setMenuSections(JSON.parse(eventData.cateringMenu))
+          } catch (e) {
+            console.error("Failed to parse catering menu JSON:", e)
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load event catering config:", err)
+      }
+    }
+
+    void loadEventCatering()
+    return () => {
+      active = false
+    }
+  }, [activeWeddingId, token])
+
+  const handleSaveCatering = async () => {
+    if (!activeWeddingId || !token || !currentEvent) {
+      showNotification(t('catering.noActiveEvent'), 'error')
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      const updated = await updateEvent(
+        activeWeddingId,
+        {
+          name: currentEvent.name,
+          eventDate: currentEvent.eventDate,
+          location: currentEvent.location ?? '',
+          status: currentEvent.status,
+          cateringNotes: notes,
+          cateringMenu: JSON.stringify(menuSections),
+        },
+        { token }
+      )
+      setCurrentEvent(updated)
+      showNotification(t('catering.savedSuccess'), 'success')
+    } catch {
+      showNotification(t('catering.saveError'), 'error')
+    } finally {
+      setIsSaving(false)
+    }
   }
   
   // Custom dishes form state
@@ -37,22 +104,18 @@ export function CateringPage() {
   })
 
   // Dynamic guest dietary requirements calculation
-  // Confirmed + Waiting guests + 10% safety buffer
   const guestsDietStats = useMemo(() => {
     const relevantGuests = reduxGuests.filter(g => g.status === 'Potwierdzony' || g.status === 'Oczekuje')
     const totalCount = relevantGuests.length
 
-    // Classify diets based on allergies and mock assignments
     const glutenFreeRaw = relevantGuests.filter(g => g.allergy.toLowerCase().includes('gluten')).length
     const lactoseFreeRaw = relevantGuests.filter(g => g.allergy.toLowerCase().includes('laktoza') || g.allergy.toLowerCase().includes('soja')).length
     const seafoodAllergy = relevantGuests.filter(g => g.allergy.toLowerCase().includes('owoce')).length
     
-    // Simulating standard vs vege counts
-    const vegetarianRaw = Math.round(totalCount * 0.15) // ~15% vege
-    const veganRaw = Math.round(totalCount * 0.05) // ~5% vegan
+    const vegetarianRaw = Math.round(totalCount * 0.15)
+    const veganRaw = Math.round(totalCount * 0.05)
     const standardRaw = totalCount - (glutenFreeRaw + lactoseFreeRaw + vegetarianRaw + veganRaw)
 
-    // Apply 10% safety buffer (lekka nadwyżka na wszelki wypadek)
     const addBuffer = (val: number) => Math.ceil(val * 1.1)
 
     return {
@@ -101,13 +164,13 @@ export function CateringPage() {
   const handleAddDish = (e: React.FormEvent) => {
     e.preventDefault()
     if (!newDish.name.trim() || !newDish.price.trim()) {
-      showNotification('Proszę podać nazwę potrawy oraz cenę!', 'error')
+      showNotification(t('catering.dishNameRequired'), 'error')
       return
     }
 
     const priceNum = Number(newDish.price)
     if (isNaN(priceNum) || priceNum <= 0) {
-      showNotification('Cena musi być poprawną liczbą dodatnią!', 'error')
+      showNotification(t('catering.invalidDishPrice'), 'error')
       return
     }
 
@@ -115,7 +178,7 @@ export function CateringPage() {
       id: `dish-${Date.now()}`,
       name: newDish.name,
       price: priceNum,
-      checked: true // auto checked upon creation
+      checked: true
     }
 
     setMenuSections(current =>
@@ -129,7 +192,7 @@ export function CateringPage() {
       )
     )
 
-    showNotification(`Pomyślnie dodano potrawę "${createdItem.name}" do kategorii!`, 'success')
+    showNotification(t('catering.dishAddedSuccess', { name: createdItem.name }), 'success')
     setNewDish({ name: '', price: '', sectionId: 'main' })
   }
 
@@ -166,32 +229,32 @@ export function CateringPage() {
         gap: '1rem'
       }}>
         <div>
-          <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--primary)', fontWeight: 600 }}>Moduł Kulinarny</span>
-          <h1 className='page-title' style={{ fontSize: '2rem', marginTop: '0.25rem' }}>Catering i Menu Weselne</h1>
-          <p className='page-subtitle' style={{ fontSize: '1.05rem' }}>Skomponuj kartę dań, dobierz catering i kontroluj diety gości.</p>
+          <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--primary)', fontWeight: 600 }}>{t('catering.pageTag')}</span>
+          <h1 className='page-title' style={{ fontSize: '2rem', marginTop: '0.25rem' }}>{t('catering.pageTitle')}</h1>
+          <p className='page-subtitle' style={{ fontSize: '1.05rem' }}>{t('catering.pageSubtitle')}</p>
         </div>
         <button 
-          onClick={() => {
-            showNotification('Konfiguracja cateringu została pomyślnie zapisana!', 'success')
-          }}
+          onClick={handleSaveCatering}
+          disabled={isSaving}
           className='button-primary'
+          style={{ opacity: isSaving ? 0.7 : 1, cursor: isSaving ? 'wait' : 'pointer' }}
         >
-          Zapisz Konfigurację
+          {isSaving ? t('catering.saving') : t('catering.saveConfig')}
         </button>
       </header>
 
       {/* THREE STATS / CALCULATIONS CARDS */}
       <div className="stats-grid">
         <div style={calcCardStyle}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--muted)', fontWeight: 600 }}>CENA ZA OSOBĘ</span>
+          <span style={{ fontSize: '0.8rem', color: 'var(--muted)', fontWeight: 600 }}>{t('catering.costPerPerson')}</span>
           <strong style={{ fontSize: '1.8rem', color: 'var(--primary)', margin: '0.25rem 0' }}>
             {costPerPerson} PLN
           </strong>
-          <span style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>Wybranych dań: {checkedItems.length}</span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>{t('catering.selectedDishes', { count: checkedItems.length })}</span>
         </div>
 
         <div style={calcCardStyle}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--muted)', fontWeight: 600 }}>SZACUNKI KOSZTÓW</span>
+          <span style={{ fontSize: '0.8rem', color: 'var(--muted)', fontWeight: 600 }}>{t('catering.costEstimate')}</span>
           <strong style={{ fontSize: '1.8rem', color: fitsBudget ? '#35684f' : '#c53030', margin: '0.25rem 0' }}>
             {totalCost.toLocaleString()} PLN
           </strong>
@@ -204,17 +267,17 @@ export function CateringPage() {
             borderRadius: '10px',
             alignSelf: 'center'
           }}>
-            {fitsBudget ? 'Mieści się w budżecie' : `Przekroczono o ${(totalCost - budgetLimit).toLocaleString()} PLN`}
+            {fitsBudget ? t('catering.withinBudget') : t('catering.overBudget', { amount: (totalCost - budgetLimit).toLocaleString() })}
           </span>
         </div>
 
         <div style={calcCardStyle}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--muted)', fontWeight: 600 }}>BUDŻET CATERINGU</span>
+          <span style={{ fontSize: '0.8rem', color: 'var(--muted)', fontWeight: 600 }}>{t('catering.cateringBudget')}</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0.25rem 0', justifyContent: 'center' }}>
             <strong style={{ fontSize: '1.5rem' }}>{budgetLimit.toLocaleString()} PLN</strong>
             <button 
               onClick={() => {
-                const val = prompt('Wpisz nowy limit budżetu na catering:', budgetLimit.toString())
+                const val = prompt(t('catering.budgetPrompt'), budgetLimit.toString())
                 if (val && !isNaN(Number(val))) setBudgetLimit(Number(val))
               }}
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)' }}
@@ -222,7 +285,7 @@ export function CateringPage() {
               ✏️
             </button>
           </div>
-          <span style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>Liczba gości: {finalGuestsCount} osób</span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>{t('catering.guestsCount', { count: finalGuestsCount })}</span>
         </div>
       </div>
 
@@ -240,10 +303,10 @@ export function CateringPage() {
           {/* Menu Sections Golden restaurant Card */}
           <section className="page-card" style={{ padding: '2.5rem', border: '2px solid var(--border)', background: 'var(--surface)' }}>
             <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-              <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.2em', color: 'var(--primary)', fontWeight: 600 }}>Karta Ślubna</span>
-              <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '2.2rem', margin: '0.5rem 0', fontWeight: 400 }}>Menu Weselne</h2>
+              <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.2em', color: 'var(--primary)', fontWeight: 600 }}>{t('catering.menuTag')}</span>
+              <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '2.2rem', margin: '0.5rem 0', fontWeight: 400 }}>{t('catering.menuTitle')}</h2>
               <div style={{ width: '60px', height: '1px', background: '#d4af37', margin: '0.75rem auto' }} />
-              <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: 0 }}>Zaznacz potrawy, które znajdą się na stołach weselnych.</p>
+              <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: 0 }}>{t('catering.menuSubtitle')}</p>
             </div>
 
             <div style={{ display: 'grid', gap: '2rem' }}>
@@ -298,15 +361,15 @@ export function CateringPage() {
           {/* New Dish Creator Form */}
           <section className="page-card" style={{ padding: '2rem' }}>
             <h3 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.3rem', margin: '0 0 1rem', fontWeight: 500 }}>
-              + Dodaj nową potrawę do Menu
+              {t('catering.addDishTitle')}
             </h3>
             
             <form className="catering-dish-form" onSubmit={handleAddDish} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1.2fr auto', gap: '0.85rem', alignItems: 'end' }}>
               <label style={{ display: 'grid', gap: '0.4rem' }}>
-                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--muted)' }}>Nazwa potrawy</span>
+                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--muted)' }}>{t('catering.fieldDishName')}</span>
                 <input 
                   type="text"
-                  placeholder="np. Rosół z makaronem"
+                  placeholder={t('catering.fieldDishNamePlaceholder')}
                   value={newDish.name}
                   onChange={(e) => setNewDish(prev => ({ ...prev, name: e.target.value }))}
                   style={{ padding: '0.65rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.9rem' }}
@@ -314,7 +377,7 @@ export function CateringPage() {
               </label>
 
               <label style={{ display: 'grid', gap: '0.4rem' }}>
-                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--muted)' }}>Cena (PLN)</span>
+                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--muted)' }}>{t('catering.fieldDishPrice')}</span>
                 <input 
                   type="number"
                   placeholder="np. 25"
@@ -325,15 +388,15 @@ export function CateringPage() {
               </label>
 
               <label style={{ display: 'grid', gap: '0.4rem' }}>
-                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--muted)' }}>Kategoria dania</span>
+                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--muted)' }}>{t('catering.fieldDishCategory')}</span>
                 <select 
                   value={newDish.sectionId}
                   onChange={(e) => setNewDish(prev => ({ ...prev, sectionId: e.target.value }))}
                   style={{ padding: '0.65rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.9rem', background: 'var(--surface)', color: 'var(--text)' }}
                 >
-                  <option value="starters">Przystawki</option>
-                  <option value="main">Dania główne</option>
-                  <option value="dessert">Desery</option>
+                  <option value="starters">{t('catering.catStarters')}</option>
+                  <option value="main">{t('catering.catMain')}</option>
+                  <option value="dessert">{t('catering.catDessert')}</option>
                 </select>
               </label>
 
@@ -351,7 +414,7 @@ export function CateringPage() {
                   cursor: 'pointer'
                 }}
               >
-                Dodaj
+                {t('catering.addDishBtn')}
               </button>
             </form>
           </section>
@@ -364,7 +427,7 @@ export function CateringPage() {
           {/* Guest Dietary requirements summary card */}
           <section className="page-card" style={{ padding: '1.5rem' }}>
             <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>Zapotrzebowanie diet gości</h3>
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>{t('catering.dietTitle')}</h3>
               <span style={{
                 fontSize: '0.7rem',
                 padding: '0.2rem 0.5rem',
@@ -373,51 +436,51 @@ export function CateringPage() {
                 color: 'var(--primary)',
                 fontWeight: 600
               }}>
-                Zapas 10% wliczony 🛡️
+                {t('catering.dietBuffer')}
               </span>
             </header>
 
             <div style={{ display: 'grid', gap: '0.9rem' }}>
               <div style={dietRowStyle}>
-                <span style={{ color: 'var(--muted)' }}>Klasyczne / Standard:</span>
-                <strong>{guestsDietStats.standard} porcji</strong>
+                <span style={{ color: 'var(--muted)' }}>{t('catering.dietStandard')}</span>
+                <strong>{t('catering.portions', { count: guestsDietStats.standard })}</strong>
               </div>
               <div style={dietRowStyle}>
-                <span style={{ color: 'var(--muted)' }}>Wegetariańskie (Vege):</span>
-                <strong style={{ color: '#0ea44b' }}>{guestsDietStats.vegetarian} porcji</strong>
+                <span style={{ color: 'var(--muted)' }}>{t('catering.dietVegetarian')}</span>
+                <strong style={{ color: '#0ea44b' }}>{t('catering.portions', { count: guestsDietStats.vegetarian })}</strong>
               </div>
               <div style={dietRowStyle}>
-                <span style={{ color: 'var(--muted)' }}>Wegańskie (Vegan):</span>
-                <strong style={{ color: '#35684f' }}>{guestsDietStats.vegan} porcji</strong>
+                <span style={{ color: 'var(--muted)' }}>{t('catering.dietVegan')}</span>
+                <strong style={{ color: '#35684f' }}>{t('catering.portions', { count: guestsDietStats.vegan })}</strong>
               </div>
               <div style={dietRowStyle}>
-                <span style={{ color: 'var(--muted)' }}>Bezglutenowe (Gluten-Free):</span>
-                <strong style={{ color: '#d9a15f' }}>{guestsDietStats.glutenFree} porcji</strong>
+                <span style={{ color: 'var(--muted)' }}>{t('catering.dietGlutenFree')}</span>
+                <strong style={{ color: '#d9a15f' }}>{t('catering.portions', { count: guestsDietStats.glutenFree })}</strong>
               </div>
               <div style={dietRowStyle}>
-                <span style={{ color: 'var(--muted)' }}>Bez laktozy (Lactose-Free):</span>
-                <strong style={{ color: '#8c5a12' }}>{guestsDietStats.lactoseFree} porcji</strong>
+                <span style={{ color: 'var(--muted)' }}>{t('catering.dietLactoseFree')}</span>
+                <strong style={{ color: '#8c5a12' }}>{t('catering.portions', { count: guestsDietStats.lactoseFree })}</strong>
               </div>
               <div style={dietRowStyle}>
-                <span style={{ color: 'var(--muted)' }}>Uczulenie na owoce morza:</span>
-                <strong style={{ color: '#c53030' }}>{guestsDietStats.seafoodAllergy} porcji</strong>
+                <span style={{ color: 'var(--muted)' }}>{t('catering.dietSeafood')}</span>
+                <strong style={{ color: '#c53030' }}>{t('catering.portions', { count: guestsDietStats.seafoodAllergy })}</strong>
               </div>
             </div>
 
             <div style={{ borderTop: '1px solid var(--border)', marginTop: '1.2rem', paddingTop: '1rem', textAlign: 'center' }}>
               <span style={{ fontSize: '0.8rem', color: 'var(--muted)', lineHeight: '1.4', display: 'block' }}>
-                Wyliczono na podstawie <strong>{guestsDietStats.totalGuests}</strong> gości o statusach <em>Potwierdzony</em> oraz <em>Oczekuje</em> z bazy danych gości.
+                {t('catering.dietNote', { count: guestsDietStats.totalGuests })}
               </span>
             </div>
           </section>
 
           {/* Interactive Guest Slider */}
           <section className="page-card" style={{ padding: '1.5rem' }}>
-            <h3 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 700 }}>Dostosuj szacunek osób</h3>
+            <h3 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 700 }}>{t('catering.sliderTitle')}</h3>
             <div style={{ display: 'grid', gap: '0.5rem' }}>
               <label style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 600 }}>
-                <span>Liczba Gości do kalkulatora:</span>
-                <strong style={{ color: 'var(--primary)' }}>{finalGuestsCount} osób</strong>
+                <span>{t('catering.sliderLabel')}</span>
+                <strong style={{ color: 'var(--primary)' }}>{t('catering.sliderPersons', { count: finalGuestsCount })}</strong>
               </label>
               <input 
                 type="range"
@@ -429,16 +492,16 @@ export function CateringPage() {
                 style={{ width: '100%', accentColor: 'var(--primary)', cursor: 'pointer' }}
               />
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--muted)', marginTop: '0.1rem' }}>
-                <span>10 osób</span>
-                <span>{guestsDietStats.totalGuests} (z bazy)</span>
-                <span>300 osób</span>
+                <span>{t('catering.sliderMin')}</span>
+                <span>{t('catering.sliderFromDb', { count: guestsDietStats.totalGuests })}</span>
+                <span>{t('catering.sliderMax')}</span>
               </div>
             </div>
           </section>
 
           {/* Vendor Selection (caterers only) */}
           <section className="page-card" style={{ padding: '1.5rem' }}>
-            <h3 style={{ margin: '0 0 0.8rem', fontSize: '1rem', fontWeight: 700 }}>Firma Cateringowa</h3>
+            <h3 style={{ margin: '0 0 0.8rem', fontSize: '1rem', fontWeight: 700 }}>{t('catering.cateringCompany')}</h3>
             
             <div style={{ display: 'grid', gap: '1rem' }}>
               <select 
@@ -474,29 +537,29 @@ export function CateringPage() {
                   fontSize: '0.85rem'
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                    <span style={{ color: 'var(--muted)' }}>Ocena firmy:</span>
+                    <span style={{ color: 'var(--muted)' }}>{t('catering.ratingLabel')}</span>
                     <strong>⭐ {selectedCaterer.rating} / 5.0</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                    <span style={{ color: 'var(--muted)' }}>Adres E-mail:</span>
+                    <span style={{ color: 'var(--muted)' }}>{t('catering.emailLabel')}</span>
                     <strong>{selectedCaterer.email}</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--muted)' }}>Status dostawcy:</span>
+                    <span style={{ color: 'var(--muted)' }}>{t('catering.statusLabel')}</span>
                     <strong style={{ color: selectedCaterer.status === 'confirmed' ? '#35684f' : '#8c5a12' }}>
-                      {selectedCaterer.status === 'confirmed' ? 'Potwierdzona współpraca' : 'Oczekujący'}
+                      {selectedCaterer.status === 'confirmed' ? t('catering.statusConfirmed') : t('catering.statusPending')}
                     </strong>
                   </div>
                 </div>
               )}
 
               <label style={{ display: 'grid', gap: '0.4rem' }}>
-                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--muted)' }}>Uwagi kucharza / Logistyka:</span>
+                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--muted)' }}>{t('catering.notesLabel')}</span>
                 <textarea 
                   rows={3}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="np. Dowóz ciepłych posiłków o godz. 17:00, 19:30, 22:00..."
+                  placeholder={t('catering.notesPlaceholder')}
                   style={{
                     width: '100%',
                     padding: '0.6rem',

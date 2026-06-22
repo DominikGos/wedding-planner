@@ -1,12 +1,16 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useDispatch } from 'react-redux'
-import { login, registerCouple } from '../../../store/slices/authSlice'
+import { useTranslation } from 'react-i18next'
+import { localAuthSuccess } from '../../../store/slices/authSlice'
+import { loginLocal, registerLocal } from '../../../api/authApi'
 
 export function LoginPage() {
   const navigate = useNavigate()
   const dispatch = useDispatch()
-  const [activeTab, setActiveTab] = useState<'login' | 'register'>('login')
+  const { t } = useTranslation()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const activeTab = searchParams.get('tab') === 'register' ? 'register' : 'login'
   
   // Login Form State
   const [loginEmail, setLoginEmail] = useState('')
@@ -18,51 +22,97 @@ export function LoginPage() {
   const [registerPassword, setRegisterPassword] = useState('')
   const [weddingDate, setWeddingDate] = useState('')
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    // Check if it's a planner email to mock planner login
-    const isPlanner = loginEmail.toLowerCase().includes('planner')
-    
-    dispatch(login({
-      name: isPlanner ? 'Anna Kowalska' : 'Maria & Jakub',
-      email: loginEmail,
-      role: isPlanner ? 'planner' : 'couple'
-    }))
-    
-    navigate('/')
+  // Status State
+  const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+
+  const handleTabChange = (tab: 'login' | 'register') => {
+    setSearchParams({ tab })
+    setError(null)
   }
 
-  const handleRegisterSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    dispatch(registerCouple({
-      coupleName,
-      email: registerEmail,
-      weddingDate
-    }))
-    
-    // Automatically redirect to the wedding creator page since they don't have a wedding yet!
-    navigate('/events/new')
-  }
+    setError(null)
 
-  // Helper quick login buttons
-  const handleQuickLogin = (role: 'couple' | 'planner') => {
-    if (role === 'couple') {
-      dispatch(login({
-        name: 'Maria & Jakub',
-        email: 'maria.jakub@example.com',
-        role: 'couple'
-      }))
-    } else {
-      dispatch(login({
-        name: 'Anna Kowalska',
-        email: 'anna.planner@example.com',
-        role: 'planner'
-      }))
+    // Form Validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(loginEmail)) {
+      setError(t('loginPageErrors.invalidEmail'))
+      return
     }
-    navigate('/')
+    if (!loginPassword) {
+      setError(t('loginPageErrors.emptyPassword'))
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const res = await loginLocal({ email: loginEmail, password: loginPassword })
+      
+      const mappedRole: 'couple' | 'planner' =
+        res.role.toLowerCase() === 'planner' ? 'planner' : 'couple'
+
+      dispatch(localAuthSuccess({
+        token: res.token,
+        email: res.email,
+        role: mappedRole,
+        name: res.name
+      }))
+
+      navigate('/')
+    } catch (err: any) {
+      setError(t('loginPageErrors.loginFailed'))
+    } finally {
+      setIsLoading(false)
+    }
   }
+
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+
+    // Form Validation
+    if (!coupleName.trim()) {
+      setError(t('loginPageErrors.emptyCoupleNames'))
+      return
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(registerEmail)) {
+      setError(t('loginPageErrors.invalidEmail'))
+      return
+    }
+    if (registerPassword.length < 6) {
+      setError(t('loginPageErrors.shortPassword'))
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const res = await registerLocal({
+        email: registerEmail,
+        password: registerPassword,
+        name: coupleName,
+        role: 'couple'
+      })
+
+      dispatch(localAuthSuccess({
+        token: res.token,
+        email: res.email,
+        role: 'couple',
+        name: res.name,
+        weddingDate: weddingDate || undefined
+      }))
+
+      navigate('/events/new')
+    } catch (err: any) {
+      setError(t('loginPageErrors.registerFailed'))
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+
 
   const handleGoogleLogin = () => {
     window.location.href = 'http://localhost:8080/oauth2/authorization/google'
@@ -75,10 +125,10 @@ export function LoginPage() {
       <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
         <span style={{ fontSize: '2.5rem', lineHeight: 1 }}>✨</span>
         <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '2.2rem', margin: '0.5rem 0', fontWeight: 500, color: 'var(--text)' }}>
-          Wedding Planner
+          {t('loginPage.title')}
         </h1>
         <p style={{ color: 'var(--muted)', margin: 0, fontSize: '0.95rem' }}>
-          Twój osobisty planer ślubu i wesela klasy Premium.
+          {t('loginPage.subtitle')}
         </p>
       </div>
 
@@ -93,7 +143,7 @@ export function LoginPage() {
         {/* Tabs switcher */}
         <div style={{ display: 'flex', borderBottom: '1px solid var(--border)' }}>
           <button
-            onClick={() => setActiveTab('login')}
+            onClick={() => handleTabChange('login')}
             style={{
               flex: 1,
               padding: '1.1rem',
@@ -107,11 +157,11 @@ export function LoginPage() {
               transition: 'all 0.2s'
             }}
           >
-            Zaloguj się
+            {t('loginPage.loginTab')}
           </button>
           
           <button
-            onClick={() => setActiveTab('register')}
+            onClick={() => handleTabChange('register')}
             style={{
               flex: 1,
               padding: '1.1rem',
@@ -125,25 +175,41 @@ export function LoginPage() {
               transition: 'all 0.2s'
             }}
           >
-            Zarejestruj się
+            {t('loginPage.registerTab')}
           </button>
         </div>
 
         {/* Form area */}
         <div style={{ padding: '2.2rem' }}>
+          {error && (
+            <div style={{
+              padding: '0.8rem 1rem',
+              borderRadius: '10px',
+              background: '#fff0f0',
+              color: '#a33',
+              fontSize: '0.9rem',
+              marginBottom: '1.25rem',
+              border: '1px solid #ffa3a3',
+              fontWeight: 500
+            }}>
+              {error}
+            </div>
+          )}
+
           {activeTab === 'login' ? (
             /* LOGIN FORM */
             <form onSubmit={handleLoginSubmit} style={{ display: 'grid', gap: '1.25rem' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: 'var(--muted)' }}>
-                  Adres E-mail
+                  {t('loginPage.emailLabel')}
                 </label>
                 <input
                   type="email"
-                  placeholder="np. maria.jakub@example.com"
+                  placeholder={t('loginPage.emailPlaceholder')}
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
                   required
+                  disabled={isLoading}
                   style={{
                     width: '100%',
                     padding: '0.75rem 0.9rem',
@@ -158,14 +224,15 @@ export function LoginPage() {
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: 'var(--muted)' }}>
-                  Hasło
+                  {t('loginPage.passwordLabel')}
                 </label>
                 <input
                   type="password"
-                  placeholder="••••••••"
+                  placeholder={t('loginPage.passwordPlaceholder')}
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   required
+                  disabled={isLoading}
                   style={{
                     width: '100%',
                     padding: '0.75rem 0.9rem',
@@ -180,31 +247,34 @@ export function LoginPage() {
 
               <div style={{ textAlign: 'right', marginTop: '-0.25rem' }}>
                 <span style={{ fontSize: '0.8rem', color: 'var(--muted)', cursor: 'pointer', textDecoration: 'underline' }}>
-                  Zapomniałeś hasła?
+                  {t('loginPage.forgotPassword')}
                 </span>
               </div>
 
               <button
                 type="submit"
+                disabled={isLoading}
                 style={{
                   padding: '0.8rem',
                   borderRadius: '10px',
                   border: 'none',
-                  background: 'var(--primary)',
+                  background: isLoading ? 'var(--border)' : 'var(--primary)',
                   color: '#fff',
                   fontWeight: 600,
                   fontSize: '1rem',
-                  cursor: 'pointer',
+                  cursor: isLoading ? 'not-allowed' : 'pointer',
                   boxShadow: '0 4px 12px rgba(184, 90, 31, 0.15)',
                   marginTop: '0.5rem',
-                  transition: 'all 0.2s'
+                  transition: 'all 0.2s',
+                  opacity: isLoading ? 0.7 : 1
                 }}
               >
-                Zaloguj się
+                {isLoading ? t('loginPage.loginLoading') : t('loginPage.loginSubmit')}
               </button>
               <button
                 type="button"
                 onClick={handleGoogleLogin}
+                disabled={isLoading}
                 style={{
                   padding: '0.8rem',
                   borderRadius: '10px',
@@ -213,12 +283,12 @@ export function LoginPage() {
                   color: 'var(--text)',
                   fontWeight: 600,
                   fontSize: '1rem',
-                  cursor: 'pointer',
+                  cursor: isLoading ? 'not-allowed' : 'pointer',
                   boxShadow: '0 4px 12px rgba(47, 42, 36, 0.06)',
                   transition: 'all 0.2s'
                 }}
               >
-                Zaloguj przez Google
+                {t('loginPage.loginGoogle')}
               </button>
             </form>
           ) : (
@@ -226,14 +296,15 @@ export function LoginPage() {
             <form onSubmit={handleRegisterSubmit} style={{ display: 'grid', gap: '1.25rem' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: 'var(--muted)' }}>
-                  Imiona Pary Młodej
+                  {t('loginPage.coupleNameLabel')}
                 </label>
                 <input
                   type="text"
-                  placeholder="np. Katarzyna & Tomasz"
+                  placeholder={t('loginPage.coupleNamePlaceholder')}
                   value={coupleName}
                   onChange={(e) => setCoupleName(e.target.value)}
                   required
+                  disabled={isLoading}
                   style={{
                     width: '100%',
                     padding: '0.75rem 0.9rem',
@@ -248,14 +319,15 @@ export function LoginPage() {
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: 'var(--muted)' }}>
-                  Adres E-mail
+                  {t('loginPage.emailLabel')}
                 </label>
                 <input
                   type="email"
-                  placeholder="np. tomek.kasia@example.com"
+                  placeholder={t('loginPage.registerEmailPlaceholder')}
                   value={registerEmail}
                   onChange={(e) => setRegisterEmail(e.target.value)}
                   required
+                  disabled={isLoading}
                   style={{
                     width: '100%',
                     padding: '0.75rem 0.9rem',
@@ -270,14 +342,15 @@ export function LoginPage() {
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: 'var(--muted)' }}>
-                  Hasło
+                  {t('loginPage.passwordLabel')}
                 </label>
                 <input
                   type="password"
-                  placeholder="Minimum 6 znaków"
+                  placeholder={t('loginPage.registerPasswordPlaceholder')}
                   value={registerPassword}
                   onChange={(e) => setRegisterPassword(e.target.value)}
                   required
+                  disabled={isLoading}
                   style={{
                     width: '100%',
                     padding: '0.75rem 0.9rem',
@@ -292,12 +365,13 @@ export function LoginPage() {
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: 'var(--muted)' }}>
-                  Planowana Data Ślubu (opcjonalnie)
+                  {t('loginPage.weddingDateLabel')}
                 </label>
                 <input
                   type="date"
                   value={weddingDate}
                   onChange={(e) => setWeddingDate(e.target.value)}
+                  disabled={isLoading}
                   style={{
                     width: '100%',
                     padding: '0.75rem 0.9rem',
@@ -312,70 +386,47 @@ export function LoginPage() {
 
               <button
                 type="submit"
+                disabled={isLoading}
                 style={{
                   padding: '0.8rem',
                   borderRadius: '10px',
                   border: 'none',
-                  background: 'var(--primary)',
+                  background: isLoading ? 'var(--border)' : 'var(--primary)',
                   color: '#fff',
                   fontWeight: 600,
                   fontSize: '1rem',
-                  cursor: 'pointer',
+                  cursor: isLoading ? 'not-allowed' : 'pointer',
                   boxShadow: '0 4px 12px rgba(184, 90, 31, 0.15)',
                   marginTop: '0.5rem',
+                  transition: 'all 0.2s',
+                  opacity: isLoading ? 0.7 : 1
+                }}
+              >
+                {isLoading ? t('loginPage.registerLoading') : t('loginPage.registerSubmit')}
+              </button>
+              <button
+                type="button"
+                onClick={handleGoogleLogin}
+                disabled={isLoading}
+                style={{
+                  padding: '0.8rem',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border)',
+                  background: '#fff',
+                  color: 'var(--text)',
+                  fontWeight: 600,
+                  fontSize: '1rem',
+                  cursor: isLoading ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 4px 12px rgba(47, 42, 36, 0.06)',
                   transition: 'all 0.2s'
                 }}
               >
-                Zarejestruj i Stwórz Planer
+                {t('loginPage.registerGoogle')}
               </button>
             </form>
           )}
 
-          {/* Quick Mock Login buttons (Gold/Rose Theme) */}
-          <div style={{ marginTop: '2.2rem', paddingTop: '1.8rem', borderTop: '1px solid var(--border)', textAlign: 'center' }}>
-            <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--muted)', fontWeight: 600, display: 'block', marginBottom: '0.9rem' }}>
-              Szybkie Logowanie Testowe
-            </span>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-              <button
-                onClick={() => handleQuickLogin('couple')}
-                style={{
-                  padding: '0.65rem 0.5rem',
-                  borderRadius: '10px',
-                  border: '1px solid var(--primary)',
-                  background: 'var(--primary-soft)',
-                  color: 'var(--primary)',
-                  fontSize: '0.82rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
-                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
-              >
-                👰‍♀️🤵‍♂️ Para Młoda
-              </button>
 
-              <button
-                onClick={() => handleQuickLogin('planner')}
-                style={{
-                  padding: '0.65rem 0.5rem',
-                  borderRadius: '10px',
-                  border: '1px solid var(--muted)',
-                  background: '#fff',
-                  color: 'var(--text)',
-                  fontSize: '0.82rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = '#fbf9f6'}
-                onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}
-              >
-                💼 Wedding Planner
-              </button>
-            </div>
-          </div>
 
         </div>
 

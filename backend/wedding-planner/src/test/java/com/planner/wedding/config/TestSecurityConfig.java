@@ -32,10 +32,15 @@ public class TestSecurityConfig {
                             jakarta.servlet.http.HttpServletResponse response,
                             jakarta.servlet.FilterChain chain
                     ) throws jakarta.servlet.ServletException, java.io.IOException {
+                        String uri = request.getRequestURI();
+                        UserRole role = UserRole.PLANNER;
+                        if (uri != null && (uri.contains("confirm-online") || uri.contains("retry"))) {
+                            role = UserRole.BRIDE;
+                        }
                         User testUser = User.builder()
                                 .id(7L)
                                 .email("test@example.com")
-                                .role(UserRole.PLANNER)
+                                .role(role)
                                 .build();
                         Authentication auth = new UsernamePasswordAuthenticationToken(
                                 testUser, null, List.of(new SimpleGrantedAuthority("ROLE_" + testUser.getRole()))

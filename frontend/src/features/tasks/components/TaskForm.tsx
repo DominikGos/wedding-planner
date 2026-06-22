@@ -16,13 +16,14 @@ export type TaskFormState = {
 type TaskFormProps = {
   values: TaskFormState
   editing: boolean
+  error: string | null
   onChange: (field: keyof TaskFormState, value: string) => void
   onCancel: () => void
   onSubmit: () => void
   onDelete?: () => void
 }
 
-export function TaskForm({ values, editing, onChange, onCancel, onSubmit, onDelete }: TaskFormProps) {
+export function TaskForm({ values, editing, error, onChange, onCancel, onSubmit, onDelete }: TaskFormProps) {
   const cateringCost = values.price && values.numberOfGuests
     ? Number(values.price) * Number(values.numberOfGuests)
     : null
@@ -32,7 +33,7 @@ export function TaskForm({ values, editing, onChange, onCancel, onSubmit, onDele
     minHeight: '48px',
     borderRadius: '12px',
     border: '1px solid var(--border)',
-    background: 'var(--surface)',
+    backgroundColor: 'var(--surface)',
     color: 'var(--text)',
     padding: '0 1rem',
   }
@@ -109,6 +110,12 @@ export function TaskForm({ values, editing, onChange, onCancel, onSubmit, onDele
 
         {values.type === 'CATERING' && cateringCost !== null && (
           <strong style={{ color: 'var(--primary)' }}>Szacowany koszt: {cateringCost.toLocaleString('pl-PL')} PLN</strong>
+        )}
+
+        {error && (
+          <div className='app-alert app-alert-danger' style={{ margin: '0.2rem 0', padding: '0.75rem', fontSize: '0.9rem', textAlign: 'center' }}>
+            {error}
+          </div>
         )}
 
         <div className="form-actions" style={{ display: 'flex', gap: '0.8rem', marginTop: '0.35rem' }}>

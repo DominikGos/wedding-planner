@@ -68,7 +68,7 @@ public class OAuthSuccessHandler
                                     .email(email)
                                     .googleId(googleId)
                                     .provider(AuthProvider.GOOGLE)
-                                    .role(UserRole.GUEST)
+                                    .role(UserRole.BRIDE)
                                     .build();
 
                             return userRepository.save(newUser);

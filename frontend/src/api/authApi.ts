@@ -1,17 +1,34 @@
 import { httpClient } from './httpClient'
 
-type LoginPayload = {
+export type AuthResponse = {
+  token: string
+  email: string
+  role: string
+  name: string
+}
+
+export type LoginRequest = {
   email: string
   password: string
 }
 
-type LoginResponse = {
-  token: string
+export type RegisterRequest = {
+  email: string
+  password: string
+  name: string
+  role: string
 }
 
-export function login(payload: LoginPayload) {
-  return httpClient<LoginResponse>('/api/auth/login', {
+export function loginLocal(request: LoginRequest) {
+  return httpClient<AuthResponse>('/api/auth/login', {
     method: 'POST',
-    body: payload,
+    body: request,
+  })
+}
+
+export function registerLocal(request: RegisterRequest) {
+  return httpClient<AuthResponse>('/api/auth/register', {
+    method: 'POST',
+    body: request,
   })
 }

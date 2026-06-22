@@ -18,6 +18,16 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.context.annotation.Import;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
+import org.springframework.web.method.support.ModelAndViewContainer;
+import org.springframework.web.context.request.NativeWebRequest;
+import org.springframework.web.bind.support.WebDataBinderFactory;
+import org.springframework.core.MethodParameter;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.boot.test.context.TestConfiguration;
+import com.planner.wedding.entities.User;
+import com.planner.wedding.entities.UserRole;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -34,7 +44,42 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         OAuth2ClientWebSecurityAutoConfiguration.class
 })
 @AutoConfigureMockMvc(addFilters = false)
+@Import(PaymentControllerTest.TestConfig.class)
 class PaymentControllerTest {
+
+    @TestConfiguration
+    static class TestConfig implements org.springframework.web.servlet.config.annotation.WebMvcConfigurer {
+        @Override
+        public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
+            resolvers.add(new HandlerMethodArgumentResolver() {
+                @Override
+                public boolean supportsParameter(MethodParameter parameter) {
+                    return parameter.getParameterType().equals(User.class)
+                            && parameter.hasParameterAnnotation(AuthenticationPrincipal.class);
+                }
+
+                @Override
+                public Object resolveArgument(MethodParameter parameter,
+                                               ModelAndViewContainer mavContainer,
+                                               NativeWebRequest webRequest,
+                                               WebDataBinderFactory binderFactory) {
+                    String uri = webRequest.getDescription(false);
+                    if (uri != null && (uri.contains("confirm-online") || uri.contains("retry"))) {
+                        return User.builder()
+                                .id(7L)
+                                .email("couple@example.com")
+                                .role(UserRole.BRIDE)
+                                .build();
+                    }
+                    return User.builder()
+                            .id(7L)
+                            .email("planner@example.com")
+                            .role(UserRole.PLANNER)
+                            .build();
+                }
+            });
+        }
+    }
 
     @Autowired
     private MockMvc mockMvc;

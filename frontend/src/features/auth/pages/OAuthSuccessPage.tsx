@@ -12,13 +12,23 @@ export function OAuthSuccessPage() {
 
   useEffect(() => {
     if (!token) return
+    const payload = JSON.parse(
+      atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))
+    ) as { sub: string; role?: string }
 
-    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))) as { sub: string }
     dispatch(setTasks([]))
-    dispatch(oauthLoginSuccess({ token, email: payload.sub }))
+
+    // Zrzutujmy rolę z backendu (np. "PLANNER", "GUEST") na format frontendu ('planner', 'couple')
+    const mappedRole: 'couple' | 'planner' =
+      payload.role?.toLowerCase() === 'planner' ? 'planner' : 'couple';
+    dispatch(oauthLoginSuccess({
+      token,
+      email: payload.sub,
+      role: mappedRole
+    }))
+
     navigate('/', { replace: true })
   }, [dispatch, navigate, token])
-
   if (!token) {
     return (
       <div className='public-page' style={{ maxWidth: '480px', margin: '3rem auto', padding: '1rem' }}>

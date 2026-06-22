@@ -49,10 +49,17 @@
 
 [data-theme] {
   color: var(--text);
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
 }
 
 * {
   box-sizing: border-box;
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 body {
@@ -198,7 +205,7 @@ a {
   min-height: 46px;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: var(--surface);
+  background-color: var(--surface);
   color: var(--text);
   padding: 0 1rem;
 }
@@ -255,7 +262,7 @@ select.task-status-select {
   padding: 0.45rem 2.2rem 0.45rem 0.75rem;
   border-radius: 999px;
   border: 1px solid #f0d8c1;
-  background: var(--primary-soft);
+  background-color: var(--primary-soft);
   color: var(--primary);
   font-weight: 600;
   cursor: pointer;

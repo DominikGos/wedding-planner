@@ -56,14 +56,16 @@ type PaymentRequestOptions = {
   token?: string
 }
 
-export function getPayments(options: PaymentRequestOptions = {}) {
-  return httpClient<PaymentResponse[]>('/api/payments', {
+export function getPayments(options: PaymentRequestOptions & { eventId?: number } = {}) {
+  const query = options.eventId ? `?eventId=${options.eventId}` : ''
+  return httpClient<PaymentResponse[]>(`/api/payments${query}`, {
     token: options.token,
   })
 }
 
-export function getPaymentSummary(options: PaymentRequestOptions = {}) {
-  return httpClient<PaymentSummaryResponse>('/api/payments/summary', {
+export function getPaymentSummary(options: PaymentRequestOptions & { eventId?: number } = {}) {
+  const query = options.eventId ? `?eventId=${options.eventId}` : ''
+  return httpClient<PaymentSummaryResponse>(`/api/payments/summary${query}`, {
     token: options.token,
   })
 }

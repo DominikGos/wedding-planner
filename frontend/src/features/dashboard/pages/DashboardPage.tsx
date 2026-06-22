@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
+import { useTranslation } from 'react-i18next'
 import { getEventCostSummary, type EventCostSummaryResponse } from '../../../api/eventCostApi'
 import { getGuests, type GuestResponse } from '../../../api/guestApi'
 import { getTasks, type TaskResponse } from '../../../api/taskApi'
@@ -53,26 +54,8 @@ function getGuestBucket(guest: GuestResponse) {
   return 'waiting'
 }
 
-function getTimelineStatus(task: TaskResponse) {
-  if (task.status === 'COMPLETED') return 'Zrobione'
-  if (task.priority != null && task.priority <= 1) return 'Wazne'
-  if (task.status === 'IN_PROGRESS') return 'W trakcie'
-  return 'Zaplanowane'
-}
-
-function getTaskDateParts(task: TaskResponse) {
-  if (!task.dueDate) {
-    return { date: 'Brak terminu', time: '-' }
-  }
-
-  const [date, rawTime] = task.dueDate.split('T')
-  return {
-    date: date || 'Brak terminu',
-    time: rawTime?.slice(0, 5) || '-',
-  }
-}
-
 export function DashboardPage() {
+  const { t } = useTranslation()
   const dispatch = useDispatch()
   const [searchParams] = useSearchParams()
   const eventUpdated = searchParams.get('eventUpdated') === '1'
@@ -80,7 +63,7 @@ export function DashboardPage() {
   // Redux state
   const { user, token, activeWeddingId, weddings, eventsLoading, eventsError } = useSelector((state: RootState) => state.auth)
   const activeWedding = weddings.find(w => w.id === activeWeddingId)
-  const greetingName = user?.email?.split('@')[0] || 'Użytkownik'
+  const greetingName = user?.email?.split('@')[0] || t('common.user')
   const [dashboardLoading, setDashboardLoading] = useState(false)
   const [dashboardError, setDashboardError] = useState<string | null>(null)
   const [costSummary, setCostSummary] = useState<EventCostSummaryResponse | null>(null)
@@ -112,7 +95,7 @@ export function DashboardPage() {
         })
         .catch(() => {
           if (cancelled) return
-          setDashboardError('Nie udało się pobrać kompletu danych pulpitu z backendu.')
+          setDashboardError(t('dashboard.errorLoadingDashboard'))
           setCostSummary(null)
           setDashboardTasks([])
           setDashboardGuests([])
@@ -125,7 +108,32 @@ export function DashboardPage() {
     return () => {
       cancelled = true
     }
-  }, [activeWeddingId, token])
+  }, [activeWeddingId, token, t])
+
+  function getTaskTypeName(type: string) {
+    if (type === 'CATERING') return t('dashboard.catering')
+    if (type === 'DECORATION') return t('dashboard.decoration')
+    if (type === 'ENTERTAINMENT') return t('dashboard.entertainment')
+    return t('dashboard.other')
+  }
+
+  function getTimelineStatus(task: TaskResponse) {
+    if (task.status === 'COMPLETED') return t('dashboard.done')
+    if (task.priority != null && task.priority <= 1) return t('dashboard.important')
+    if (task.status === 'IN_PROGRESS') return t('dashboard.inProgress')
+    return t('dashboard.planned')
+  }
+
+  function getTaskDateParts(task: TaskResponse) {
+    if (!task.dueDate) {
+      return { date: t('dashboard.noDeadline'), time: '-' }
+    }
+    const [date, rawTime] = task.dueDate.split('T')
+    return {
+      date: date || t('dashboard.noDeadline'),
+      time: rawTime?.slice(0, 5) || '-',
+    }
+  }
 
   const budgetItems = useMemo<BudgetItem[]>(() => {
     const costTasks = costSummary?.tasks ?? []
@@ -139,11 +147,11 @@ export function DashboardPage() {
       .filter(([, amount]) => amount > 0)
       .map(([type, amount], index) => ({
         id: type.toLowerCase(),
-        name: type === 'CATERING' ? 'Catering' : type === 'DECORATION' ? 'Dekoracje' : type === 'ENTERTAINMENT' ? 'Rozrywka' : 'Inne',
+        name: getTaskTypeName(type),
         amount: formatCurrency(amount),
         color: budgetColors[index % budgetColors.length],
       }))
-  }, [costSummary])
+  }, [costSummary, t])
 
   const budgetGradient = useMemo(() => {
     const costTasks = costSummary?.tasks ?? []
@@ -186,37 +194,37 @@ export function DashboardPage() {
   const topCards = useMemo<TopCardItem[]>(() => [
     {
       id: 'budget',
-      title: 'Całkowity Budżet',
-      value: visibleTotalCost > 0 ? formatCurrency(visibleTotalCost) : 'Brak kosztów',
-      note: visibleTotalCost > 0 ? 'Wyliczone z zadań' : 'Dodaj koszty do zadań',
+      title: t('dashboard.totalBudget'),
+      value: visibleTotalCost > 0 ? formatCurrency(visibleTotalCost) : t('dashboard.noCosts'),
+      note: visibleTotalCost > 0 ? t('dashboard.calculatedFromTasks') : t('dashboard.addCosts'),
       color: 'var(--primary)',
       icon: 'trend',
     },
     {
       id: 'guests',
-      title: 'Potwierdzeni Goście',
+      title: t('dashboard.confirmedGuests'),
       value: `${guestBuckets.confirmed}/${allGuests}`,
-      note: `${guestConfirmationRate}% potwierdzeń`,
+      note: `${guestConfirmationRate}${t('dashboard.confirmations')}`,
       color: '#0ea44b',
       icon: 'users',
     },
     {
       id: 'tasks',
-      title: 'Zadania Ukończone',
+      title: t('dashboard.completedTasks'),
       value: `${completedTasks}/${dashboardTasks.length}`,
-      note: `${taskProgressRate}% postępu`,
+      note: `${taskProgressRate}${t('dashboard.progress')}`,
       color: '#2c67f6',
       icon: 'check',
     },
     {
       id: 'days',
-      title: 'Dni do Ślubu',
+      title: t('dashboard.daysToWedding'),
       value: daysUntilWedding == null ? '-' : String(daysUntilWedding),
-      note: activeWedding?.date || 'Brak daty wydarzenia',
+      note: activeWedding?.date || t('dashboard.noEventDate'),
       color: '#ff3d6c',
       icon: 'calendar',
     },
-  ], [activeWedding?.date, allGuests, completedTasks, dashboardTasks.length, daysUntilWedding, guestBuckets.confirmed, guestConfirmationRate, taskProgressRate, visibleTotalCost])
+  ], [activeWedding?.date, allGuests, completedTasks, dashboardTasks.length, daysUntilWedding, guestBuckets.confirmed, guestConfirmationRate, taskProgressRate, visibleTotalCost, t])
 
   const timelineEvents = useMemo<DashboardEvent[]>(() => {
     return [...dashboardTasks]
@@ -233,14 +241,14 @@ export function DashboardPage() {
           status: getTimelineStatus(task),
         }
       })
-  }, [dashboardTasks])
+  }, [dashboardTasks, t])
 
   const guestStats = useMemo<GuestStat[]>(() => [
-    { id: 'confirmed', value: String(guestBuckets.confirmed), label: 'Potwierdzeni', color: '#0ea44b', background: '#eefbf2', icon: 'check-circle' },
-    { id: 'waiting', value: String(guestBuckets.waiting), label: 'Oczekujący', color: '#ef8a00', background: 'var(--surface)', icon: 'clock' },
-    { id: 'rejected', value: String(guestBuckets.rejected), label: 'Odrzuceni', color: '#eb1d1d', background: 'var(--surface)', icon: 'alert' },
-    { id: 'all', value: String(allGuests), label: 'Suma', color: 'var(--primary)', background: 'var(--surface)', icon: 'group' },
-  ], [allGuests, guestBuckets.confirmed, guestBuckets.rejected, guestBuckets.waiting])
+    { id: 'confirmed', value: String(guestBuckets.confirmed), label: t('dashboard.guestConfirmed'), color: '#0ea44b', background: '#eefbf2', icon: 'check-circle' },
+    { id: 'waiting', value: String(guestBuckets.waiting), label: t('dashboard.guestWaiting'), color: '#ef8a00', background: 'var(--surface)', icon: 'clock' },
+    { id: 'rejected', value: String(guestBuckets.rejected), label: t('dashboard.guestRejected'), color: '#eb1d1d', background: 'var(--surface)', icon: 'alert' },
+    { id: 'all', value: String(allGuests), label: t('dashboard.guestAll'), color: 'var(--primary)', background: 'var(--surface)', icon: 'group' },
+  ], [allGuests, guestBuckets.confirmed, guestBuckets.rejected, guestBuckets.waiting, t])
 
   // ----------------------------------------------------
   // CASE 1: NOT LOGGED IN - PUBLIC LANDING PAGE
@@ -250,15 +258,15 @@ export function DashboardPage() {
   }
 
   // ----------------------------------------------------
-  // CASE 2: ZALOGOWANY WEDDING PLANNER
+  // CASE 2: NO TOKEN (demo mode)
   // ----------------------------------------------------
   if (!token) {
     return (
       <section className='page-card' style={{ maxWidth: '680px', margin: '3rem auto', padding: '2rem', textAlign: 'center' }}>
-        <h1 className='page-title'>Tryb demonstracyjny</h1>
-        <p className='page-subtitle'>Dane wydarzeń z backendu są dostępne po zalogowaniu przez Google.</p>
-        <Link to='/auth' style={{ color: 'var(--primary)', fontWeight: 600 }}>
-          Przejdź do logowania
+        <h1 className='page-title'>{t('dashboard.demoMode')}</h1>
+        <p className='page-subtitle'>{t('dashboard.demoModeText')}</p>
+        <Link to='/login?tab=login' style={{ color: 'var(--primary)', fontWeight: 600 }}>
+          {t('dashboard.goToLogin')}
         </Link>
       </section>
     )
@@ -267,8 +275,8 @@ export function DashboardPage() {
   if (eventsLoading) {
     return (
       <section className='page-card' style={{ maxWidth: '680px', margin: '3rem auto', padding: '2rem', textAlign: 'center' }}>
-        <h1 className='page-title'>Ładowanie wydarzeń...</h1>
-        <p className='page-subtitle'>Pobieramy aktualną listę wydarzeń z backendu.</p>
+        <h1 className='page-title'>{t('dashboard.loadingEvents')}</h1>
+        <p className='page-subtitle'>{t('dashboard.loadingEventsText')}</p>
       </section>
     )
   }
@@ -276,7 +284,7 @@ export function DashboardPage() {
   if (eventsError) {
     return (
       <section className='page-card' style={{ maxWidth: '680px', margin: '3rem auto', padding: '2rem', textAlign: 'center' }}>
-        <h1 className='page-title'>Nie udało się pobrać wydarzeń</h1>
+        <h1 className='page-title'>{t('dashboard.eventsError')}</h1>
         <p className='page-subtitle'>{eventsError}</p>
       </section>
     )
@@ -300,22 +308,22 @@ export function DashboardPage() {
           border: '1px solid var(--border)',
           borderRadius: '16px'
         }}>
-          <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--primary)', fontWeight: 600 }}>Dedykowany Panel Plannera</span>
+          <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--primary)', fontWeight: 600 }}>{t('dashboard.plannerPanel')}</span>
           <h1 className="page-title" style={{ fontSize: '2.2rem', marginTop: '0.25rem', fontFamily: "'Playfair Display', Georgia, serif", fontWeight: 400 }}>
-            Witaj, {greetingName}!
+            {t('dashboard.welcomePlanner', { name: greetingName })}
           </h1>
           <p className="page-subtitle" style={{ fontSize: '1.05rem', color: 'var(--muted)', margin: '0.4rem 0 0' }}>
-            Oto lista wesel, które aktualnie koordynujesz. Wybierz wesele, aby przejść do szczegółów.
+            {t('dashboard.plannerSubtitle')}
           </p>
         </article>
 
-        {/* Lista Wesel w postaci luksusowych kart */}
+        {/* Lista Wesel */}
         {weddings.length === 0 && (
           <article className='page-card' style={{ padding: '2rem', textAlign: 'center' }}>
-            <h2 style={{ marginTop: 0 }}>Brak wydarzeń</h2>
-            <p style={{ color: 'var(--muted)' }}>Backend nie zwrócił jeszcze żadnego wydarzenia.</p>
+            <h2 style={{ marginTop: 0 }}>{t('dashboard.noEvents')}</h2>
+            <p style={{ color: 'var(--muted)' }}>{t('dashboard.noEventsText')}</p>
             <Link to='/events/new' style={{ color: 'var(--primary)', fontWeight: 600 }}>
-              Utwórz pierwsze wydarzenie
+              {t('dashboard.createFirstEvent')}
             </Link>
           </article>
         )}
@@ -365,7 +373,7 @@ export function DashboardPage() {
               </div>
 
               <div style={{ display: 'grid', gap: '0.25rem' }}>
-                <span style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>Lokalizacja wesela:</span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>{t('dashboard.weddingLocation')}</span>
                 <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>🏰 {wedding.venue}</span>
               </div>
 
@@ -385,7 +393,7 @@ export function DashboardPage() {
                   transition: 'background 0.2s'
                 }}
               >
-                Zarządzaj Weselem
+                {t('dashboard.manageWedding')}
               </button>
             </div>
           ))}
@@ -395,23 +403,22 @@ export function DashboardPage() {
   }
 
   // ----------------------------------------------------
-  // CASE 3: ZALOGOWANA PARA MŁODA
+  // CASE 3: COUPLE
   // ----------------------------------------------------
   if (user.role === 'couple') {
     
-    // Case 3a: No active wedding created yet
+    // Case 3a: No active wedding
     if (!activeWeddingId) {
       return (
         <section style={{ maxWidth: '600px', margin: '3rem auto', textAlign: 'center', display: 'grid', gap: '1.5rem' }}>
           <div style={{ fontSize: '4.5rem', lineHeight: 1 }}>💍</div>
-          <span style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.2em', color: 'var(--primary)', fontWeight: 600 }}>Witaj w planerze</span>
+          <span style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.2em', color: 'var(--primary)', fontWeight: 600 }}>{t('dashboard.welcomeCouple')}</span>
           
           <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '2.5rem', margin: 0, fontWeight: 500 }}>
-            Witaj, {greetingName}!
+            {t('dashboard.welcomePlanner', { name: greetingName })}
           </h1>
           <p style={{ color: 'var(--muted)', fontSize: '1.05rem', lineHeight: '1.6', margin: 0 }}>
-            Cieszymy się, że jesteś z nami. Twój luksusowy planer ślubny jest gotowy do wdrożenia. 
-            Stwórzmy teraz Twoje pierwsze wydarzenie, aby odblokować pełen pakiet narzędzi.
+            {t('dashboard.coupleWelcomeText')}
           </p>
           
           <div style={{ marginTop: '1.5rem' }}>
@@ -429,14 +436,14 @@ export function DashboardPage() {
                 transition: 'all 0.2s'
               }}
             >
-              Rozpocznij Kreator Wesela ✨
+              {t('dashboard.startWeddingCreator')}
             </Link>
           </div>
         </section>
       )
     }
 
-    // Case 3b: Has active wedding! Render active dashboard
+    // Case 3b: Has active wedding
     return renderActiveWeddingDashboard()
   }
 
@@ -452,12 +459,12 @@ export function DashboardPage() {
       <section style={{ display: 'grid', gap: '1rem' }}>
         {eventUpdated && (
           <div className='app-alert app-alert-success'>
-            Szczegóły wydarzenia zostały zapisane.
+            {t('dashboard.eventSaved')}
           </div>
         )}
         {dashboardLoading && (
           <div className='app-alert app-alert-info'>
-            Odświeżamy dane pulpitu z backendu...
+            {t('dashboard.refreshingData')}
           </div>
         )}
         {dashboardError && (
@@ -486,16 +493,16 @@ export function DashboardPage() {
           >
             <div>
               <h1 className='page-title' style={{ fontSize: '2rem' }}>
-                {user?.role === 'planner' ? 'Pulpit Menadżera (Koordynator)' : 'Twój Pulpit Ślubny'}
+                {user?.role === 'planner' ? t('dashboard.managerDashboard') : t('dashboard.coupleDashboard')}
               </h1>
               <p className='page-subtitle' style={{ fontSize: '1.05rem' }}>
-                Witaj, {greetingName}! Oto przegląd planowania wesela.
+                {t('dashboard.greeting', { name: greetingName })}
               </p>
             </div>
 
             <div className='dashboard-event-summary' style={{ textAlign: 'right' }}>
               <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Ślub i Wesele
+                {t('dashboard.weddingLabel')}
               </p>
               <strong style={{ fontSize: '1.8rem', fontFamily: 'Georgia, serif', fontWeight: 500 }}>
                 {activeWedding.name}
@@ -516,13 +523,13 @@ export function DashboardPage() {
                   fontWeight: 600,
                 }}
               >
-                Edytuj szczegóły
+                {t('dashboard.editDetails')}
               </Link>
             </div>
           </div>
         </article>
 
-        {/* Dynamic stats cards based on current activeWedding state */}
+        {/* Dynamic stats cards */}
         <div className='stats-grid' style={{ marginTop: 0 }}>
           {topCards.map((card) => {
             return (
@@ -538,7 +545,7 @@ export function DashboardPage() {
           })}
         </div>
 
-        {/* Interactive panels: Budget Pie & Schedule */}
+        {/* Budget Pie & Schedule */}
         <div
           className='dashboard-main-grid'
           style={{
@@ -547,10 +554,10 @@ export function DashboardPage() {
             gap: '1rem',
           }}
         >
-          {/* Budget chart simulation */}
+          {/* Budget chart */}
           <article className='page-card' style={{ padding: 0, overflow: 'hidden' }}>
             <div style={{ padding: '1.2rem 1.35rem', borderBottom: '1px solid var(--border)' }}>
-              <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Podsumowanie Budżetu</h2>
+              <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{t('dashboard.budgetSummary')}</h2>
             </div>
 
             <div style={{ padding: '1.4rem 1.35rem' }}>
@@ -596,7 +603,7 @@ export function DashboardPage() {
                   alignItems: 'center',
                 }}
               >
-                <strong style={{ fontSize: '1rem' }}>Suma całkowita</strong>
+                <strong style={{ fontSize: '1rem' }}>{t('dashboard.totalSum')}</strong>
                 <strong style={{ color: 'var(--primary)', fontSize: '1.8rem' }}>
                   {visibleTotalCost > 0 ? formatCurrency(visibleTotalCost) : '0 PLN'}
                 </strong>
@@ -604,10 +611,10 @@ export function DashboardPage() {
             </div>
           </article>
 
-          {/* Timeline details */}
+          {/* Timeline */}
           <article className='page-card' style={{ padding: 0, overflow: 'hidden' }}>
             <div style={{ padding: '1.2rem 1.35rem', borderBottom: '1px solid var(--border)' }}>
-              <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Najbliższe Wydarzenia i Kamienie Milowe</h2>
+              <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{t('dashboard.upcomingEvents')}</h2>
             </div>
 
             <div style={{ padding: '1.35rem', display: 'grid', gap: '1rem' }}>
@@ -619,7 +626,7 @@ export function DashboardPage() {
               ))}
               {timelineEvents.length === 0 && (
                 <div className='surface-panel' style={{ padding: '1rem', color: 'var(--muted)', textAlign: 'center' }}>
-                  Brak zadań z terminem dla aktywnego wydarzenia.
+                  {t('dashboard.noTasksWithDueDate')}
                 </div>
               )}
             </div>
@@ -629,7 +636,7 @@ export function DashboardPage() {
         {/* Guest count details */}
         <article className='page-card' style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '1.2rem 1.35rem', borderBottom: '1px solid var(--border)' }}>
-            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Statystyki Gości</h2>
+            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{t('dashboard.guestStats')}</h2>
           </div>
 
           <div

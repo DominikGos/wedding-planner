@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
+import { useTranslation } from 'react-i18next'
 import { createVendor, deleteVendor, getVendors, type VendorResponse } from '../../../api/vendorApi'
 import type { RootState } from '../../../store'
 import { addVendor, removeVendor, setVendors, updateVendorStatus } from '../../../store/slices/vendorsSlice'
@@ -65,6 +66,7 @@ function getVendorPrice(vendor: Vendor) {
 }
 
 export function VendorsPage() {
+  const { t } = useTranslation()
   const dispatch = useDispatch()
   const vendors = useSelector((state: RootState) => state.vendors.items)
 
@@ -148,13 +150,13 @@ export function VendorsPage() {
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newVendor.companyName.trim() || !newVendor.contact.trim() || !newVendor.price.trim()) {
-      showNotification('Proszę wypełnić wszystkie pola!', 'error')
+      showNotification(t('vendors.allFilled'), 'error')
       return
     }
 
     const price = Number(newVendor.price)
     if (!Number.isFinite(price) || price < 0) {
-      showNotification('Cena musi być poprawną liczbą większą lub równą 0.', 'error')
+      showNotification(t('vendors.invalidPrice'), 'error')
       return
     }
 
@@ -167,7 +169,7 @@ export function VendorsPage() {
       }, { token: token ?? undefined }))
 
       dispatch(addVendor(created))
-      showNotification(`Dodano pomyślnie dostawcę "${created.name}" do bazy ślubnej!`, 'success')
+      showNotification(t('vendors.addedSuccess', { name: created.name }), 'success')
       
       setShowAddModal(false)
       setNewVendor({
@@ -177,7 +179,7 @@ export function VendorsPage() {
         price: ''
       })
     } catch {
-      showNotification('Nie udało się dodać dostawcy w backendzie.', 'error')
+      showNotification(t('vendors.addError'), 'error')
     }
   }
 
@@ -186,19 +188,19 @@ export function VendorsPage() {
 
     const vendorId = Number(selectedVendor.id)
     if (!Number.isFinite(vendorId)) {
-      showNotification('Tego dostawcy nie można usunąć z backendu, bo nie ma poprawnego identyfikatora.', 'error')
+      showNotification(t('vendors.invalidId'), 'error')
       return
     }
 
-    if (!window.confirm(`Czy na pewno usunąć dostawcę "${selectedVendor.name}"?`)) return
+    if (!window.confirm(t('vendors.deleteConfirm', { name: selectedVendor.name }))) return
 
     try {
       await deleteVendor(vendorId, { token: token ?? undefined })
       dispatch(removeVendor(selectedVendor.id))
       setSelectedVendorId(null)
-      showNotification(`Usunięto dostawcę "${selectedVendor.name}".`, 'success')
+      showNotification(t('vendors.deletedSuccess', { name: selectedVendor.name }), 'success')
     } catch {
-      showNotification('Nie udało się usunąć dostawcy w backendzie.', 'error')
+      showNotification(t('vendors.deleteError'), 'error')
     }
   }
 
@@ -217,7 +219,7 @@ export function VendorsPage() {
           dispatch(setVendors(items.map(toVendor)))
         })
         .catch(() => {
-          if (!cancelled) setError('Nie udało się pobrać dostawców z backendu.')
+          if (!cancelled) setError(t('vendors.loadError'))
         })
         .finally(() => {
           if (!cancelled) setLoading(false)
@@ -227,7 +229,7 @@ export function VendorsPage() {
     return () => {
       cancelled = true
     }
-  }, [dispatch, token])
+  }, [dispatch, token, t])
 
   return (
     <div style={{ display: 'grid', gap: '1.5rem' }}>
@@ -247,7 +249,7 @@ export function VendorsPage() {
       )}
       {loading && (
         <div className='app-alert app-alert-info' style={{ textAlign: 'center' }}>
-          Pobieramy dostawców z backendu...
+          {t('vendors.loadingVendors')}
         </div>
       )}
       {error && (
@@ -259,8 +261,8 @@ export function VendorsPage() {
       {/* HEADER */}
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 className='page-title'>Dostawcy</h1>
-          <p className='page-subtitle'>Zarządzaj dostawcami i współpracą przy organizacji wydarzenia.</p>
+          <h1 className='page-title'>{t('vendors.pageTitle')}</h1>
+          <p className='page-subtitle'>{t('vendors.pageSubtitle')}</p>
         </div>
         {userRole === 'planner' && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
@@ -282,7 +284,7 @@ export function VendorsPage() {
               }}
             >
               <VendorIcon name='plus' color='var(--on-primary)' size={18} strokeWidth={2.5} />
-              Dodaj dostawcę
+              {t('vendors.addVendor')}
             </button>
           </div>
         )}
@@ -291,30 +293,30 @@ export function VendorsPage() {
       {/* STATS */}
       <div className='stats-grid'>
         <VendorStatCard 
-          title="Wszyscy dostawcy" 
+          title={t('vendors.statAll')} 
           value={stats.total} 
-          note="Wszyscy aktywni dostawcy"
+          note={t('vendors.statAllNote')}
           color="#b85a1f" 
           icon="users" 
         />
         <VendorStatCard 
-          title="Potwierdzeni" 
+          title={t('vendors.statConfirmed')} 
           value={stats.confirmed} 
-          note="Gotowi do współpracy"
+          note={t('vendors.statConfirmedNote')}
           color="#35684f" 
           icon="check" 
         />
         <VendorStatCard 
-          title="Oczekujący" 
+          title={t('vendors.statPending')} 
           value={stats.pending} 
-          note="Czekają na odpowiedź"
+          note={t('vendors.statPendingNote')}
           color="#8c5a12" 
           icon="clock" 
         />
         <VendorStatCard 
-          title="Niedostępni" 
+          title={t('vendors.statUnavailable')} 
           value={stats.unavailable} 
-          note="Brak odpowiedzi / odrzuceni"
+          note={t('vendors.statUnavailableNote')}
           color="#c53030" 
           icon="x-circle" 
         />
@@ -339,7 +341,7 @@ export function VendorsPage() {
             <div style={{ position: 'relative' }}>
               <input 
                 type="text" 
-                placeholder="Szukaj dostawcy..." 
+                placeholder={t('vendors.searchPlaceholder')} 
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 style={{
@@ -368,7 +370,7 @@ export function VendorsPage() {
                 color: 'var(--text)'
               }}
             >
-              <option value="All">Kategoria: Wszystkie</option>
+              <option value="All">{t('vendors.categoryAll')}</option>
               {categories.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
             </select>
             <select 
@@ -383,10 +385,10 @@ export function VendorsPage() {
                 color: 'var(--text)'
               }}
             >
-              <option value="All">Status: Wszystkie</option>
-              <option value="confirmed">Potwierdzony</option>
-              <option value="pending">Oczekujący</option>
-              <option value="unavailable">Niedostępny</option>
+              <option value="All">{t('vendors.statusAll')}</option>
+              <option value="confirmed">{t('vendors.statusConfirmed')}</option>
+              <option value="pending">{t('vendors.statusPending')}</option>
+              <option value="unavailable">{t('vendors.statusUnavailable')}</option>
             </select>
           </div>
 
@@ -398,7 +400,7 @@ export function VendorsPage() {
             />
             {!loading && filteredVendors.length === 0 && (
               <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--muted)' }}>
-                Brak dostawców spełniających kryteria.
+                {t('vendors.noVendors')}
               </div>
             )}
             
@@ -410,7 +412,7 @@ export function VendorsPage() {
               alignItems: 'center' 
             }}>
               <span style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>
-                Wyświetlanie 1-{filteredVendors.length} z {stats.total} dostawców
+                {t('vendors.showing', { count: filteredVendors.length, total: stats.total })}
               </span>
             </div>
           </section>
@@ -481,13 +483,13 @@ export function VendorsPage() {
             </button>
 
             <header style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
-              <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--primary)', fontWeight: 600 }}>Kreator Umów</span>
-              <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.8rem', margin: '0.25rem 0', fontWeight: 500 }}>Nowy Dostawca</h2>
-              <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.85rem' }}>Wprowadź dane dostawcy zgodnie ze strukturą encji bazy danych.</p>
+              <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--primary)', fontWeight: 600 }}>{t('vendors.modalTag')}</span>
+              <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.8rem', margin: '0.25rem 0', fontWeight: 500 }}>{t('vendors.modalTitle')}</h2>
+              <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.85rem' }}>{t('vendors.modalSubtitle')}</p>
             </header>
 
             <label style={{ display: 'grid', gap: '0.4rem' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)' }}>Nazwa Firmy (JPA: companyName)</span>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)' }}>{t('vendors.fieldCompanyName')}</span>
               <input 
                 type="text"
                 placeholder="np. Flower Concept Store"
@@ -499,7 +501,7 @@ export function VendorsPage() {
             </label>
 
             <label style={{ display: 'grid', gap: '0.4rem' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)' }}>Kategoria Usług (JPA: serviceType)</span>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)' }}>{t('vendors.fieldCategory')}</span>
               <select 
                 value={newVendor.serviceType}
                 onChange={(e) => setNewVendor(prev => ({ ...prev, serviceType: e.target.value }))}
@@ -514,10 +516,10 @@ export function VendorsPage() {
             </label>
 
             <label style={{ display: 'grid', gap: '0.4rem' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)' }}>Kontakt / E-mail (JPA: contact)</span>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)' }}>{t('vendors.fieldContact')}</span>
               <input 
                 type="email"
-                placeholder="np. kontakt@biuro.pl"
+                placeholder={t('vendors.fieldContactPlaceholder')}
                 value={newVendor.contact}
                 onChange={(e) => setNewVendor(prev => ({ ...prev, contact: e.target.value }))}
                 required
@@ -527,7 +529,7 @@ export function VendorsPage() {
 
             <label style={{ display: 'grid', gap: '0.4rem' }}>
               <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)' }}>
-                Cena Orientacyjna ({newVendor.serviceType === 'Catering' ? 'PLN / os.' : 'PLN'})
+                {t('vendors.fieldPrice')} ({newVendor.serviceType === 'Catering' ? 'PLN / os.' : 'PLN'})
               </span>
               <input 
                 type="number"
@@ -554,7 +556,7 @@ export function VendorsPage() {
                   cursor: 'pointer'
                 }}
               >
-                Anuluj
+                {t('vendors.cancelBtn')}
               </button>
               <button 
                 type="submit"
@@ -570,7 +572,7 @@ export function VendorsPage() {
                   boxShadow: '0 4px 12px rgba(184, 90, 31, 0.2)'
                 }}
               >
-                Dodaj
+                {t('vendors.addBtn')}
               </button>
             </div>
 

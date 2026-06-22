@@ -11,8 +11,13 @@ type RequestOptions = {
 export async function httpClient<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = {}
 
-  if (options.token) {
-    headers.Authorization = `Bearer ${options.token}`
+  let token = options.token
+  if (!token && typeof window !== 'undefined') {
+    token = window.localStorage.getItem('weddingPlannerToken') || undefined
+  }
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
   }
 
   if (options.body) {
@@ -24,6 +29,16 @@ export async function httpClient<T>(path: string, options: RequestOptions = {}):
     headers,
     body: options.body ? JSON.stringify(options.body) : undefined,
   })
+
+  if (response.status === 401) {
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem('weddingPlannerAuth')
+      window.localStorage.removeItem('weddingPlannerToken')
+      window.dispatchEvent(new Event('auth:unauthorized'))
+      window.location.href = '/login?tab=login'
+    }
+    throw new Error('Session expired (401 Unauthorized)')
+  }
 
   if (!response.ok) {
     throw new Error(`Request failed with status ${response.status}`)

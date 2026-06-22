@@ -14,15 +14,16 @@ export type PaymentTablePayment = {
   failureReason?: string | null
 }
 
-export type PaymentTableAction = 'retry' | 'cancel' | 'approve-offline'
+export type PaymentTableAction = 'retry' | 'cancel' | 'approve-offline' | 'pay-online'
 
 type PaymentTableProps = {
   payments: PaymentTablePayment[]
   onAction: (id: number, action: PaymentTableAction) => void
   actionLoadingId?: number | null
+  userRole: 'couple' | 'planner'
 }
 
-export function PaymentTable({ payments, onAction, actionLoadingId }: PaymentTableProps) {
+export function PaymentTable({ payments, onAction, actionLoadingId, userRole }: PaymentTableProps) {
   const getStatusStyle = (status: PaymentStatus) => {
     switch (status) {
       case 'SUCCESS':
@@ -38,13 +39,6 @@ export function PaymentTable({ payments, onAction, actionLoadingId }: PaymentTab
       case 'OFFLINE_APPROVED':
         return { className: 'status-pill status-pill-info', label: 'Offline zatwierdzone', icon: 'check' as const, iconColor: 'var(--info)' }
     }
-  }
-
-  const getAction = (status: PaymentStatus): { label: string; action: PaymentTableAction } | null => {
-    if (status === 'FAILED') return { label: 'Ponów', action: 'retry' }
-    if (status === 'PENDING') return { label: 'Anuluj', action: 'cancel' }
-    if (status === 'OFFLINE') return { label: 'Zatwierdź', action: 'approve-offline' }
-    return null
   }
 
   if (payments.length === 0) {
@@ -71,7 +65,6 @@ export function PaymentTable({ payments, onAction, actionLoadingId }: PaymentTab
         <tbody>
           {payments.map((payment) => {
             const status = getStatusStyle(payment.status)
-            const action = getAction(payment.status)
             const isActionLoading = actionLoadingId === payment.id
 
             return (
@@ -99,21 +92,44 @@ export function PaymentTable({ payments, onAction, actionLoadingId }: PaymentTab
                   </span>
                 </td>
                 <td style={cellStyle}>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                     <button style={iconButtonStyle} title="Pokaż szczegóły płatności">
                       <BudgetIcon name='file-text' color='var(--muted)' size={18} />
                     </button>
-                    {action && (
+                    {payment.status === 'PENDING' && userRole === 'couple' && (
                       <button
-                        style={{
-                          ...actionButtonStyle,
-                          cursor: isActionLoading ? 'wait' : 'pointer',
-                          opacity: isActionLoading ? 0.7 : 1,
-                        }}
+                        style={{ ...actionButtonStyle, background: 'var(--primary)', color: '#fff', borderColor: 'var(--primary)', cursor: isActionLoading ? 'wait' : 'pointer', opacity: isActionLoading ? 0.7 : 1 }}
                         disabled={isActionLoading}
-                        onClick={() => onAction(payment.id, action.action)}
+                        onClick={() => onAction(payment.id, 'pay-online')}
                       >
-                        {isActionLoading ? 'Trwa...' : action.label}
+                        {isActionLoading ? 'Trwa...' : 'Opłać'}
+                      </button>
+                    )}
+                    {payment.status === 'PENDING' && (
+                      <button
+                        style={{ ...actionButtonStyle, color: 'var(--danger)', borderColor: 'var(--danger-soft)', cursor: isActionLoading ? 'wait' : 'pointer', opacity: isActionLoading ? 0.7 : 1 }}
+                        disabled={isActionLoading}
+                        onClick={() => onAction(payment.id, 'cancel')}
+                      >
+                        {isActionLoading ? 'Trwa...' : 'Anuluj'}
+                      </button>
+                    )}
+                    {(payment.status === 'FAILED' || payment.status === 'CANCELLED') && userRole === 'couple' && (
+                      <button
+                        style={{ ...actionButtonStyle, cursor: isActionLoading ? 'wait' : 'pointer', opacity: isActionLoading ? 0.7 : 1 }}
+                        disabled={isActionLoading}
+                        onClick={() => onAction(payment.id, 'retry')}
+                      >
+                        {isActionLoading ? 'Trwa...' : 'Ponów'}
+                      </button>
+                    )}
+                    {payment.status === 'OFFLINE' && userRole === 'planner' && (
+                      <button
+                        style={{ ...actionButtonStyle, background: '#35684f', color: '#fff', borderColor: '#35684f', cursor: isActionLoading ? 'wait' : 'pointer', opacity: isActionLoading ? 0.7 : 1 }}
+                        disabled={isActionLoading}
+                        onClick={() => onAction(payment.id, 'approve-offline')}
+                      >
+                        {isActionLoading ? 'Trwa...' : 'Zatwierdź'}
                       </button>
                     )}
                   </div>

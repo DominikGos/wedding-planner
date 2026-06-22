@@ -46,7 +46,7 @@ public class CustomOAuth2UserService
                             .email(email)
                             .googleId(googleId)
                             .provider(AuthProvider.GOOGLE)
-                            .role(UserRole.GUEST)
+                            .role(UserRole.BRIDE)
                             .build();
 
                     return userRepository.save(user);

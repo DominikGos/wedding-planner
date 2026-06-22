@@ -37,6 +37,14 @@ public class Event {
     @Column(unique = true)
     private String eventCode;
 
+    @Lob
+    @Column(name = "catering_notes")
+    private String cateringNotes;
+
+    @Lob
+    @Column(name = "catering_menu")
+    private String cateringMenu;
+
     @OneToMany(mappedBy = "event")
     private List<Task> tasks;
 

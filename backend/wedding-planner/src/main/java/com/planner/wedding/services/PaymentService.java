@@ -149,21 +149,17 @@ public class PaymentService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only online payments can be retried");
         }
 
-        Payment newPayment = new Payment();
-        newPayment.setExpense(originalPayment.getExpense());
-        newPayment.setVendor(originalPayment.getVendor());
-        newPayment.setAmount(originalPayment.getAmount());
-        newPayment.setMethod(PaymentMethod.ONLINE);
-        newPayment.setCurrency(resolveCurrency(originalPayment.getCurrency()));
-        newPayment.setStatus(PaymentStatus.PENDING);
-        newPayment.setGatewayPaymentId(
+        originalPayment.setStatus(PaymentStatus.PENDING);
+        originalPayment.setGatewayPaymentId(
                 paymentGatewayClient.createSandboxPayment(
-                        newPayment.getAmount(),
-                        newPayment.getCurrency()
+                        originalPayment.getAmount(),
+                        originalPayment.getCurrency()
                 )
         );
+        originalPayment.setFailureReason(null);
+        originalPayment.setUpdatedAt(LocalDateTime.now());
 
-        return mapToResponse(paymentRepository.save(newPayment));
+        return mapToResponse(paymentRepository.save(originalPayment));
     }
 
     public PaymentResponse approveOfflinePayment(Long id, OfflineApprovePaymentRequest request) {
@@ -187,7 +183,14 @@ public class PaymentService {
 
     @Transactional(readOnly = true)
     public PaymentSummaryResponse getSummary() {
-        List<Payment> payments = paymentRepository.findAll();
+        return getSummary(null);
+    }
+
+    @Transactional(readOnly = true)
+    public PaymentSummaryResponse getSummary(Long eventId) {
+        List<Payment> payments = eventId != null
+                ? paymentRepository.findByExpenseTaskEventId(eventId)
+                : paymentRepository.findAll();
 
         PaymentSummaryResponse summary = new PaymentSummaryResponse();
         summary.setTotalAmount(sumByStatus(payments, null));

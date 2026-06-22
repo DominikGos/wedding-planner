@@ -1,6 +1,8 @@
 import { Link, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 export function LandingPage() {
+  const { t } = useTranslation()
   const [searchParams] = useSearchParams()
   const currentTab = searchParams.get('tab') || 'about'
 
@@ -19,7 +21,7 @@ export function LandingPage() {
         <div style={{ position: 'absolute', bottom: '10px', right: '10px', fontSize: '3rem', opacity: 0.1 }}>🌸</div>
 
         <span style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.2em', color: 'var(--primary)', fontWeight: 600 }}>
-          Witaj w Wedding Planner
+          {t('landing.welcome')}
         </span>
         <h1 style={{
           fontFamily: "'Playfair Display', Georgia, serif",
@@ -29,10 +31,10 @@ export function LandingPage() {
           lineHeight: 1.2,
           color: 'var(--text)'
         }}>
-          Planuj Swój Wymarzony Ślub <br />z Lekkością i Klasą
+          {t('landing.title')}
         </h1>
         <p style={{ maxWidth: '600px', margin: '1rem auto 2rem', color: 'var(--muted)', fontSize: '1.05rem', lineHeight: '1.6' }}>
-          Interaktywne zarządzanie gośćmi, budżetem, dostawcami oraz cateringiem w jednym, luksusowym i intuicyjnym systemie.
+          {t('landing.subtitle')}
         </p>
         <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
           <Link to="/auth" style={{
@@ -43,7 +45,7 @@ export function LandingPage() {
             fontWeight: 600,
             boxShadow: '0 6px 20px rgba(184, 90, 31, 0.2)'
           }}>
-            Rozpocznij Bezpłatnie
+            {t('landing.startBtn')}
           </Link>
           <Link to="/rsvp" style={{
             padding: '0.8rem 2rem',
@@ -53,7 +55,7 @@ export function LandingPage() {
             border: '1px solid var(--border)',
             fontWeight: 600
           }}>
-            Potwierdź RSVP Gościa
+            {t('landing.rsvpBtn')}
           </Link>
         </div>
       </section>
@@ -62,23 +64,28 @@ export function LandingPage() {
         {currentTab === 'about' && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem', alignItems: 'center' }}>
             <div>
-              <span style={{ color: 'var(--primary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>O Aplikacji</span>
-              <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '2rem', margin: '0.5rem 0 1rem', fontWeight: 400 }}>Kim Jesteśmy?</h2>
+              <span style={{ color: 'var(--primary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                {t('landing.aboutSection.tag')}
+              </span>
+              <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '2rem', margin: '0.5rem 0 1rem', fontWeight: 400 }}>
+                {t('landing.aboutSection.title')}
+              </h2>
               <p style={{ color: 'var(--muted)', lineHeight: '1.6', fontSize: '0.95rem' }}>
-                Wedding Planner to ekskluzywne oprogramowanie stworzone z myślą o parach młodych oraz profesjonalnych konsultantach ślubnych (Wedding Planners).
-                Rozumiemy, że organizacja ślubu wymaga dbałości o każdy, nawet najmniejszy detal.
+                {t('landing.aboutSection.text1')}
               </p>
               <p style={{ color: 'var(--muted)', lineHeight: '1.6', fontSize: '0.95rem' }}>
-                Nasz system gromadzi wszystkie kluczowe elementy – harmonogramy, budżet ślubny, zadania, catering oraz listę gości – w jednym spójnym interfejsie klasy Premium.
+                {t('landing.aboutSection.text2')}
               </p>
             </div>
             <div style={{ background: 'var(--bg-accent)', padding: '2rem', borderRadius: '16px', border: '1px dashed var(--border)' }}>
-              <h3 style={{ margin: '0 0 1rem 0', fontFamily: 'Georgia, serif', fontWeight: 500 }}>Dlaczego nasz system?</h3>
+              <h3 style={{ margin: '0 0 1rem 0', fontFamily: 'Georgia, serif', fontWeight: 500 }}>
+                {t('landing.aboutSection.whyTitle')}
+              </h3>
               <ul style={{ paddingLeft: '1.2rem', display: 'grid', gap: '0.75rem', color: 'var(--text)', fontSize: '0.9rem' }}>
-                <li>✨ <strong>Elegancja i Styl:</strong> Przepiękny interfejs ułatwiający planowanie.</li>
-                <li>📊 <strong>Pełna Kontrola Budżetu:</strong> Śledzenie zaliczek, płatności i faktur dostawców.</li>
-                <li>👥 <strong>RSVP Online:</strong> Bezpośrednia integracja odpowiedzi gości z Twoją listą.</li>
-                <li>💼 <strong>Dla Profesjonalistów:</strong> Dedykowany pulpit do zarządzania wieloma weselami na raz.</li>
+                <li>{t('landing.aboutSection.why1')}</li>
+                <li>{t('landing.aboutSection.why2')}</li>
+                <li>{t('landing.aboutSection.why3')}</li>
+                <li>{t('landing.aboutSection.why4')}</li>
               </ul>
             </div>
           </div>
@@ -87,26 +94,44 @@ export function LandingPage() {
         {currentTab === 'services' && (
           <div>
             <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-              <span style={{ color: 'var(--primary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>Funkcjonalności</span>
-              <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '2rem', margin: '0.5rem 0 0.5rem', fontWeight: 400 }}>Nasza Oferta Premium</h2>
-              <p style={{ color: 'var(--muted)', margin: 0 }}>Poznaj narzędzia, które zaoszczędzą Ci setki godzin stresu.</p>
+              <span style={{ color: 'var(--primary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                {t('landing.servicesSection.tag')}
+              </span>
+              <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '2rem', margin: '0.5rem 0 0.5rem', fontWeight: 400 }}>
+                {t('landing.servicesSection.title')}
+              </h2>
+              <p style={{ color: 'var(--muted)', margin: 0 }}>
+                {t('landing.servicesSection.subtitle')}
+              </p>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem' }}>
               <div style={{ border: '1px solid var(--border)', padding: '1.5rem', borderRadius: '12px', background: 'var(--surface)' }}>
                 <span style={{ fontSize: '2rem' }}>📅</span>
-                <h3 style={{ margin: '0.75rem 0 0.5rem', fontSize: '1.15rem' }}>Interaktywny Harmonogram</h3>
-                <p style={{ color: 'var(--muted)', fontSize: '0.85rem', lineHeight: '1.5', margin: 0 }}>Planuj kamienie milowe, twórz listy zadań i przypomnienia, które ułatwią terminową realizację.</p>
+                <h3 style={{ margin: '0.75rem 0 0.5rem', fontSize: '1.15rem' }}>
+                  {t('landing.servicesSection.item1Title')}
+                </h3>
+                <p style={{ color: 'var(--muted)', fontSize: '0.85rem', lineHeight: '1.5', margin: 0 }}>
+                  {t('landing.servicesSection.item1Text')}
+                </p>
               </div>
               <div style={{ border: '1px solid var(--border)', padding: '1.5rem', borderRadius: '12px', background: 'var(--surface)' }}>
                 <span style={{ fontSize: '2rem' }}>💰</span>
-                <h3 style={{ margin: '0.75rem 0 0.5rem', fontSize: '1.15rem' }}>Inteligentny Budżet</h3>
-                <p style={{ color: 'var(--muted)', fontSize: '0.85rem', lineHeight: '1.5', margin: 0 }}>Automatyczne podsumowania opłat, kontrola zaległych płatności oraz faktur dla wszystkich usługodawców.</p>
+                <h3 style={{ margin: '0.75rem 0 0.5rem', fontSize: '1.15rem' }}>
+                  {t('landing.servicesSection.item2Title')}
+                </h3>
+                <p style={{ color: 'var(--muted)', fontSize: '0.85rem', lineHeight: '1.5', margin: 0 }}>
+                  {t('landing.servicesSection.item2Text')}
+                </p>
               </div>
               <div style={{ border: '1px solid var(--border)', padding: '1.5rem', borderRadius: '12px', background: 'var(--surface)' }}>
                 <span style={{ fontSize: '2rem' }}>🍷</span>
-                <h3 style={{ margin: '0.75rem 0 0.5rem', fontSize: '1.15rem' }}>Goście i RSVP</h3>
-                <p style={{ color: 'var(--muted)', fontSize: '0.85rem', lineHeight: '1.5', margin: 0 }}>Zarządzanie stolikami, menu weselnym, alergiami i bezpośredni publiczny panel RSVP dla Twoich gości.</p>
+                <h3 style={{ margin: '0.75rem 0 0.5rem', fontSize: '1.15rem' }}>
+                  {t('landing.servicesSection.item3Title')}
+                </h3>
+                <p style={{ color: 'var(--muted)', fontSize: '0.85rem', lineHeight: '1.5', margin: 0 }}>
+                  {t('landing.servicesSection.item3Text')}
+                </p>
               </div>
             </div>
           </div>
@@ -115,17 +140,23 @@ export function LandingPage() {
         {currentTab === 'gallery' && (
           <div>
             <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-              <span style={{ color: 'var(--primary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>Inspiracje</span>
-              <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '2rem', margin: '0.5rem 0 0.5rem', fontWeight: 400 }}>Najpiękniejsze Realizacje</h2>
-              <p style={{ color: 'var(--muted)', margin: 0 }}>Przegląd stylów weselnych zrealizowanych za pomocą naszego planera.</p>
+              <span style={{ color: 'var(--primary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                {t('landing.gallerySection.tag')}
+              </span>
+              <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '2rem', margin: '0.5rem 0 0.5rem', fontWeight: 400 }}>
+                {t('landing.gallerySection.title')}
+              </h2>
+              <p style={{ color: 'var(--muted)', margin: 0 }}>
+                {t('landing.gallerySection.subtitle')}
+              </p>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
               {[
-                { name: 'Wesele Rustykalne w Stodole', style: 'Rustykalny', icon: '🪵' },
-                { name: 'Ślub Glamour w Złotym Dworze', style: 'Glamour', icon: '✨' },
-                { name: 'Letnie Przyjęcie Boho w Ogrodzie', style: 'Boho', icon: '🌾' },
-                { name: 'Klasyczna Elegancja w Pałacu', style: 'Klasyczny', icon: '🌹' }
+                { name: t('landing.gallerySection.item1'), style: t('landing.gallerySection.item1Style'), icon: '🪵' },
+                { name: t('landing.gallerySection.item2'), style: t('landing.gallerySection.item2Style'), icon: '✨' },
+                { name: t('landing.gallerySection.item3'), style: t('landing.gallerySection.item3Style'), icon: '🌾' },
+                { name: t('landing.gallerySection.item4'), style: t('landing.gallerySection.item4Style'), icon: '🌹' }
               ].map((item, idx) => (
                 <div key={idx} style={{
                   padding: '2rem 1rem',
@@ -150,32 +181,38 @@ export function LandingPage() {
         {currentTab === 'contact' && (
           <div style={{ maxWidth: '500px', margin: '0 auto' }}>
             <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-              <span style={{ color: 'var(--primary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>Kontakt</span>
-              <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '2rem', margin: '0.5rem 0 0.5rem', fontWeight: 400 }}>Porozmawiajmy o Twoim Ślubie</h2>
-              <p style={{ color: 'var(--muted)', margin: 0 }}>Masz pytania dotyczące planera lub oferty dla plannera? Napisz do nas!</p>
+              <span style={{ color: 'var(--primary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                {t('landing.contactSection.tag')}
+              </span>
+              <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '2rem', margin: '0.5rem 0 0.5rem', fontWeight: 400 }}>
+                {t('landing.contactSection.title')}
+              </h2>
+              <p style={{ color: 'var(--muted)', margin: 0 }}>
+                {t('landing.contactSection.subtitle')}
+              </p>
             </div>
 
-            <form onSubmit={(e) => { e.preventDefault(); alert('Dziękujemy! Skontaktujemy się wkrótce.'); }} style={{ display: 'grid', gap: '1rem' }}>
+            <form onSubmit={(e) => { e.preventDefault(); alert(t('landing.contactSection.alertSuccess')); }} style={{ display: 'grid', gap: '1rem' }}>
               <input
                 type="text"
-                placeholder="Twoje Imię"
+                placeholder={t('landing.contactSection.namePlaceholder')}
                 required
                 style={{ width: '100%', padding: '0.75rem', borderRadius: '10px', border: '1px solid var(--border)', fontSize: '0.9rem' }}
               />
               <input
                 type="email"
-                placeholder="Adres E-mail"
+                placeholder={t('landing.contactSection.emailPlaceholder')}
                 required
                 style={{ width: '100%', padding: '0.75rem', borderRadius: '10px', border: '1px solid var(--border)', fontSize: '0.9rem' }}
               />
               <textarea
                 rows={4}
-                placeholder="Treść Twojej wiadomości..."
+                placeholder={t('landing.contactSection.messagePlaceholder')}
                 required
                 style={{ width: '100%', padding: '0.75rem', borderRadius: '10px', border: '1px solid var(--border)', fontSize: '0.9rem', resize: 'vertical' }}
               />
               <button type="submit" style={{ padding: '0.8rem', borderRadius: '10px', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontWeight: 600, cursor: 'pointer' }}>
-                Wyślij Wiadomość
+                {t('landing.contactSection.submitBtn')}
               </button>
             </form>
           </div>

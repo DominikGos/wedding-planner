@@ -2,6 +2,7 @@ package com.planner.wedding.services;
 
 import com.planner.wedding.entities.Event;
 import com.planner.wedding.entities.User;
+import com.planner.wedding.entities.UserRole;
 import com.planner.wedding.repositories.EventRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -20,7 +21,9 @@ public class EventService {
     }
 
     public List<Event> findAll(User user) {
-        List<Event> events = eventRepository.findByUserId(user.getId());
+        List<Event> events = user.getRole() == UserRole.PLANNER
+                ? eventRepository.findAll()
+                : eventRepository.findByUserId(user.getId());
         events.stream().filter(this::ensureEventCode).forEach(eventRepository::save);
         return events;
     }
@@ -42,6 +45,8 @@ public class EventService {
         event.setEventDate(changes.getEventDate());
         event.setLocation(changes.getLocation());
         event.setStatus(changes.getStatus());
+        event.setCateringNotes(changes.getCateringNotes());
+        event.setCateringMenu(changes.getCateringMenu());
         return eventRepository.save(event);
     }
 
@@ -50,8 +55,9 @@ public class EventService {
     }
 
     public Event requireOwnedEvent(Long id, User user) {
-        Event event = eventRepository.findByIdAndUserId(id, user.getId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Event not found"));
+        Event event = user.getRole() == UserRole.PLANNER
+                ? eventRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Event not found"))
+                : eventRepository.findByIdAndUserId(id, user.getId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Event not found"));
         if (ensureEventCode(event)) {
             return eventRepository.save(event);
         }

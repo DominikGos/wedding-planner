@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
+import { useTranslation } from 'react-i18next'
 import { createTask, deleteTask, getTasks, updateTask, updateTaskStatus, type TaskRequest, type TaskStatus } from '../../../api/taskApi'
 import type { RootState } from '../../../store'
 import { setTasks } from '../../../store/slices/tasksSlice'
@@ -21,6 +22,7 @@ const emptyForm: TaskFormState = {
 }
 
 export function TasksPage() {
+  const { t } = useTranslation()
   const dispatch = useDispatch()
   const tasks = useSelector((state: RootState) => state.tasks.items)
   const { activeWeddingId, token } = useSelector((state: RootState) => state.auth)
@@ -44,11 +46,11 @@ export function TasksPage() {
     try {
       dispatch(setTasks(await getTasks(activeWeddingId, { token })))
     } catch {
-      setError('Nie udało się pobrać zadań z backendu.')
+      setError(t('tasks.loadError'))
     } finally {
       setLoading(false)
     }
-  }, [activeWeddingId, dispatch, token])
+  }, [activeWeddingId, dispatch, token, t])
 
   useEffect(() => {
     if (!activeWeddingId || !token) return
@@ -58,9 +60,9 @@ export function TasksPage() {
         dispatch(setTasks(items))
         setError(null)
       })
-      .catch(() => setError('Nie udało się pobrać zadań z backendu.'))
+      .catch(() => setError(t('tasks.loadError')))
       .finally(() => setLoading(false))
-  }, [activeWeddingId, dispatch, token])
+  }, [activeWeddingId, dispatch, token, t])
 
   const filteredTasks = useMemo(() => tasks.filter(task => {
     const phrase = search.toLowerCase()
@@ -86,11 +88,10 @@ export function TasksPage() {
     setTaskForm(emptyForm)
     setShowForm(true)
     setMessage(null)
-    if (window.innerWidth <= 900) {
-      window.setTimeout(() => {
-        formPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      }, 0)
-    }
+    setError(null)
+    window.setTimeout(() => {
+      formPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }, 50)
   }
 
   const openTask = (task: TaskItem) => {
@@ -108,6 +109,10 @@ export function TasksPage() {
     })
     setShowForm(true)
     setMessage(null)
+    setError(null)
+    window.setTimeout(() => {
+      formPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }, 50)
   }
 
   const getRequest = (): TaskRequest => ({
@@ -135,28 +140,28 @@ export function TasksPage() {
 
   const saveTask = async () => {
     if (!activeWeddingId || !token || !taskForm.name.trim()) {
-      setError('Podaj nazwę zadania.')
+      setError(t('tasks.nameRequired'))
       return
     }
     if ((taskForm.price && Number(taskForm.price) < 0)
       || (taskForm.type === 'CATERING' && taskForm.numberOfGuests && Number(taskForm.numberOfGuests) < 0)) {
-      setError('Cena i liczba gości nie mogą być ujemne.')
+      setError(t('tasks.negativeValues'))
       return
     }
 
     try {
       if (selectedTask) {
         await updateTask(activeWeddingId, selectedTask.id, getRequest(), { token })
-        setMessage('Zadanie zostało zaktualizowane.')
+        setMessage(t('tasks.saved'))
       } else {
         await createTask(activeWeddingId, getRequest(), { token })
-        setMessage('Zadanie zostało dodane.')
+        setMessage(t('tasks.added'))
       }
       setShowForm(false)
       setSelectedTask(null)
       await loadTasks()
     } catch {
-      setError('Nie udało się zapisać zadania.')
+      setError(t('tasks.saveError'))
     }
   }
 
@@ -167,82 +172,82 @@ export function TasksPage() {
       window.dispatchEvent(new Event('notifications:refresh'))
       await loadTasks()
     } catch {
-      setError('Nie udało się zmienić statusu zadania.')
+      setError(t('tasks.statusError'))
     }
   }
 
   const removeTask = async () => {
-    if (!activeWeddingId || !token || !selectedTask || !window.confirm('Czy na pewno chcesz usunąć to zadanie?')) return
+    if (!activeWeddingId || !token || !selectedTask || !window.confirm(t('tasks.deleteConfirm'))) return
     try {
       await deleteTask(activeWeddingId, selectedTask.id, { token })
       setShowForm(false)
       setSelectedTask(null)
-      setMessage('Zadanie zostało usunięte.')
+      setMessage(t('tasks.deleted'))
       await loadTasks()
     } catch (error) {
       setError(error instanceof Error && error.message.includes('409')
-        ? 'Nie można usunąć zadania, ponieważ ma przypisane wydatki.'
-        : 'Nie udało się usunąć zadania.')
+        ? t('tasks.deleteError409')
+        : t('tasks.deleteError'))
     }
   }
 
   if (!activeWeddingId) {
-    return <section className='page-card' style={{ padding: '2rem', textAlign: 'center' }}>Wybierz aktywne wydarzenie, aby zobaczyć zadania.</section>
+    return <section className='page-card' style={{ padding: '2rem', textAlign: 'center' }}>{t('tasks.noActiveEvent')}</section>
   }
 
   if (!token) {
-    return <section className='page-card' style={{ padding: '2rem', textAlign: 'center' }}>Zadania z backendu są dostępne po zalogowaniu przez Google.</section>
+    return <section className='page-card' style={{ padding: '2rem', textAlign: 'center' }}>{t('tasks.requiresLogin')}</section>
   }
 
   return (
     <section style={{ display: 'grid', gap: '1rem' }}>
       {message && <div style={{ padding: '1rem', borderRadius: '12px', background: '#daf6e5', color: '#14834b', fontWeight: 600, textAlign: 'center' }}>{message}</div>}
-      {error && <div className='app-alert app-alert-danger' style={{ textAlign: 'center' }}>{error}</div>}
+      {error && !showForm && <div className='app-alert app-alert-danger' style={{ textAlign: 'center' }}>{error}</div>}
 
       <article className='page-card' style={{ padding: '1.6rem', background: 'linear-gradient(180deg, var(--surface) 0%, var(--surface-soft) 100%)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <div>
-            <h1 className='page-title' style={{ fontSize: '2rem' }}>Zadania</h1>
-            <p className='page-subtitle'>Zadania aktywnego wydarzenia pobrane z backendu.</p>
+            <h1 className='page-title' style={{ fontSize: '2rem' }}>{t('tasks.pageTitle')}</h1>
+            <p className='page-subtitle'>{t('tasks.pageSubtitle')}</p>
           </div>
           <button type='button' onClick={openNewTask} className='button-primary'>
-            Dodaj nowe zadanie
+            {t('tasks.addNew')}
           </button>
         </div>
 
         <div className="mobile-stat-grid" style={{ marginTop: '1.2rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.85rem' }}>
-          <TaskStats title='Wszystkie' value={String(tasks.length)} note='zadań' color='#db7e45' isActive={statusFilter === 'ALL'} onClick={() => setStatusFilter('ALL')} />
-          <TaskStats title='Do zrobienia' value={String(pending)} note='zadań' color='#7ea4ff' isActive={statusFilter === 'PENDING'} onClick={() => setStatusFilter('PENDING')} />
-          <TaskStats title='W trakcie' value={String(inProgress)} note='zadań' color='#f2a642' isActive={statusFilter === 'IN_PROGRESS'} onClick={() => setStatusFilter('IN_PROGRESS')} />
-          <TaskStats title='Zrobione' value={String(completed)} note='zadań' color='#53ba73' isActive={statusFilter === 'COMPLETED'} onClick={() => setStatusFilter('COMPLETED')} />
-          <TaskStats title='Budżet zadań' value={knownCosts.length > 0 ? `${budget.toLocaleString('pl-PL')} PLN` : '—'} note='z aktualnych zadań' color='var(--primary)' isActive={false} onClick={() => undefined} />
+          <TaskStats title={t('tasks.statAll')} value={String(tasks.length)} note={t('tasks.statNote')} color='#db7e45' isActive={statusFilter === 'ALL'} onClick={() => setStatusFilter('ALL')} />
+          <TaskStats title={t('tasks.statPending')} value={String(pending)} note={t('tasks.statNote')} color='#7ea4ff' isActive={statusFilter === 'PENDING'} onClick={() => setStatusFilter('PENDING')} />
+          <TaskStats title={t('tasks.statInProgress')} value={String(inProgress)} note={t('tasks.statNote')} color='#f2a642' isActive={statusFilter === 'IN_PROGRESS'} onClick={() => setStatusFilter('IN_PROGRESS')} />
+          <TaskStats title={t('tasks.statDone')} value={String(completed)} note={t('tasks.statNote')} color='#53ba73' isActive={statusFilter === 'COMPLETED'} onClick={() => setStatusFilter('COMPLETED')} />
+          <TaskStats title={t('tasks.statBudget')} value={knownCosts.length > 0 ? `${budget.toLocaleString('pl-PL')} PLN` : '—'} note={t('tasks.statBudgetNote')} color='var(--primary)' isActive={false} onClick={() => undefined} />
         </div>
       </article>
 
       <div className="tasks-layout" style={{ display: 'grid', gridTemplateColumns: showForm ? 'minmax(420px, 1.8fr) minmax(320px, 0.95fr)' : '1fr', gap: '1rem', alignItems: 'start' }}>
         <article className='page-card' style={{ padding: 0, overflow: 'hidden' }}>
           <div className='filter-toolbar' style={{ padding: '1rem', borderBottom: '1px solid var(--border)' }}>
-            <input value={search} onChange={event => setSearch(event.target.value)} placeholder='Szukaj zadania...' className='filter-control' />
+            <input value={search} onChange={event => setSearch(event.target.value)} placeholder={t('tasks.searchPlaceholder')} className='filter-control' />
             <select value={typeFilter} onChange={event => setTypeFilter(event.target.value)} className='filter-control'>
-              <option value='ALL'>Wszystkie typy</option>
+              <option value='ALL'>{t('tasks.allTypes')}</option>
               {taskTypes.map(type => <option key={type.value} value={type.value}>{type.label}</option>)}
             </select>
             <select value={statusFilter} onChange={event => setStatusFilter(event.target.value)} className='filter-control'>
-              <option value='ALL'>Wszystkie statusy</option>
+              <option value='ALL'>{t('tasks.allStatuses')}</option>
               {taskStatuses.map(status => <option key={status.value} value={status.value}>{status.label}</option>)}
             </select>
-            <button type='button' onClick={() => { setSearch(''); setTypeFilter('ALL'); setStatusFilter('ALL') }} className='button-secondary'>Wyczyść filtry</button>
+            <button type='button' onClick={() => { setSearch(''); setTypeFilter('ALL'); setStatusFilter('ALL') }} className='button-secondary'>{t('tasks.clearFilters')}</button>
           </div>
 
           <div className="tasks-table-header" style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 2.2fr) 1fr 0.9fr 0.9fr 0.9fr', gap: '0.9rem', padding: '1rem', background: 'var(--surface-soft)', fontWeight: 700, color: 'var(--muted)' }}>
-            <span>Zadanie</span><span>Typ</span><span>Termin</span><span>Status</span><span>Budżet</span>
+            <span>{t('tasks.colTask')}</span><span>{t('tasks.colType')}</span><span>{t('tasks.colDeadline')}</span><span>{t('tasks.colStatus')}</span><span>{t('tasks.colBudget')}</span>
           </div>
 
-          {loading && <div style={{ padding: '1.25rem' }}>Ładowanie zadań...</div>}
+          {loading && <div style={{ padding: '1.25rem' }}>{t('tasks.loadingTasks')}</div>}
           {!loading && filteredTasks.map(task => (
             <TaskRow key={task.id} task={task} isSelected={selectedTask?.id === task.id} onSelect={() => openTask(task)} onStatusChange={status => void changeStatus(task.id, status)} />
           ))}
-          {!loading && filteredTasks.length === 0 && <div style={{ padding: '1.25rem', color: 'var(--muted)' }}>Brak zadań.</div>}
+          {!loading && filteredTasks.length === 0 && <div style={{ padding: '1.25rem', color: 'var(--muted)' }}>{t('tasks.noTasks')}</div>}
         </article>
 
         {showForm && (
@@ -250,8 +255,12 @@ export function TasksPage() {
             <TaskForm
               values={taskForm}
               editing={Boolean(selectedTask)}
-              onChange={(field, value) => setTaskForm(current => ({ ...current, [field]: value }))}
-              onCancel={() => { setShowForm(false); setSelectedTask(null) }}
+              error={error}
+              onChange={(field, value) => {
+                setError(null)
+                setTaskForm(current => ({ ...current, [field]: value }))
+              }}
+              onCancel={() => { setShowForm(false); setSelectedTask(null); setError(null) }}
               onSubmit={() => void saveTask()}
               onDelete={selectedTask ? () => void removeTask() : undefined}
             />

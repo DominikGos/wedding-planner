@@ -1,5 +1,6 @@
 import { NavLink, useSearchParams, useLocation } from 'react-router-dom'
 import { useSelector } from 'react-redux'
+import { useTranslation } from 'react-i18next'
 import type { RootState } from '../../store'
 
 interface MainNavProps {
@@ -7,6 +8,7 @@ interface MainNavProps {
 }
 
 export function MainNav({ mobileCallback }: MainNavProps) {
+  const { t } = useTranslation()
   const { user, activeWeddingId } = useSelector((state: RootState) => state.auth)
   const [searchParams] = useSearchParams()
   const location = useLocation()
@@ -16,10 +18,10 @@ export function MainNav({ mobileCallback }: MainNavProps) {
   // If NOT logged in, show public landing tabs
   if (!user) {
     const publicLinks = [
-      { tab: 'about', label: 'O nas' },
-      { tab: 'services', label: 'Oferta' },
-      { tab: 'gallery', label: 'Galeria' },
-      { tab: 'contact', label: 'Kontakt' },
+      { tab: 'about', label: t('nav.about') },
+      { tab: 'services', label: t('nav.services') },
+      { tab: 'gallery', label: t('nav.gallery') },
+      { tab: 'contact', label: t('nav.contact') },
     ]
 
     return (
@@ -67,7 +69,7 @@ export function MainNav({ mobileCallback }: MainNavProps) {
             fontSize: '0.92rem'
           }}
         >
-          {user.role === 'planner' ? 'Wybór Wesela' : 'Panel'}
+          {user.role === 'planner' ? t('nav.weddingSelection') : t('nav.dashboard')}
         </NavLink>
         <NavLink
           to="/settings"
@@ -82,7 +84,7 @@ export function MainNav({ mobileCallback }: MainNavProps) {
             fontSize: '0.92rem'
           })}
         >
-          ⚙ Ustawienia
+          ⚙ {t('nav.settings')}
         </NavLink>
       </nav>
     )
@@ -90,14 +92,14 @@ export function MainNav({ mobileCallback }: MainNavProps) {
 
   // If logged in AND has an active wedding event
   const toolLinks = [
-    { to: '/', label: 'Pulpit', end: true },
-    { to: '/events', label: 'Harmonogram' },
-    { to: '/tasks', label: 'Zadania' },
-    { to: '/budget', label: 'Budżet' },
-    { to: '/vendors', label: 'Dostawcy' },
-    { to: '/guests', label: 'Goście' },
-    { to: '/catering', label: 'Catering' },
-    { to: '/settings', label: 'Ustawienia' },
+    { to: '/', label: t('nav.pulpit'), end: true },
+    { to: '/events', label: t('nav.timeline') },
+    { to: '/tasks', label: t('nav.tasks') },
+    { to: '/budget', label: t('nav.budget') },
+    { to: '/vendors', label: t('nav.vendors') },
+    { to: '/guests', label: t('nav.guests') },
+    { to: '/catering', label: t('nav.catering') },
+    { to: '/settings', label: t('nav.settings') },
   ]
 
   return (

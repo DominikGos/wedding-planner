@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Outlet, useNavigate, Link } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
+import { useTranslation } from 'react-i18next'
 import type { RootState } from '../../store'
 import { getEvents, toWedding } from '../../api/eventApi'
 import { logout, setActiveWeddingId, setEvents, setEventsError, setEventsLoading } from '../../store/slices/authSlice'
@@ -10,16 +11,34 @@ import { NotificationsPanel } from './NotificationsPanel'
 export function AppShell() {
   const navigate = useNavigate()
   const dispatch = useDispatch()
+  const { t, i18n } = useTranslation()
   const { user, token, activeWeddingId, weddings } = useSelector((state: RootState) => state.auth)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [theme, setTheme] = useState(() => (
     localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'
   ))
+  
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark'
+    localStorage.setItem('theme', newTheme)
+    setTheme(newTheme)
+    window.dispatchEvent(new Event('theme:change'))
+  }
+
+  const toggleLanguage = () => {
+    const nextLang = i18n.language === 'pl' ? 'en' : 'pl'
+    void i18n.changeLanguage(nextLang)
+  }
 
   const activeWedding = weddings.find(w => w.id === activeWeddingId)
-  const userDisplayName = user?.email?.split('@')[0] || 'Użytkownik'
+  const userDisplayName = user?.email?.split('@')[0] || t('common.user')
 
   useEffect(() => {
+    const handleUnauthorized = () => {
+      dispatch(logout())
+    }
+    window.addEventListener('auth:unauthorized', handleUnauthorized)
+    
     document.documentElement.removeAttribute('data-theme')
 
     const syncTheme = () => {
@@ -29,10 +48,11 @@ export function AppShell() {
     window.addEventListener('theme:change', syncTheme)
     window.addEventListener('storage', syncTheme)
     return () => {
+      window.removeEventListener('auth:unauthorized', handleUnauthorized)
       window.removeEventListener('theme:change', syncTheme)
       window.removeEventListener('storage', syncTheme)
     }
-  }, [])
+  }, [dispatch])
 
   useEffect(() => {
     if (!user || !token) return
@@ -46,7 +66,7 @@ export function AppShell() {
         if (!active) return
         const weddings = events.map(toWedding)
         dispatch(setEvents(weddings))
-        if (weddings.length === 0) {
+        if (weddings.length === 0 && user?.role === 'couple') {
           navigate('/events/new', { replace: true })
         }
       } catch {
@@ -74,7 +94,7 @@ export function AppShell() {
   }
 
   return (
-    <div data-theme={user ? theme : 'light'} style={{ minHeight: '100vh', background: 'radial-gradient(circle at top right, var(--bg-accent), var(--bg))', display: 'flex', flexDirection: 'column' }}>
+    <div data-theme={theme} style={{ minHeight: '100vh', background: 'radial-gradient(circle at top right, var(--bg-accent), var(--bg))', display: 'flex', flexDirection: 'column' }}>
       
       {/* Premium Top Brand/Nav Bar */}
       <header className='app-header' style={{
@@ -107,9 +127,9 @@ export function AppShell() {
           maxWidth: 'none',
           padding: '0.9rem 2rem',
           display: 'grid',
-          gridTemplateColumns: '1fr auto 1fr',
+          gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)',
           alignItems: 'center',
-          gap: '1rem'
+          gap: '0.75rem'
         }}>
           {/* Brand Logo */}
           <div className="app-header-brand" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '0.75rem', minWidth: 0 }}>
@@ -184,37 +204,98 @@ export function AppShell() {
           </div>
           
           {/* User Auth actions */}
-          <div className="right-header-section desktop-nav-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '1rem', minWidth: 0, whiteSpace: 'nowrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderLeft: '1px solid var(--border)', paddingLeft: '1.5rem', flexShrink: 0 }}>
-              {user ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                  <NotificationsPanel token={token} />
-                  <div style={{ textAlign: 'right', maxWidth: '120px' }}>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {userDisplayName}
-                    </div>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      {user.role === 'planner' ? 'Wedding Planner' : 'Para Młoda'}
-                    </div>
-                  </div>
-                  
-                  {/* Avatar bubble */}
-                  <div style={{
-                    width: '38px',
-                    height: '38px',
-                    borderRadius: '50%',
-                    background: user.role === 'planner' ? 'var(--primary)' : 'var(--primary-soft)',
-                    color: user.role === 'planner' ? '#fff' : 'var(--primary)',
-                    display: 'grid',
-                    placeItems: 'center',
-                    fontWeight: 700,
-                    fontSize: '0.9rem',
-                    border: '1px solid var(--border)'
-                  }}>
-                    {userDisplayName.charAt(0).toUpperCase()}
-                  </div>
+          <div className="right-header-section desktop-nav-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem', minWidth: 0, overflow: 'hidden' }}>
+            
+            {/* Theme Toggle Button */}
+            <button
+              onClick={toggleTheme}
+              style={{
+                background: 'none',
+                border: '1px solid var(--border)',
+                borderRadius: '10px',
+                width: '36px',
+                height: '36px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1rem',
+                color: 'var(--text)',
+                transition: 'all 0.2s ease',
+                flexShrink: 0
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.background = 'var(--surface-soft)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.background = 'none';
+              }}
+              title="Przełącz motyw"
+            >
+              {theme === 'dark' ? '☀️' : '🌙'}
+            </button>
 
-                  {/* Logout Button */}
+            {/* Language Toggle Button */}
+            <button
+              onClick={toggleLanguage}
+              style={{
+                background: 'none',
+                border: '1px solid var(--border)',
+                borderRadius: '10px',
+                padding: '0 0.5rem',
+                height: '36px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.3rem',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                color: 'var(--text)',
+                transition: 'all 0.2s ease',
+                flexShrink: 0
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.background = 'var(--surface-soft)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.background = 'none';
+              }}
+              title="Zmień język / Change language"
+            >
+              {i18n.language === 'pl' ? '🇬🇧 EN' : '🇵🇱 PL'}
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderLeft: '1px solid var(--border)', paddingLeft: '0.75rem', flexShrink: 0 }}>
+              {user ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                   <NotificationsPanel token={token} />
+                   {/* Avatar bubble with tooltip */}
+                   <div
+                     title={userDisplayName}
+                     style={{
+                       width: '34px',
+                       height: '34px',
+                       borderRadius: '50%',
+                       background: user.role === 'planner' ? 'var(--primary)' : 'var(--primary-soft)',
+                       color: user.role === 'planner' ? '#fff' : 'var(--primary)',
+                       display: 'grid',
+                       placeItems: 'center',
+                       fontWeight: 700,
+                       fontSize: '0.85rem',
+                       border: '1px solid var(--border)',
+                       flexShrink: 0,
+                       cursor: 'default'
+                     }}
+                   >
+                     {userDisplayName.charAt(0).toUpperCase()}
+                   </div>
+
+                   {/* Logout Button */}
                   <button 
                     onClick={handleLogout}
                     style={{
@@ -231,30 +312,56 @@ export function AppShell() {
                     onMouseEnter={(e) => e.currentTarget.style.color = '#c53030'}
                     onMouseLeave={(e) => e.currentTarget.style.color = 'var(--muted)'}
                   >
-                    Wyloguj
+                    {t('nav.logout')}
                   </button>
                 </div>
               ) : (
-                <Link 
-                  to="/auth" 
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    padding: '0.55rem 1.25rem',
-                    borderRadius: '999px',
-                    background: 'var(--primary)',
-                    color: '#fff',
-                    fontWeight: 600,
-                    fontSize: '0.9rem',
-                    boxShadow: '0 4px 12px rgba(184, 90, 31, 0.15)',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-1px)'}
-                  onMouseLeave={(e) => e.currentTarget.style.transform = 'none'}
-                >
-                  Strefa Klienta
-                </Link>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <Link 
+                    to="/login?tab=login" 
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      padding: '0.55rem 1.1rem',
+                      borderRadius: '12px',
+                      border: '1px solid var(--border)',
+                      background: 'var(--surface)',
+                      color: 'var(--text)',
+                      fontWeight: 600,
+                      fontSize: '0.9rem',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.background = 'var(--surface-soft)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--border)';
+                      e.currentTarget.style.background = 'var(--surface)';
+                    }}
+                  >
+                    {t('nav.login')}
+                  </Link>
+                  <Link 
+                    to="/login?tab=register" 
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      padding: '0.55rem 1.1rem',
+                      borderRadius: '12px',
+                      background: 'var(--primary)',
+                      color: '#fff',
+                      fontWeight: 600,
+                      fontSize: '0.9rem',
+                      boxShadow: '0 4px 12px rgba(184, 90, 31, 0.15)',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-1px)'}
+                    onMouseLeave={(e) => e.currentTarget.style.transform = 'none'}
+                  >
+                    {t('nav.register')}
+                  </Link>
+                </div>
               )}
             </div>
           </div>
@@ -309,6 +416,50 @@ export function AppShell() {
           animation: 'fadeIn 0.2s ease'
         }}>
           <MainNav mobileCallback={() => setMobileMenuOpen(false)} />
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>
+            <span style={{ fontSize: '0.9rem', color: 'var(--muted)', fontWeight: 500 }}>{t('settings.themeRowTitle')}</span>
+            <button
+              onClick={toggleTheme}
+              style={{
+                background: 'none',
+                border: '1px solid var(--border)',
+                borderRadius: '8px',
+                padding: '0.4rem 0.8rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                fontSize: '0.9rem',
+                color: 'var(--text)',
+                transition: 'all 0.2s'
+              }}
+            >
+              {theme === 'dark' ? '☀️ Jasny' : '🌙 Ciemny'}
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>
+            <span style={{ fontSize: '0.9rem', color: 'var(--muted)', fontWeight: 500 }}>{t('settings.langRowTitle')}</span>
+            <button
+              onClick={toggleLanguage}
+              style={{
+                background: 'none',
+                border: '1px solid var(--border)',
+                borderRadius: '8px',
+                padding: '0.4rem 0.8rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                fontSize: '0.9rem',
+                color: 'var(--text)',
+                transition: 'all 0.2s'
+              }}
+            >
+              {i18n.language === 'pl' ? '🇬🇧 English' : '🇵🇱 Polski'}
+            </button>
+          </div>
           {user && (
             <div className="mobile-notifications-row">
               <NotificationsPanel token={token} />
@@ -349,26 +500,45 @@ export function AppShell() {
                     cursor: 'pointer'
                   }}
                 >
-                  Wyloguj się
+                  {t('settings.logoutButton')}
                 </button>
               </>
             ) : (
-              <Link 
-                to="/auth" 
-                onClick={() => setMobileMenuOpen(false)}
-                style={{
-                  width: '100%',
-                  textAlign: 'center',
-                  padding: '0.6rem',
-                  borderRadius: '10px',
-                  background: 'var(--primary)',
-                  color: '#fff',
-                  fontWeight: 600,
-                  fontSize: '0.95rem'
-                }}
-              >
-                Zaloguj się / Rejestracja
-              </Link>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%' }}>
+                <Link 
+                  to="/login?tab=login" 
+                  onClick={() => setMobileMenuOpen(false)}
+                  style={{
+                    width: '100%',
+                    textAlign: 'center',
+                    padding: '0.65rem',
+                    borderRadius: '10px',
+                    border: '1px solid var(--border)',
+                    background: 'var(--surface)',
+                    color: 'var(--text)',
+                    fontWeight: 600,
+                    fontSize: '0.95rem'
+                  }}
+                >
+                  {t('nav.login')}
+                </Link>
+                <Link 
+                  to="/login?tab=register" 
+                  onClick={() => setMobileMenuOpen(false)}
+                  style={{
+                    width: '100%',
+                    textAlign: 'center',
+                    padding: '0.65rem',
+                    borderRadius: '10px',
+                    background: 'var(--primary)',
+                    color: '#fff',
+                    fontWeight: 600,
+                    fontSize: '0.95rem'
+                  }}
+                >
+                  {t('nav.register')}
+                </Link>
+              </div>
             )}
           </div>
         </div>
@@ -405,14 +575,14 @@ export function AppShell() {
             ✨ WEDDING PLANNER ✨
           </span>
           <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--muted)', fontFamily: 'sans-serif' }}>
-            © {new Date().getFullYear()} Premium Wedding Planner Pro. Wszelkie prawa zastrzeżone.
+            {t('footer.rights', { year: new Date().getFullYear() })}
           </p>
           <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.8rem', color: 'var(--muted)', fontFamily: 'sans-serif', marginTop: '0.5rem' }}>
-            <Link to="/rsvp" style={{ textDecoration: 'underline' }}>RSVP dla Gości</Link>
+            <Link to="/rsvp" style={{ textDecoration: 'underline' }}>{t('footer.rsvp')}</Link>
             <span>•</span>
-            <Link to="/" style={{ textDecoration: 'underline' }}>O nas</Link>
+            <Link to="/" style={{ textDecoration: 'underline' }}>{t('footer.about')}</Link>
             <span>•</span>
-            <Link to="/auth" style={{ textDecoration: 'underline' }}>Panel Managera</Link>
+            <Link to="/auth" style={{ textDecoration: 'underline' }}>{t('footer.managerPanel')}</Link>
           </div>
         </div>
       </footer>

@@ -8,6 +8,8 @@ export type EventResponse = {
   location: string | null
   status: string
   eventCode: string
+  cateringNotes?: string | null
+  cateringMenu?: string | null
 }
 
 export type CreateEventRequest = {
@@ -22,6 +24,8 @@ export type UpdateEventRequest = {
   eventDate: string
   location: string
   status: string
+  cateringNotes?: string | null
+  cateringMenu?: string | null
 }
 
 type EventRequestOptions = {
