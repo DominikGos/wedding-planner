@@ -11,8 +11,8 @@ export function ValidationCard({
     <article
       className='page-card'
       style={{
-        borderColor: '#bff0cf',
-        background: '#f7fff9',
+        borderColor: 'var(--ok)',
+        background: 'color-mix(in srgb, var(--ok) 10%, var(--surface))',
         padding: '1.35rem',
       }}
     >
@@ -22,11 +22,11 @@ export function ValidationCard({
             width: '3rem',
             height: '3rem',
             borderRadius: '14px',
-            background: '#d9f9e5',
+            background: 'color-mix(in srgb, var(--ok) 16%, var(--surface))',
             display: 'grid',
             placeItems: 'center',
             flexShrink: 0,
-            color: '#0ea44b',
+            color: 'var(--ok)',
             fontSize: '1.25rem',
             fontWeight: 700,
           }}
@@ -35,10 +35,10 @@ export function ValidationCard({
         </div>
 
         <div>
-          <strong style={{ display: 'block', color: '#14834b', fontSize: '1.1rem' }}>
+          <strong style={{ display: 'block', color: 'var(--ok)', fontSize: '1.1rem' }}>
             {title}
           </strong>
-          <p style={{ margin: '0.45rem 0 0', color: '#14834b' }}>{text}</p>
+          <p style={{ margin: '0.45rem 0 0', color: 'var(--ok)' }}>{text}</p>
         </div>
       </div>
     </article>

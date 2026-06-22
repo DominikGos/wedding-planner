@@ -4,6 +4,7 @@ import type { RootState } from '../../../store'
 
 import { initialMenuSections } from '../data/cateringMock'
 import type { CateringMenuSectionData, CateringMenuItem } from '../data/cateringMock'
+import type { Vendor } from '../../vendors/data/vendorsMock'
 
 export function CateringPage() {
   // Redux state
@@ -11,7 +12,7 @@ export function CateringPage() {
   const reduxGuests = useSelector((state: RootState) => state.guests.items)
   
   const caterers = useMemo(() => {
-    return reduxVendors.filter((v: any) => v.category === 'Catering')
+    return reduxVendors.filter((v: Vendor) => v.category === 'Catering')
   }, [reduxVendors])
 
   // Local State
@@ -133,7 +134,7 @@ export function CateringPage() {
   }
 
   const selectedCaterer = useMemo(() => {
-    return caterers.find((c: any) => c.id === selectedVendorId) || null
+    return caterers.find((c: Vendor) => c.id === selectedVendorId) || null
   }, [selectedVendorId, caterers])
 
   return (
@@ -143,9 +144,9 @@ export function CateringPage() {
         <div style={{
           padding: '1rem',
           borderRadius: '12px',
-          background: cateringNotification.type === 'success' ? '#daf6e5' : '#fff2f2',
-          color: cateringNotification.type === 'success' ? '#14834b' : '#c53030',
-          border: `1px solid ${cateringNotification.type === 'success' ? '#bfeecf' : '#f4c1c1'}`,
+          background: cateringNotification.type === 'success' ? 'color-mix(in srgb, var(--ok) 14%, var(--surface))' : 'var(--danger-soft)',
+          color: cateringNotification.type === 'success' ? 'var(--ok)' : 'var(--danger)',
+          border: `1px solid ${cateringNotification.type === 'success' ? 'var(--ok)' : 'var(--danger)'}`,
           fontWeight: 600,
           textAlign: 'center',
           animation: 'fadeIn 0.3s ease'
@@ -157,7 +158,7 @@ export function CateringPage() {
       {/* HEADER */}
       <header className="page-card" style={{
         padding: '1.6rem',
-        background: 'linear-gradient(180deg, #fffdf9 0%, #fff8f1 100%)',
+        background: 'linear-gradient(180deg, var(--surface) 0%, var(--surface-soft) 100%)',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -173,18 +174,9 @@ export function CateringPage() {
           onClick={() => {
             showNotification('Konfiguracja cateringu została pomyślnie zapisana!', 'success')
           }}
-          style={{
-            padding: '0.8rem 1.5rem',
-            borderRadius: '12px',
-            background: 'var(--primary)',
-            color: '#fff',
-            border: 'none',
-            fontWeight: 700,
-            cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(184, 90, 31, 0.2)'
-          }}
+          className='button-primary'
         >
-          Zapisz Konfigurację ✨
+          Zapisz Konfigurację
         </button>
       </header>
 
@@ -207,7 +199,7 @@ export function CateringPage() {
             fontSize: '0.75rem', 
             fontWeight: 600,
             color: fitsBudget ? '#35684f' : '#c53030',
-            background: fitsBudget ? '#eef8f3' : '#fff2f2',
+            background: fitsBudget ? 'color-mix(in srgb, var(--ok) 14%, var(--surface))' : 'var(--danger-soft)',
             padding: '0.2rem 0.5rem',
             borderRadius: '10px',
             alignSelf: 'center'
@@ -235,7 +227,7 @@ export function CateringPage() {
       </div>
 
       {/* TWO-COLUMN WORKSPACE */}
-      <div style={{
+      <div className="catering-layout" style={{
         display: 'grid',
         gridTemplateColumns: 'minmax(300px, 1.8fr) minmax(280px, 0.9fr)',
         gap: '1.5rem',
@@ -246,9 +238,9 @@ export function CateringPage() {
         <div style={{ display: 'grid', gap: '1.5rem' }}>
           
           {/* Menu Sections Golden restaurant Card */}
-          <section className="page-card" style={{ padding: '2.5rem', border: '2px solid #e5d7c3', background: '#fffdfb' }}>
+          <section className="page-card" style={{ padding: '2.5rem', border: '2px solid var(--border)', background: 'var(--surface)' }}>
             <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-              <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.2em', color: '#db7e45', fontWeight: 600 }}>Karta Ślubna</span>
+              <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.2em', color: 'var(--primary)', fontWeight: 600 }}>Karta Ślubna</span>
               <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '2.2rem', margin: '0.5rem 0', fontWeight: 400 }}>Menu Weselne</h2>
               <div style={{ width: '60px', height: '1px', background: '#d4af37', margin: '0.75rem auto' }} />
               <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: 0 }}>Zaznacz potrawy, które znajdą się na stołach weselnych.</p>
@@ -262,7 +254,7 @@ export function CateringPage() {
                     fontSize: '1.4rem',
                     color: 'var(--text)',
                     margin: 0,
-                    borderBottom: '1px dashed #e2d7c7',
+                    borderBottom: '1px dashed var(--border)',
                     paddingBottom: '0.5rem',
                     fontWeight: 400
                   }}>
@@ -279,8 +271,8 @@ export function CateringPage() {
                           justifyContent: 'space-between',
                           padding: '0.75rem 1rem',
                           borderRadius: '10px',
-                          border: `1px solid ${item.checked ? '#e8dbca' : '#f4eee5'}`,
-                          background: item.checked ? 'var(--primary-soft)' : '#fff',
+                          border: `1px solid ${item.checked ? 'var(--primary)' : 'var(--border)'}`,
+                          background: item.checked ? 'var(--primary-soft)' : 'var(--surface)',
                           cursor: 'pointer',
                           transition: 'all 0.2s'
                         }}
@@ -309,7 +301,7 @@ export function CateringPage() {
               + Dodaj nową potrawę do Menu
             </h3>
             
-            <form onSubmit={handleAddDish} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1.2fr auto', gap: '0.85rem', alignItems: 'end' }}>
+            <form className="catering-dish-form" onSubmit={handleAddDish} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1.2fr auto', gap: '0.85rem', alignItems: 'end' }}>
               <label style={{ display: 'grid', gap: '0.4rem' }}>
                 <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--muted)' }}>Nazwa potrawy</span>
                 <input 
@@ -337,7 +329,7 @@ export function CateringPage() {
                 <select 
                   value={newDish.sectionId}
                   onChange={(e) => setNewDish(prev => ({ ...prev, sectionId: e.target.value }))}
-                  style={{ padding: '0.65rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.9rem', background: '#fff' }}
+                  style={{ padding: '0.65rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.9rem', background: 'var(--surface)', color: 'var(--text)' }}
                 >
                   <option value="starters">Przystawki</option>
                   <option value="main">Dania główne</option>
@@ -353,7 +345,7 @@ export function CateringPage() {
                   borderRadius: '8px',
                   border: 'none',
                   background: 'var(--primary)',
-                  color: '#fff',
+                  color: 'var(--on-primary)',
                   fontWeight: 600,
                   fontSize: '0.9rem',
                   cursor: 'pointer'
@@ -367,7 +359,7 @@ export function CateringPage() {
         </div>
 
         {/* Right Column: Dietary Summary & Vendor Selection */}
-        <div style={{ display: 'grid', gap: '1.5rem', position: 'sticky', top: '1rem' }}>
+        <div className="catering-sidebar" style={{ display: 'grid', gap: '1.5rem', position: 'sticky', top: '1rem' }}>
           
           {/* Guest Dietary requirements summary card */}
           <section className="page-card" style={{ padding: '1.5rem' }}>
@@ -412,7 +404,7 @@ export function CateringPage() {
               </div>
             </div>
 
-            <div style={{ borderTop: '1px solid #f1e8dc', marginTop: '1.2rem', paddingTop: '1rem', textAlign: 'center' }}>
+            <div style={{ borderTop: '1px solid var(--border)', marginTop: '1.2rem', paddingTop: '1rem', textAlign: 'center' }}>
               <span style={{ fontSize: '0.8rem', color: 'var(--muted)', lineHeight: '1.4', display: 'block' }}>
                 Wyliczono na podstawie <strong>{guestsDietStats.totalGuests}</strong> gości o statusach <em>Potwierdzony</em> oraz <em>Oczekuje</em> z bazy danych gości.
               </span>
@@ -458,11 +450,12 @@ export function CateringPage() {
                   borderRadius: '10px',
                   border: '1px solid var(--border)',
                   fontSize: '0.95rem',
-                  background: '#fff',
+                  background: 'var(--surface)',
+                  color: 'var(--text)',
                   fontWeight: 600
                 }}
               >
-                {caterers.map((c: any) => (
+                {caterers.map((c: Vendor) => (
                   <option key={c.id} value={c.id}>
                     {c.name} ({c.priceFrom})
                   </option>
@@ -526,7 +519,7 @@ export function CateringPage() {
 }
 
 const calcCardStyle: React.CSSProperties = {
-  background: '#fff',
+  background: 'var(--surface)',
   border: '1px solid var(--border)',
   borderRadius: '14px',
   padding: '1.2rem',
@@ -541,6 +534,6 @@ const dietRowStyle: React.CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
   fontSize: '0.9rem',
-  borderBottom: '1px solid #f6f3ed',
+  borderBottom: '1px solid var(--border)',
   paddingBottom: '0.55rem'
 }

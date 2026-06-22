@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { createTask, deleteTask, getTasks, updateTask, updateTaskStatus, type TaskRequest, type TaskStatus } from '../../../api/taskApi'
 import type { RootState } from '../../../store'
@@ -34,6 +34,7 @@ export function TasksPage() {
   const [loading, setLoading] = useState(Boolean(activeWeddingId && token))
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const formPanelRef = useRef<HTMLDivElement>(null)
 
   const loadTasks = useCallback(async () => {
     if (!activeWeddingId || !token) return
@@ -85,6 +86,11 @@ export function TasksPage() {
     setTaskForm(emptyForm)
     setShowForm(true)
     setMessage(null)
+    if (window.innerWidth <= 900) {
+      window.setTimeout(() => {
+        formPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 0)
+    }
   }
 
   const openTask = (task: TaskItem) => {
@@ -191,9 +197,9 @@ export function TasksPage() {
   return (
     <section style={{ display: 'grid', gap: '1rem' }}>
       {message && <div style={{ padding: '1rem', borderRadius: '12px', background: '#daf6e5', color: '#14834b', fontWeight: 600, textAlign: 'center' }}>{message}</div>}
-      {error && <div style={{ padding: '1rem', borderRadius: '12px', background: '#fff2f2', color: '#c53030', fontWeight: 600, textAlign: 'center' }}>{error}</div>}
+      {error && <div className='app-alert app-alert-danger' style={{ textAlign: 'center' }}>{error}</div>}
 
-      <article className='page-card' style={{ padding: '1.6rem', background: 'linear-gradient(180deg, #fffdf9 0%, #fff8f1 100%)' }}>
+      <article className='page-card' style={{ padding: '1.6rem', background: 'linear-gradient(180deg, var(--surface) 0%, var(--surface-soft) 100%)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <div>
             <h1 className='page-title' style={{ fontSize: '2rem' }}>Zadania</h1>
@@ -204,18 +210,18 @@ export function TasksPage() {
           </button>
         </div>
 
-        <div style={{ marginTop: '1.2rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.85rem' }}>
+        <div className="mobile-stat-grid" style={{ marginTop: '1.2rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.85rem' }}>
           <TaskStats title='Wszystkie' value={String(tasks.length)} note='zadań' color='#db7e45' isActive={statusFilter === 'ALL'} onClick={() => setStatusFilter('ALL')} />
           <TaskStats title='Do zrobienia' value={String(pending)} note='zadań' color='#7ea4ff' isActive={statusFilter === 'PENDING'} onClick={() => setStatusFilter('PENDING')} />
           <TaskStats title='W trakcie' value={String(inProgress)} note='zadań' color='#f2a642' isActive={statusFilter === 'IN_PROGRESS'} onClick={() => setStatusFilter('IN_PROGRESS')} />
           <TaskStats title='Zrobione' value={String(completed)} note='zadań' color='#53ba73' isActive={statusFilter === 'COMPLETED'} onClick={() => setStatusFilter('COMPLETED')} />
-          <TaskStats title='Budżet zadań' value={knownCosts.length > 0 ? `${budget.toLocaleString('pl-PL')} PLN` : '—'} note='z aktualnych zadań' color='#d6a061' isActive={false} onClick={() => undefined} />
+          <TaskStats title='Budżet zadań' value={knownCosts.length > 0 ? `${budget.toLocaleString('pl-PL')} PLN` : '—'} note='z aktualnych zadań' color='var(--primary)' isActive={false} onClick={() => undefined} />
         </div>
       </article>
 
-      <div style={{ display: 'grid', gridTemplateColumns: showForm ? 'minmax(420px, 1.8fr) minmax(320px, 0.95fr)' : '1fr', gap: '1rem', alignItems: 'start' }}>
+      <div className="tasks-layout" style={{ display: 'grid', gridTemplateColumns: showForm ? 'minmax(420px, 1.8fr) minmax(320px, 0.95fr)' : '1fr', gap: '1rem', alignItems: 'start' }}>
         <article className='page-card' style={{ padding: 0, overflow: 'hidden' }}>
-          <div className='filter-toolbar' style={{ padding: '1rem', borderBottom: '1px solid #f1e8dc' }}>
+          <div className='filter-toolbar' style={{ padding: '1rem', borderBottom: '1px solid var(--border)' }}>
             <input value={search} onChange={event => setSearch(event.target.value)} placeholder='Szukaj zadania...' className='filter-control' />
             <select value={typeFilter} onChange={event => setTypeFilter(event.target.value)} className='filter-control'>
               <option value='ALL'>Wszystkie typy</option>
@@ -228,7 +234,7 @@ export function TasksPage() {
             <button type='button' onClick={() => { setSearch(''); setTypeFilter('ALL'); setStatusFilter('ALL') }} className='button-secondary'>Wyczyść filtry</button>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 2.2fr) 1fr 0.9fr 0.9fr 0.9fr', gap: '0.9rem', padding: '1rem', background: '#fbf8f3', fontWeight: 700, color: '#6f6559' }}>
+          <div className="tasks-table-header" style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 2.2fr) 1fr 0.9fr 0.9fr 0.9fr', gap: '0.9rem', padding: '1rem', background: 'var(--surface-soft)', fontWeight: 700, color: 'var(--muted)' }}>
             <span>Zadanie</span><span>Typ</span><span>Termin</span><span>Status</span><span>Budżet</span>
           </div>
 
@@ -240,7 +246,7 @@ export function TasksPage() {
         </article>
 
         {showForm && (
-          <div style={{ position: 'sticky', top: '1rem' }}>
+          <div ref={formPanelRef} className="tasks-form-panel" style={{ position: 'sticky', top: '1rem' }}>
             <TaskForm
               values={taskForm}
               editing={Boolean(selectedTask)}

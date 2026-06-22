@@ -24,12 +24,12 @@ export function SummaryCard({
         padding: '1.15rem 1.3rem',
         borderColor: isSelected ? color : border,
         boxShadow: '0 8px 22px rgba(47, 42, 36, 0.05)',
-        background: isSelected ? '#fff9f3' : '#fff',
+        background: isSelected ? 'var(--primary-soft)' : 'var(--surface)',
         cursor: 'pointer',
         textAlign: 'left',
       }}
     >
-      <span style={{ color }}>{title}</span>
+      <span style={{ color: 'var(--muted)' }}>{title}</span>
       <strong style={{ color, fontSize: '1.45rem', marginTop: '0.55rem' }}>{value}</strong>
     </button>
   )

@@ -12,6 +12,7 @@ import { EventCard } from '../components/EventCard'
 import { GuestStatCard } from '../components/GuestStatCard'
 import { TopStatCard } from '../components/TopStatCard'
 import type { BudgetItem, DashboardEvent, GuestStat, TopCardItem } from '../data/dashboardMock'
+import { LandingPage } from '../../landing/pages/LandingPage'
 
 const budgetColors = ['#d9a15f', '#dcc2ff', '#c9bca5', '#f5d9eb', '#f39bd0', '#8fc7b5']
 
@@ -74,7 +75,6 @@ function getTaskDateParts(task: TaskResponse) {
 export function DashboardPage() {
   const dispatch = useDispatch()
   const [searchParams] = useSearchParams()
-  const currentTab = searchParams.get('tab') || 'about'
   const eventUpdated = searchParams.get('eventUpdated') === '1'
 
   // Redux state
@@ -86,12 +86,6 @@ export function DashboardPage() {
   const [costSummary, setCostSummary] = useState<EventCostSummaryResponse | null>(null)
   const [dashboardTasks, setDashboardTasks] = useState<TaskResponse[]>([])
   const [dashboardGuests, setDashboardGuests] = useState<GuestResponse[]>([])
-
-  // Hover states for the active dashboard
-  const [hoveredCard, setHoveredCard] = useState<string | null>(null)
-  const [hoveredBudgetItem, setHoveredBudgetItem] = useState<string | null>(null)
-  const [hoveredEvent, setHoveredEvent] = useState<string | null>(null)
-  const [hoveredGuestStat, setHoveredGuestStat] = useState<string | null>(null)
 
   useEffect(() => {
     if (!activeWeddingId || !token) {
@@ -195,7 +189,7 @@ export function DashboardPage() {
       title: 'Całkowity Budżet',
       value: visibleTotalCost > 0 ? formatCurrency(visibleTotalCost) : 'Brak kosztów',
       note: visibleTotalCost > 0 ? 'Wyliczone z zadań' : 'Dodaj koszty do zadań',
-      color: '#d6a061',
+      color: 'var(--primary)',
       icon: 'trend',
     },
     {
@@ -243,203 +237,16 @@ export function DashboardPage() {
 
   const guestStats = useMemo<GuestStat[]>(() => [
     { id: 'confirmed', value: String(guestBuckets.confirmed), label: 'Potwierdzeni', color: '#0ea44b', background: '#eefbf2', icon: 'check-circle' },
-    { id: 'waiting', value: String(guestBuckets.waiting), label: 'Oczekujący', color: '#ef8a00', background: '#fff9e9', icon: 'clock' },
-    { id: 'rejected', value: String(guestBuckets.rejected), label: 'Odrzuceni', color: '#eb1d1d', background: '#fff3f3', icon: 'alert' },
-    { id: 'all', value: String(allGuests), label: 'Suma', color: '#d6a061', background: '#fcf7f0', icon: 'group' },
+    { id: 'waiting', value: String(guestBuckets.waiting), label: 'Oczekujący', color: '#ef8a00', background: 'var(--surface)', icon: 'clock' },
+    { id: 'rejected', value: String(guestBuckets.rejected), label: 'Odrzuceni', color: '#eb1d1d', background: 'var(--surface)', icon: 'alert' },
+    { id: 'all', value: String(allGuests), label: 'Suma', color: 'var(--primary)', background: 'var(--surface)', icon: 'group' },
   ], [allGuests, guestBuckets.confirmed, guestBuckets.rejected, guestBuckets.waiting])
 
   // ----------------------------------------------------
   // CASE 1: NOT LOGGED IN - PUBLIC LANDING PAGE
   // ----------------------------------------------------
   if (!user) {
-    return (
-      <div style={{ display: 'grid', gap: '2.5rem' }}>
-        
-        {/* Luxury Hero Banner */}
-        <section style={{
-          padding: '4rem 2rem',
-          textAlign: 'center',
-          background: 'linear-gradient(135deg, #fffcf6 0%, #f7f1e5 50%, #efe7dc 100%)',
-          borderRadius: '16px',
-          border: '1px solid var(--border)',
-          position: 'relative',
-          overflow: 'hidden'
-        }}>
-          <div style={{ position: 'absolute', top: '10px', left: '10px', fontSize: '3rem', opacity: 0.1 }}>🌸</div>
-          <div style={{ position: 'absolute', bottom: '10px', right: '10px', fontSize: '3rem', opacity: 0.1 }}>🌸</div>
-          
-          <span style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.2em', color: 'var(--primary)', fontWeight: 600 }}>
-            Witaj w Wedding Planner
-          </span>
-          <h1 style={{
-            fontFamily: "'Playfair Display', Georgia, serif",
-            fontSize: '3rem',
-            margin: '0.75rem 0',
-            fontWeight: 400,
-            lineHeight: 1.2,
-            color: 'var(--text)'
-          }}>
-            Planuj Swój Wymarzony Ślub <br />z Lekkością i Klasą
-          </h1>
-          <p style={{ maxWidth: '600px', margin: '1rem auto 2rem', color: 'var(--muted)', fontSize: '1.05rem', lineHeight: '1.6' }}>
-            Interaktywne zarządzanie gośćmi, budżetem, dostawcami oraz cateringiem w jednym, luksusowym i intuicyjnym systemie.
-          </p>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-            <Link to="/auth" style={{
-              padding: '0.8rem 2rem',
-              borderRadius: '999px',
-              background: 'var(--primary)',
-              color: '#fff',
-              fontWeight: 600,
-              boxShadow: '0 6px 20px rgba(184, 90, 31, 0.2)'
-            }}>
-              Rozpocznij Bezpłatnie
-            </Link>
-            <Link to="/rsvp" style={{
-              padding: '0.8rem 2rem',
-              borderRadius: '999px',
-              background: '#fff',
-              color: 'var(--text)',
-              border: '1px solid var(--border)',
-              fontWeight: 600
-            }}>
-              Potwierdź RSVP Gościa
-            </Link>
-          </div>
-        </section>
-
-        {/* Tab-based Content Section */}
-        <section className="page-card" style={{ padding: '2.5rem' }}>
-          
-          {/* TAB ABOUT */}
-          {currentTab === 'about' && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem', alignItems: 'center' }}>
-              <div>
-                <span style={{ color: 'var(--primary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>O Aplikacji</span>
-                <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '2rem', margin: '0.5rem 0 1rem', fontWeight: 400 }}>Kim Jesteśmy?</h2>
-                <p style={{ color: 'var(--muted)', lineHeight: '1.6', fontSize: '0.95rem' }}>
-                  Wedding Planner to ekskluzywne oprogramowanie stworzone z myślą o parach młodych oraz profesjonalnych konsultantach ślubnych (Wedding Planners). 
-                  Rozumiemy, że organizacja ślubu wymaga dbałości o każdy, nawet najmniejszy detal.
-                </p>
-                <p style={{ color: 'var(--muted)', lineHeight: '1.6', fontSize: '0.95rem' }}>
-                  Nasz system gromadzi wszystkie kluczowe elementy – harmonogramy, budżet ślubny, zadania, catering oraz listę gości – w jednym spójnym interfejsie klasy Premium.
-                </p>
-              </div>
-              <div style={{ background: 'var(--bg-accent)', padding: '2rem', borderRadius: '16px', border: '1px dashed var(--border)' }}>
-                <h3 style={{ margin: '0 0 1rem 0', fontFamily: 'Georgia, serif', fontWeight: 500 }}>Dlaczego nasz system?</h3>
-                <ul style={{ paddingLeft: '1.2rem', display: 'grid', gap: '0.75rem', color: 'var(--text)', fontSize: '0.9rem' }}>
-                  <li>✨ <strong>Elegancja i Styl:</strong> Przepiękny interfejs ułatwiający planowanie.</li>
-                  <li>📊 <strong>Pełna Kontrola Budżetu:</strong> Śledzenie zaliczek, płatności i faktur dostawców.</li>
-                  <li>👥 <strong>RSVP Online:</strong> Bezpośrednia integracja odpowiedzi gości z Twoją listą.</li>
-                  <li>💼 <strong>Dla Profesjonalistów:</strong> Dedykowany pulpit do zarządzania wieloma weselami na raz.</li>
-                </ul>
-              </div>
-            </div>
-          )}
-
-          {/* TAB SERVICES */}
-          {currentTab === 'services' && (
-            <div>
-              <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                <span style={{ color: 'var(--primary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>Funkcjonalności</span>
-                <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '2rem', margin: '0.5rem 0 0.5rem', fontWeight: 400 }}>Nasza Oferta Premium</h2>
-                <p style={{ color: 'var(--muted)', margin: 0 }}>Poznaj narzędzia, które zaoszczędzą Ci setki godzin stresu.</p>
-              </div>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem' }}>
-                <div style={{ border: '1px solid var(--border)', padding: '1.5rem', borderRadius: '12px', background: '#fff' }}>
-                  <span style={{ fontSize: '2rem' }}>📅</span>
-                  <h3 style={{ margin: '0.75rem 0 0.5rem', fontSize: '1.15rem' }}>Interaktywny Harmonogram</h3>
-                  <p style={{ color: 'var(--muted)', fontSize: '0.85rem', lineHeight: '1.5', margin: 0 }}>Planuj kamienie milowe, twórz listy zadań i przypomnienia, które ułatwią terminową realizację.</p>
-                </div>
-                <div style={{ border: '1px solid var(--border)', padding: '1.5rem', borderRadius: '12px', background: '#fff' }}>
-                  <span style={{ fontSize: '2rem' }}>💰</span>
-                  <h3 style={{ margin: '0.75rem 0 0.5rem', fontSize: '1.15rem' }}>Inteligentny Budżet</h3>
-                  <p style={{ color: 'var(--muted)', fontSize: '0.85rem', lineHeight: '1.5', margin: 0 }}>Automatyczne podsumowania opłat, kontrola zaległych płatności oraz faktur dla wszystkich usługodawców.</p>
-                </div>
-                <div style={{ border: '1px solid var(--border)', padding: '1.5rem', borderRadius: '12px', background: '#fff' }}>
-                  <span style={{ fontSize: '2rem' }}>🍷</span>
-                  <h3 style={{ margin: '0.75rem 0 0.5rem', fontSize: '1.15rem' }}>Goście i RSVP</h3>
-                  <p style={{ color: 'var(--muted)', fontSize: '0.85rem', lineHeight: '1.5', margin: 0 }}>Zarządzanie stolikami, menu weselnym, alergiami i bezpośredni publiczny panel RSVP dla Twoich gości.</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB GALLERY */}
-          {currentTab === 'gallery' && (
-            <div>
-              <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                <span style={{ color: 'var(--primary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>Inspiracje</span>
-                <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '2rem', margin: '0.5rem 0 0.5rem', fontWeight: 400 }}>Najpiękniejsze Realizacje</h2>
-                <p style={{ color: 'var(--muted)', margin: 0 }}>Przegląd stylów weselnych zrealizowanych za pomocą naszego planera.</p>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                {[
-                  { name: 'Wesele Rustykalne w Stodole', style: 'Rustykalny', icon: '🪵' },
-                  { name: 'Ślub Glamour w Złotym Dworze', style: 'Glamour', icon: '✨' },
-                  { name: 'Letnie Przyjęcie Boho w Ogrodzie', style: 'Boho', icon: '🌾' },
-                  { name: 'Klasyczna Elegancja w Pałacu', style: 'Klasyczny', icon: '🌹' }
-                ].map((item, idx) => (
-                  <div key={idx} style={{
-                    padding: '2rem 1rem',
-                    borderRadius: '12px',
-                    border: '1px solid var(--border)',
-                    textAlign: 'center',
-                    background: 'linear-gradient(to bottom, #fffdf9, #fff)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '0.5rem'
-                  }}>
-                    <span style={{ fontSize: '2.5rem' }}>{item.icon}</span>
-                    <strong style={{ fontSize: '0.95rem', color: 'var(--text)' }}>{item.name}</strong>
-                    <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.6rem', borderRadius: '20px', background: 'var(--primary-soft)', color: 'var(--primary)', fontWeight: 600 }}>{item.style}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* TAB CONTACT */}
-          {currentTab === 'contact' && (
-            <div style={{ maxWidth: '500px', margin: '0 auto' }}>
-              <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                <span style={{ color: 'var(--primary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>Kontakt</span>
-                <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '2rem', margin: '0.5rem 0 0.5rem', fontWeight: 400 }}>Porozmawiajmy o Twoim Ślubie</h2>
-                <p style={{ color: 'var(--muted)', margin: 0 }}>Masz pytania dotyczące planera lub oferty dla plannera? Napisz do nas!</p>
-              </div>
-
-              <form onSubmit={(e) => { e.preventDefault(); alert('Dziękujemy! Skontaktujemy się wkrótce.'); }} style={{ display: 'grid', gap: '1rem' }}>
-                <input 
-                  type="text" 
-                  placeholder="Twoje Imię" 
-                  required
-                  style={{ width: '100%', padding: '0.75rem', borderRadius: '10px', border: '1px solid var(--border)', fontSize: '0.9rem' }}
-                />
-                <input 
-                  type="email" 
-                  placeholder="Adres E-mail" 
-                  required
-                  style={{ width: '100%', padding: '0.75rem', borderRadius: '10px', border: '1px solid var(--border)', fontSize: '0.9rem' }}
-                />
-                <textarea 
-                  rows={4} 
-                  placeholder="Treść Twojej wiadomości..." 
-                  required
-                  style={{ width: '100%', padding: '0.75rem', borderRadius: '10px', border: '1px solid var(--border)', fontSize: '0.9rem', resize: 'vertical' }}
-                />
-                <button type="submit" style={{ padding: '0.8rem', borderRadius: '10px', border: 'none', background: 'var(--primary)', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>
-                  Wyślij Wiadomość
-                </button>
-              </form>
-            </div>
-          )}
-
-        </section>
-      </div>
-    )
+    return <LandingPage />
   }
 
   // ----------------------------------------------------
@@ -489,7 +296,7 @@ export function DashboardPage() {
         {/* Banner powitalny */}
         <article className="page-card" style={{
           padding: '2rem',
-          background: 'linear-gradient(135deg, #fffdf9 0%, #fff8f1 100%)',
+          background: 'linear-gradient(135deg, var(--surface) 0%, var(--surface-soft) 100%)',
           border: '1px solid var(--border)',
           borderRadius: '16px'
         }}>
@@ -512,12 +319,12 @@ export function DashboardPage() {
             </Link>
           </article>
         )}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+        <div className="wedding-card-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
           {weddings.map((wedding) => (
             <div 
               key={wedding.id}
               style={{
-                background: '#fff',
+                background: 'var(--surface)',
                 border: '1px solid var(--border)',
                 borderRadius: '16px',
                 padding: '2rem 1.8rem',
@@ -570,7 +377,7 @@ export function DashboardPage() {
                   borderRadius: '10px',
                   border: 'none',
                   background: 'var(--primary)',
-                  color: '#fff',
+                  color: 'var(--on-primary)',
                   fontWeight: 600,
                   fontSize: '0.9rem',
                   cursor: 'pointer',
@@ -615,7 +422,7 @@ export function DashboardPage() {
                 padding: '0.9rem 2.5rem',
                 borderRadius: '999px',
                 background: 'var(--primary)',
-                color: '#fff',
+                color: 'var(--on-primary)',
                 fontWeight: 700,
                 fontSize: '1.05rem',
                 boxShadow: '0 6px 22px rgba(184, 90, 31, 0.25)',
@@ -644,17 +451,17 @@ export function DashboardPage() {
     return (
       <section style={{ display: 'grid', gap: '1rem' }}>
         {eventUpdated && (
-          <div style={{ padding: '0.85rem 1rem', borderRadius: '10px', background: '#edf9f0', color: '#276738', border: '1px solid #ccebd4' }}>
+          <div className='app-alert app-alert-success'>
             Szczegóły wydarzenia zostały zapisane.
           </div>
         )}
         {dashboardLoading && (
-          <div style={{ padding: '0.85rem 1rem', borderRadius: '10px', background: '#fff8ed', color: '#8c5a12', border: '1px solid #f4da8b' }}>
+          <div className='app-alert app-alert-info'>
             Odświeżamy dane pulpitu z backendu...
           </div>
         )}
         {dashboardError && (
-          <div style={{ padding: '0.85rem 1rem', borderRadius: '10px', background: '#fff2f2', color: '#c53030', border: '1px solid #f4c1c1' }}>
+          <div className='app-alert app-alert-danger'>
             {dashboardError}
           </div>
         )}
@@ -664,10 +471,11 @@ export function DashboardPage() {
           className='page-card'
           style={{
             padding: '1.6rem',
-            background: 'linear-gradient(180deg, #fffdf9 0%, #fff8f1 100%)',
+            background: 'linear-gradient(180deg, var(--surface) 0%, var(--surface-soft) 100%)',
           }}
         >
           <div
+            className='dashboard-header-row'
             style={{
               display: 'flex',
               justifyContent: 'space-between',
@@ -685,7 +493,7 @@ export function DashboardPage() {
               </p>
             </div>
 
-            <div style={{ textAlign: 'right' }}>
+            <div className='dashboard-event-summary' style={{ textAlign: 'right' }}>
               <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Ślub i Wesele
               </p>
@@ -703,7 +511,7 @@ export function DashboardPage() {
                   padding: '0.55rem 1rem',
                   borderRadius: '9px',
                   background: 'var(--primary)',
-                  color: '#fff',
+                  color: 'var(--on-primary)',
                   fontSize: '0.85rem',
                   fontWeight: 600,
                 }}
@@ -725,9 +533,6 @@ export function DashboardPage() {
                 note={card.note}
                 color={card.color}
                 icon={card.icon}
-                isHovered={hoveredCard === card.id}
-                onHoverStart={() => setHoveredCard(card.id)}
-                onHoverEnd={() => setHoveredCard(null)}
               />
             )
           })}
@@ -735,6 +540,7 @@ export function DashboardPage() {
 
         {/* Interactive panels: Budget Pie & Schedule */}
         <div
+          className='dashboard-main-grid'
           style={{
             display: 'grid',
             gridTemplateColumns: 'minmax(280px, 0.9fr) minmax(320px, 1.7fr)',
@@ -743,7 +549,7 @@ export function DashboardPage() {
         >
           {/* Budget chart simulation */}
           <article className='page-card' style={{ padding: 0, overflow: 'hidden' }}>
-            <div style={{ padding: '1.2rem 1.35rem', borderBottom: '1px solid #f1e8dc' }}>
+            <div style={{ padding: '1.2rem 1.35rem', borderBottom: '1px solid var(--border)' }}>
               <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Podsumowanie Budżetu</h2>
             </div>
 
@@ -763,7 +569,7 @@ export function DashboardPage() {
                     position: 'absolute',
                     inset: '24px',
                     borderRadius: '50%',
-                    background: '#fff',
+                    background: 'var(--surface)',
                   }}
                 />
               </div>
@@ -775,9 +581,6 @@ export function DashboardPage() {
                     name={item.name}
                     amount={item.amount}
                     color={item.color}
-                    isHovered={hoveredBudgetItem === item.id}
-                    onHoverStart={() => setHoveredBudgetItem(item.id)}
-                    onHoverEnd={() => setHoveredBudgetItem(null)}
                   />
                 ))}
               </div>
@@ -786,7 +589,7 @@ export function DashboardPage() {
                 style={{
                   marginTop: '1.4rem',
                   paddingTop: '1rem',
-                  borderTop: '1px solid #f1e8dc',
+                  borderTop: '1px solid var(--border)',
                   display: 'flex',
                   justifyContent: 'space-between',
                   gap: '1rem',
@@ -794,7 +597,7 @@ export function DashboardPage() {
                 }}
               >
                 <strong style={{ fontSize: '1rem' }}>Suma całkowita</strong>
-                <strong style={{ color: '#d6a061', fontSize: '1.8rem' }}>
+                <strong style={{ color: 'var(--primary)', fontSize: '1.8rem' }}>
                   {visibleTotalCost > 0 ? formatCurrency(visibleTotalCost) : '0 PLN'}
                 </strong>
               </div>
@@ -803,7 +606,7 @@ export function DashboardPage() {
 
           {/* Timeline details */}
           <article className='page-card' style={{ padding: 0, overflow: 'hidden' }}>
-            <div style={{ padding: '1.2rem 1.35rem', borderBottom: '1px solid #f1e8dc' }}>
+            <div style={{ padding: '1.2rem 1.35rem', borderBottom: '1px solid var(--border)' }}>
               <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Najbliższe Wydarzenia i Kamienie Milowe</h2>
             </div>
 
@@ -812,13 +615,10 @@ export function DashboardPage() {
                 <EventCard
                   key={event.id}
                   {...event}
-                  isHovered={hoveredEvent === event.id}
-                  onHoverStart={() => setHoveredEvent(event.id)}
-                  onHoverEnd={() => setHoveredEvent(null)}
                 />
               ))}
               {timelineEvents.length === 0 && (
-                <div style={{ padding: '1rem', borderRadius: '12px', background: '#fffdfa', color: 'var(--muted)', border: '1px solid #f2e6d8', textAlign: 'center' }}>
+                <div className='surface-panel' style={{ padding: '1rem', color: 'var(--muted)', textAlign: 'center' }}>
                   Brak zadań z terminem dla aktywnego wydarzenia.
                 </div>
               )}
@@ -828,11 +628,12 @@ export function DashboardPage() {
 
         {/* Guest count details */}
         <article className='page-card' style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '1.2rem 1.35rem', borderBottom: '1px solid #f1e8dc' }}>
+          <div style={{ padding: '1.2rem 1.35rem', borderBottom: '1px solid var(--border)' }}>
             <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Statystyki Gości</h2>
           </div>
 
           <div
+            className='guest-stats-grid'
             style={{
               padding: '1.35rem',
               display: 'grid',
@@ -844,9 +645,6 @@ export function DashboardPage() {
               <GuestStatCard
                 key={item.id}
                 {...item}
-                isHovered={hoveredGuestStat === item.id}
-                onHoverStart={() => setHoveredGuestStat(item.id)}
-                onHoverEnd={() => setHoveredGuestStat(null)}
               />
             ))}
           </div>

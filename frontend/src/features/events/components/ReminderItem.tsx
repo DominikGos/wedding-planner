@@ -24,7 +24,7 @@ export function ReminderItem({
         gap: '0.9rem',
         alignItems: 'center',
         border: `1px solid ${isSelected ? color : 'transparent'}`,
-        background: isSelected ? '#fff8f1' : 'transparent',
+        background: isSelected ? 'var(--primary-soft)' : 'transparent',
         borderRadius: '14px',
         padding: '0.4rem',
         cursor: 'pointer',

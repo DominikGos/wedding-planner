@@ -86,7 +86,6 @@ export function GuestsPage() {
   const { activeWeddingId, token } = useSelector((state: RootState) => state.auth)
   const activeWedding = useSelector((state: RootState) => state.auth.weddings.find(wedding => wedding.id === state.auth.activeWeddingId))
 
-  const [selectedItem, setSelectedItem] = useState<string | null>(null)
   const [formState, setFormState] = useState({
     search: '',
     status: 'Wszystkie',
@@ -123,9 +122,6 @@ export function GuestsPage() {
       const guests = await getGuests(activeWeddingId, { token })
       const mappedGuests = guests.map(toGuest)
       dispatch(setGuests(mappedGuests))
-      setSelectedItem(current => current && mappedGuests.some(guest => guest.id === current)
-        ? current
-        : mappedGuests[0]?.id ?? null)
     } catch {
       setError('Nie udało się pobrać gości z backendu.')
       dispatch(setGuests([]))
@@ -217,7 +213,6 @@ export function GuestsPage() {
       } else {
         const created = toGuest(await createGuestRequest(activeWeddingId, toGuestRequest(guestForm), { token }))
         dispatch(addGuest(created))
-        setSelectedItem(created.id)
         showNotification(`Dodano gościa "${created.name}".`, 'success')
       }
 
@@ -244,7 +239,6 @@ export function GuestsPage() {
     try {
       await deleteGuestRequest(activeWeddingId, guestId, { token })
       dispatch(deleteGuest(editingGuest.id))
-      setSelectedItem(current => current === editingGuest.id ? null : current)
       showNotification(`Usunięto gościa "${editingGuest.name}" z listy.`, 'success')
       setShowModal(false)
       setEditingGuest(null)
@@ -282,9 +276,9 @@ export function GuestsPage() {
         <div style={{
           padding: '1rem',
           borderRadius: '12px',
-          background: guestsNotification.type === 'success' ? '#daf6e5' : '#fff2f2',
-          color: guestsNotification.type === 'success' ? '#14834b' : '#c53030',
-          border: `1px solid ${guestsNotification.type === 'success' ? '#bfeecf' : '#f4c1c1'}`,
+          background: guestsNotification.type === 'success' ? 'color-mix(in srgb, var(--ok) 14%, var(--surface))' : 'var(--danger-soft)',
+          color: guestsNotification.type === 'success' ? 'var(--ok)' : 'var(--danger)',
+          border: `1px solid ${guestsNotification.type === 'success' ? 'var(--ok)' : 'var(--danger)'}`,
           fontWeight: 600,
           textAlign: 'center',
           animation: 'fadeIn 0.3s ease',
@@ -294,13 +288,13 @@ export function GuestsPage() {
       )}
 
       {loading && (
-        <div style={{ padding: '1rem', borderRadius: '12px', background: '#fff8ed', color: '#8c5a12', border: '1px solid #f4da8b', fontWeight: 600, textAlign: 'center' }}>
+        <div className='app-alert app-alert-info' style={{ textAlign: 'center' }}>
           Pobieramy gości z backendu...
         </div>
       )}
 
       {error && (
-        <div style={{ padding: '1rem', borderRadius: '12px', background: '#fff2f2', color: '#c53030', border: '1px solid #f4c1c1', fontWeight: 600, textAlign: 'center' }}>
+        <div className='app-alert app-alert-danger' style={{ textAlign: 'center' }}>
           {error}
         </div>
       )}
@@ -309,7 +303,7 @@ export function GuestsPage() {
         className='page-card'
         style={{
           padding: '1.6rem',
-          background: 'linear-gradient(180deg, #fffdf9 0%, #fff8f1 100%)',
+          background: 'linear-gradient(180deg, var(--surface) 0%, var(--surface-soft) 100%)',
         }}
       >
         <div
@@ -335,25 +329,27 @@ export function GuestsPage() {
               Kopiuj kod zaproszenia
             </button>
             <button
+              className='button-primary'
               type='button'
               onClick={handleOpenAdd}
               style={{
                 padding: '0.85rem 1.25rem',
                 borderRadius: '14px',
-                background: '#d6a061',
-                color: '#fff',
+                background: 'var(--primary)',
+                color: 'var(--on-primary)',
                 fontWeight: 700,
                 boxShadow: '0 10px 24px rgba(214, 160, 97, 0.24)',
                 border: 'none',
                 cursor: 'pointer',
               }}
             >
-              + Dodaj gościa
+              Dodaj gościa
             </button>
           </div>
         </div>
 
         <div
+          className='guest-summary-grid'
           style={{
             marginTop: '1.25rem',
             display: 'grid',
@@ -380,11 +376,11 @@ export function GuestsPage() {
         </div>
       </article>
 
-      <article className='page-card' style={{ padding: 0, overflow: 'hidden' }}>
+      <article className='page-card data-table-card'>
         <div
           style={{
             padding: '1.35rem 1.2rem',
-            borderBottom: '1px solid #f1e8dc',
+            borderBottom: '1px solid var(--border)',
             display: 'flex',
             justifyContent: 'space-between',
             gap: '1rem',
@@ -438,22 +434,21 @@ export function GuestsPage() {
           </div>
 
           <div
+            className='guest-table-wrapper data-table-wrapper'
             style={{
-              border: '1px solid #efe4d7',
+              border: '1px solid var(--border)',
               borderRadius: '18px',
-              overflowX: 'auto',
-              background: '#fffdfa',
+              background: 'var(--surface)',
             }}
           >
             <div
+              className='data-table-header'
               style={{
                 display: 'grid',
                 gridTemplateColumns: '1.5fr 1.5fr 0.8fr 1fr 1.2fr 1fr 0.6fr',
                 gap: '1rem',
                 minWidth: '1120px',
                 padding: '1rem 0.9rem',
-                background: '#fbf8f3',
-                fontWeight: 700,
               }}
             >
               <span>Imię i nazwisko</span>
@@ -469,8 +464,6 @@ export function GuestsPage() {
               <GuestRow
                 key={guest.id}
                 guest={guest}
-                isSelected={selectedItem === guest.id}
-                onSelect={() => setSelectedItem(guest.id)}
                 onEdit={() => handleOpenEdit(guest)}
               />
             ))}
@@ -481,11 +474,12 @@ export function GuestsPage() {
               </div>
             )}
           </div>
+
         </div>
       </article>
 
       {showModal && (
-        <div style={{
+        <div className="modal-backdrop" style={{
           position: 'fixed',
           inset: 0,
           background: 'rgba(47, 42, 36, 0.4)',
@@ -498,11 +492,11 @@ export function GuestsPage() {
         }}>
           <form
             onSubmit={handleSubmit}
-            className='page-card'
+            className='page-card modal-card'
             style={{
               width: '100%',
               maxWidth: '460px',
-              background: '#fff',
+              background: 'var(--surface)',
               padding: '2.5rem',
               borderRadius: '20px',
               boxShadow: '0 20px 50px rgba(47, 42, 36, 0.15)',
@@ -530,7 +524,7 @@ export function GuestsPage() {
             </button>
 
             <header style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
-              <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.15em', color: '#d6a061', fontWeight: 600 }}>Karta gościa</span>
+              <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--primary)', fontWeight: 600 }}>Karta gościa</span>
               <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.8rem', margin: '0.25rem 0', fontWeight: 500 }}>
                 {editingGuest ? 'Edytuj gościa' : 'Nowy gość'}
               </h2>
@@ -571,9 +565,9 @@ export function GuestsPage() {
                   borderRadius: '8px',
                   border: '1px solid var(--border)',
                   fontSize: '0.95rem',
-                  background: '#fff',
+                  background: 'var(--surface)',
+                  color: 'var(--text)',
                   fontWeight: 600,
-                  color: guestForm.status === 'Potwierdzony' ? '#0ea44b' : guestForm.status === 'Odrzucony' ? '#eb1d1d' : '#ef8a00',
                 }}
               >
                 {statusOptions.map(status => (
@@ -604,7 +598,7 @@ export function GuestsPage() {
               />
             </label>
 
-            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+            <div className="form-actions" style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
               {editingGuest ? (
                 <button
                   type='button'
@@ -613,9 +607,9 @@ export function GuestsPage() {
                   style={{
                     padding: '0.75rem 1rem',
                     borderRadius: '10px',
-                    border: '1px solid #eb1d1d',
-                    background: '#fff',
-                    color: '#eb1d1d',
+                    border: '1px solid var(--danger)',
+                    background: 'var(--danger-soft)',
+                    color: 'var(--danger)',
                     fontWeight: 600,
                     cursor: saving ? 'wait' : 'pointer',
                     opacity: saving ? 0.65 : 1,
@@ -634,7 +628,7 @@ export function GuestsPage() {
                   padding: '0.75rem',
                   borderRadius: '10px',
                   border: '1px solid var(--border)',
-                  background: '#fff',
+                  background: 'var(--surface)',
                   color: 'var(--muted)',
                   fontWeight: 600,
                   cursor: saving ? 'wait' : 'pointer',
@@ -650,8 +644,8 @@ export function GuestsPage() {
                   padding: '0.75rem',
                   borderRadius: '10px',
                   border: 'none',
-                  background: '#d6a061',
-                  color: '#fff',
+                  background: 'var(--primary)',
+                  color: 'var(--on-primary)',
                   fontWeight: 700,
                   cursor: saving ? 'wait' : 'pointer',
                   opacity: saving ? 0.65 : 1,

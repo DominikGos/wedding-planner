@@ -14,7 +14,7 @@ export function CateringHeader({
       className='page-card'
       style={{
         padding: '1.6rem',
-        background: 'linear-gradient(180deg, #fffdf9 0%, #fff8f1 100%)',
+        background: 'linear-gradient(180deg, var(--surface) 0%, var(--surface-soft) 100%)',
       }}
     >
       <div
@@ -40,15 +40,7 @@ export function CateringHeader({
             >
               {'< '}Powrot
             </button>
-            <span
-              style={{
-                padding: '0.25rem 0.8rem',
-                borderRadius: '999px',
-                background: '#fff2cc',
-                color: '#d37b00',
-                fontWeight: 600,
-              }}
-            >
+            <span className='status-pill status-pill-warning'>
               W trakcie
             </span>
           </div>
@@ -65,15 +57,7 @@ export function CateringHeader({
           <button
             type='button'
             onClick={onCancel}
-            style={{
-              padding: '0.9rem 1.25rem',
-              borderRadius: '14px',
-              background: '#fffdfa',
-              color: 'var(--text)',
-              border: '1px solid #efe1d0',
-              fontWeight: 700,
-              cursor: 'pointer',
-            }}
+            className='button-secondary'
           >
             Anuluj
           </button>
@@ -81,16 +65,7 @@ export function CateringHeader({
           <button
             type='button'
             onClick={onSave}
-            style={{
-              padding: '0.9rem 1.25rem',
-              borderRadius: '14px',
-              background: '#d6a061',
-              color: '#fff',
-              border: '1px solid transparent',
-              boxShadow: '0 10px 24px rgba(214, 160, 97, 0.24)',
-              fontWeight: 700,
-              cursor: 'pointer',
-            }}
+            className='button-primary'
           >
             Zapisz Zmiany
           </button>

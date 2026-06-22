@@ -54,7 +54,7 @@ export function VendorSidebar({
       {selectedVendor && (
         <section className='page-card' style={{ 
           padding: '1.25rem',
-          background: 'linear-gradient(to bottom, #fffdf8, #fff)',
+          background: 'var(--surface)',
           borderColor: 'var(--primary)',
           boxShadow: '0 4px 20px rgba(184, 90, 31, 0.08)',
           position: 'relative',
@@ -120,7 +120,7 @@ export function VendorSidebar({
             </div>
           </div>
 
-          <div style={{ borderTop: '1px solid #f1e8dc', paddingTop: '1rem', display: 'grid', gap: '0.5rem' }}>
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem', display: 'grid', gap: '0.5rem' }}>
             <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)' }}>Status współpracy:</label>
             <select 
               value={selectedVendor.status}
@@ -133,7 +133,8 @@ export function VendorSidebar({
                 border: '1px solid var(--border)',
                 fontSize: '0.9rem',
                 fontWeight: 600,
-                background: userRole === 'couple' ? '#faf7f2' : '#fff',
+                background: userRole === 'couple' ? 'var(--surface-soft)' : 'var(--surface)',
+                color: 'var(--text)',
                 cursor: userRole === 'couple' ? 'not-allowed' : 'pointer'
               }}
             >
@@ -151,9 +152,9 @@ export function VendorSidebar({
               marginTop: '1rem',
               padding: '0.7rem 1rem',
               borderRadius: '10px',
-              border: '1px solid #f4c1c1',
-              background: '#fff2f2',
-              color: '#c53030',
+              border: '1px solid var(--danger)',
+              background: 'var(--danger-soft)',
+              color: 'var(--danger)',
               fontWeight: 700,
               cursor: 'pointer',
             }}
@@ -201,7 +202,7 @@ export function VendorSidebar({
 
         <div style={{ 
           height: '10px', 
-          background: '#f1e8dc', 
+          background: 'var(--border)',
           borderRadius: '999px', 
           overflow: 'hidden',
           marginBottom: '0.75rem'
@@ -209,19 +210,19 @@ export function VendorSidebar({
           <div style={{ 
             height: '100%', 
             width: `${displayPercentage}%`, 
-            background: percentage > 100 ? '#c53030' : 'var(--primary)',
+            background: percentage > 100 ? 'var(--danger)' : 'var(--primary)',
             borderRadius: '999px',
             transition: 'width 0.3s ease'
           }} />
         </div>
         
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--muted)', marginBottom: '1rem' }}>
-          <span style={{ color: percentage > 100 ? '#c53030' : 'var(--muted)', fontWeight: percentage > 100 ? 600 : 400 }}>
+          <span style={{ color: percentage > 100 ? 'var(--danger)' : 'var(--muted)', fontWeight: percentage > 100 ? 600 : 400 }}>
             {percentage}% z budżetu na dostawców
           </span>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9rem', paddingTop: '1rem', borderTop: '1px solid #f1e8dc' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
           {isEditing ? (
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', width: '100%' }}>
               <input 

@@ -6,9 +6,6 @@ type EventCardProps = {
   date: string
   time: string
   status: string
-  isHovered: boolean
-  onHoverStart: () => void
-  onHoverEnd: () => void
 }
 
 export function EventCard({
@@ -16,16 +13,11 @@ export function EventCard({
   date,
   time,
   status,
-  isHovered,
-  onHoverStart,
-  onHoverEnd,
 }: EventCardProps) {
   return (
     <div
-      onMouseEnter={onHoverStart}
-      onMouseLeave={onHoverEnd}
+      className='dashboard-event-card'
       style={{
-        border: `1px solid ${isHovered ? '#d6a061' : '#f2e6d8'}`,
         borderRadius: '16px',
         padding: '1.15rem',
         display: 'flex',
@@ -33,9 +25,6 @@ export function EventCard({
         gap: '1rem',
         alignItems: 'center',
         flexWrap: 'wrap',
-        background: isHovered ? '#fff9f3' : '#fffdfa',
-        transition: 'border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease',
-        boxShadow: isHovered ? '0 8px 24px rgba(47, 42, 36, 0.06)' : 'none',
       }}
     >
       <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -44,7 +33,7 @@ export function EventCard({
             width: '3rem',
             height: '3rem',
             borderRadius: '14px',
-            background: '#fcf1f6',
+            background: 'var(--surface-soft)',
             display: 'grid',
             placeItems: 'center',
             flexShrink: 0,
@@ -52,7 +41,7 @@ export function EventCard({
         >
           <DashboardIcon
             name={status === 'Wazne' ? 'alert' : 'calendar'}
-            color={status === 'Wazne' ? '#d6a061' : 'var(--muted)'}
+            color={status === 'Wazne' ? 'var(--primary)' : 'var(--muted)'}
             size={24}
           />
         </div>

@@ -33,10 +33,10 @@ export function TimelineCard({ task }: TimelineCardProps) {
     <div style={{ display: 'grid', gridTemplateColumns: '12px minmax(0, 1fr)', gap: '0.8rem', alignItems: 'stretch' }}>
       <div style={{ position: 'relative', display: 'grid', justifyItems: 'center' }}>
         <span style={{ width: '10px', height: '10px', borderRadius: '999px', background: type.color, marginTop: '1.05rem', zIndex: 1 }} />
-        <span style={{ position: 'absolute', top: '1.45rem', bottom: '-1rem', width: '2px', background: '#f2e6d8' }} />
+        <span style={{ position: 'absolute', top: '1.45rem', bottom: '-1rem', width: '2px', background: 'var(--border)' }} />
       </div>
 
-      <div style={{ border: '1px solid #f0e4d5', borderRadius: '16px', background: completed ? '#f8f7f5' : '#fffdfa', padding: '1rem', opacity: completed ? 0.75 : 1 }}>
+      <div className='surface-panel' style={{ padding: '1rem', opacity: completed ? 0.75 : 1 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
             <span style={{ width: '3rem', height: '3rem', borderRadius: '16px', background: `${type.color}20`, display: 'grid', placeItems: 'center', flexShrink: 0 }}>

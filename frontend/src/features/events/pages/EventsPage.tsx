@@ -166,7 +166,7 @@ export function EventsPage() {
 
   return (
     <section style={{ display: 'grid', gap: '1rem' }}>
-      <article className='page-card' style={{ padding: '1.6rem', background: 'linear-gradient(180deg, #fffdf9 0%, #fff8f1 100%)' }}>
+      <article className='page-card' style={{ padding: '1.6rem', background: 'linear-gradient(180deg, var(--surface) 0%, var(--surface-soft) 100%)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <div>
             <h1 className='page-title' style={{ fontSize: '2rem' }}>Harmonogram</h1>
@@ -179,7 +179,7 @@ export function EventsPage() {
 
         <div style={{ marginTop: '1.2rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.8rem' }}>
           {summaryCards.map(card => (
-            <div key={card.label} style={{ padding: '1rem', borderRadius: '14px', border: '1px solid #efe1d0', background: '#fffdfa' }}>
+            <div key={card.label} style={{ padding: '1rem', borderRadius: '14px', border: '1px solid var(--border)', background: 'var(--surface)' }}>
               <span style={{ display: 'block', color: 'var(--muted)', fontSize: '0.85rem' }}>{card.label}</span>
               <strong style={{ display: 'block', marginTop: '0.35rem', fontSize: '1.55rem', color: card.color }}>{card.value}</strong>
             </div>
@@ -187,7 +187,7 @@ export function EventsPage() {
         </div>
       </article>
 
-      {error && <div style={{ padding: '1rem', borderRadius: '12px', background: '#fff2f2', color: '#c53030', fontWeight: 600, textAlign: 'center' }}>{error}</div>}
+      {error && <div className='app-alert app-alert-danger' style={{ textAlign: 'center' }}>{error}</div>}
 
       <div className='schedule-layout'>
         <article className='page-card' style={{ padding: '1.2rem' }}>
@@ -205,7 +205,7 @@ export function EventsPage() {
               const selected = selectedDate === date
 
               return day ? (
-                <button key={date} type='button' onClick={() => setSelectedDate(selected ? null : date)} style={{ minHeight: '48px', padding: '0.25rem', borderRadius: '10px', border: selected ? '1px solid #db7e45' : '1px solid transparent', background: selected ? '#fff1e7' : count ? '#fffaf4' : 'transparent', cursor: 'pointer' }}>
+                <button key={date} type='button' onClick={() => setSelectedDate(selected ? null : date)} style={{ minHeight: '48px', padding: '0.25rem', borderRadius: '10px', border: selected ? '1px solid var(--primary)' : '1px solid transparent', background: selected ? 'var(--primary-soft)' : count ? 'var(--surface-soft)' : 'transparent', cursor: 'pointer' }}>
                   <span style={{ display: 'block', fontWeight: selected ? 700 : 500 }}>{day}</span>
                   {count > 0 && <span style={{ display: 'block', marginTop: '0.15rem', color: '#db7e45', fontSize: '0.65rem', fontWeight: 600 }}>{count} zad.</span>}
                 </button>
@@ -232,7 +232,7 @@ export function EventsPage() {
 
             {!loading && !error && groups.map(group => (
               <section key={group.label} style={{ display: 'grid', gap: '0.9rem' }}>
-                <h2 style={{ margin: 0, paddingBottom: '0.65rem', borderBottom: '1px solid #f1e8dc', fontSize: '1.05rem', textTransform: group.date ? 'capitalize' : 'none' }}>{group.label}</h2>
+                <h2 style={{ margin: 0, paddingBottom: '0.65rem', borderBottom: '1px solid var(--border)', fontSize: '1.05rem', textTransform: group.date ? 'capitalize' : 'none' }}>{group.label}</h2>
                 {group.tasks.map(task => <TimelineCard key={task.id} task={task} />)}
               </section>
             ))}

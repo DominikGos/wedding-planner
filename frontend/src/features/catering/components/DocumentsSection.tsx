@@ -2,7 +2,7 @@ import type { CateringDocument } from '../data/cateringMock'
 
 function DocumentIcon({
   size = 22,
-  color = '#d6a061',
+  color = 'var(--primary)',
 }: {
   size?: number
   color?: string
@@ -35,7 +35,7 @@ function UploadIcon() {
       viewBox='0 0 24 24'
       fill='none'
       xmlns='http://www.w3.org/2000/svg'
-      stroke='#d6a061'
+      stroke='var(--primary)'
       strokeWidth='1.8'
       strokeLinecap='round'
       strokeLinejoin='round'
@@ -63,7 +63,7 @@ export function DocumentsSection({
       <div
         style={{
           padding: '1.2rem 1.35rem',
-          borderBottom: '1px solid #f1e8dc',
+          borderBottom: '1px solid var(--border)',
           display: 'flex',
           alignItems: 'center',
           gap: '0.9rem',
@@ -74,7 +74,7 @@ export function DocumentsSection({
             width: '3rem',
             height: '3rem',
             borderRadius: '14px',
-            background: '#faf3ee',
+            background: 'var(--surface-soft)',
             display: 'grid',
             placeItems: 'center',
           }}
@@ -90,7 +90,7 @@ export function DocumentsSection({
           onClick={onUpload}
           style={{
             minHeight: '220px',
-            border: '2px dashed #f0ddca',
+            border: '2px dashed var(--border)',
             borderRadius: '18px',
             display: 'grid',
             placeItems: 'center',
@@ -118,9 +118,9 @@ export function DocumentsSection({
             type='button'
             onClick={() => onPreview(document.id)}
             style={{
-              border: '1px solid #efe4d7',
+              border: '1px solid var(--border)',
               borderRadius: '16px',
-              background: '#fffdfa',
+              background: 'var(--surface)',
               padding: '1rem 1.1rem',
               display: 'flex',
               justifyContent: 'space-between',
@@ -146,7 +146,7 @@ export function DocumentsSection({
                 </span>
               </span>
             </span>
-            <span style={{ color: '#d6a061', fontWeight: 600 }}>Podglad</span>
+            <span style={{ color: 'var(--primary)', fontWeight: 600 }}>Podglad</span>
           </button>
         ))}
       </div>

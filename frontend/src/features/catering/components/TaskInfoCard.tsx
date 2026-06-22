@@ -66,7 +66,7 @@ export function TaskInfoCard({ info }: { info: CateringTaskInfo }) {
       <div
         style={{
           padding: '1.2rem 1.35rem',
-          borderBottom: '1px solid #f1e8dc',
+          borderBottom: '1px solid var(--border)',
         }}
       >
         <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Informacje o Zadaniu</h2>
@@ -98,15 +98,9 @@ export function TaskInfoCard({ info }: { info: CateringTaskInfo }) {
           <div>
             <p style={{ margin: 0, color: 'var(--muted)' }}>Priorytet</p>
             <span
+              className='status-pill status-pill-warning'
               style={{
-                display: 'inline-block',
                 marginTop: '0.35rem',
-                padding: '0.25rem 0.75rem',
-                borderRadius: '999px',
-                background: '#fff2cc',
-                color: '#d37b00',
-                fontWeight: 600,
-                border: '1px solid #f5d57d',
               }}
             >
               {info.priority}

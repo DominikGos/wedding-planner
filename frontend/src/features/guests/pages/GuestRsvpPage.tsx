@@ -81,27 +81,33 @@ export function GuestRsvpPage() {
   }
 
   return (
-    <main style={{ minHeight: '100vh', background: 'radial-gradient(circle at top, #faf7f2 0%, #efe7dc 100%)', display: 'grid', placeItems: 'center', padding: '2rem 1rem' }}>
-      <section style={{ width: 'min(560px, 100%)', background: '#fff', borderRadius: '24px', border: '1px solid #e2d7c7', boxShadow: '0 12px 40px rgba(47, 42, 36, 0.08)', padding: '3rem 2rem', textAlign: 'center', display: 'grid', gap: '1.5rem' }}>
-        <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.2em', color: '#b85a1f', fontWeight: 600 }}>
-          Potwierdzenie obecności
-        </span>
+    <main className='public-page rsvp-page' style={{ minHeight: '100vh', background: 'radial-gradient(circle at top, #faf7f2 0%, #efe7dc 100%)', display: 'grid', placeItems: 'center', padding: '2rem 1rem' }}>
+      <section style={{ width: 'min(560px, 100%)', background: 'var(--surface)', borderRadius: '24px', border: '1px solid var(--border)', boxShadow: '0 12px 40px rgba(47, 42, 36, 0.08)', padding: '3rem 2rem', textAlign: 'center', display: 'grid', gap: '1.5rem' }}>
+        <header className='rsvp-card-header'>
+          <Link to='/' className='rsvp-back-link'>
+            ← Wróć
+          </Link>
+
+          <span style={{ paddingLeft: '60px', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.2em', color: 'var(--primary)', fontWeight: 600 }}>
+            Potwierdzenie obecności
+          </span>
+        </header>
 
         {loading && <p>Ładowanie zaproszenia...</p>}
 
         {!loading && !invitation && !eventCode && !guestCode && (
           <form onSubmit={findInvitation} style={{ display: 'grid', gap: '1rem', textAlign: 'left' }}>
             <label style={{ display: 'grid', gap: '0.35rem' }}>
-              <span>Kod zaproszenia</span>
-              <input required value={searchForm.eventCode} onChange={event => setSearchForm(current => ({ ...current, eventCode: event.target.value }))} style={{ padding: '0.8rem', borderRadius: '10px', border: '1px solid #d8cfc2' }} />
+              <span className='public-label'>Kod zaproszenia</span>
+              <input required value={searchForm.eventCode} onChange={event => setSearchForm(current => ({ ...current, eventCode: event.target.value }))} style={{ padding: '0.8rem', borderRadius: '10px', border: '1px solid var(--border)' }} />
             </label>
             <label style={{ display: 'grid', gap: '0.35rem' }}>
-              <span>Imię</span>
-              <input required value={searchForm.firstName} onChange={event => setSearchForm(current => ({ ...current, firstName: event.target.value }))} style={{ padding: '0.8rem', borderRadius: '10px', border: '1px solid #d8cfc2' }} />
+              <span className='public-label'>Imię</span>
+              <input required value={searchForm.firstName} onChange={event => setSearchForm(current => ({ ...current, firstName: event.target.value }))} style={{ padding: '0.8rem', borderRadius: '10px', border: '1px solid var(--border)' }} />
             </label>
             <label style={{ display: 'grid', gap: '0.35rem' }}>
-              <span>Nazwisko</span>
-              <input required value={searchForm.lastName} onChange={event => setSearchForm(current => ({ ...current, lastName: event.target.value }))} style={{ padding: '0.8rem', borderRadius: '10px', border: '1px solid #d8cfc2' }} />
+              <span className='public-label'>Nazwisko</span>
+              <input required value={searchForm.lastName} onChange={event => setSearchForm(current => ({ ...current, lastName: event.target.value }))} style={{ padding: '0.8rem', borderRadius: '10px', border: '1px solid var(--border)' }} />
             </label>
             {error && <p style={{ color: '#c53030', fontWeight: 600, textAlign: 'center' }}>{error}</p>}
             <button type='submit' style={{ padding: '1rem', borderRadius: '12px', border: 'none', background: '#b85a1f', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
@@ -134,23 +140,23 @@ export function GuestRsvpPage() {
             </div>
 
             <label style={{ display: 'grid', gap: '0.4rem', textAlign: 'left' }}>
-              <span style={{ fontWeight: 600 }}>Alergie lub uwagi żywieniowe</span>
+              <span className='public-label'>Alergie lub uwagi żywieniowe</span>
               <textarea
                 value={allergies}
                 onChange={event => setAllergies(event.target.value)}
                 placeholder='np. orzechy, gluten, dieta wegetariańska'
-                style={{ padding: '0.8rem', borderRadius: '10px', border: '1px solid #d8cfc2', resize: 'vertical' }}
+                style={{ padding: '0.8rem', borderRadius: '10px', border: '1px solid var(--border)', resize: 'vertical' }}
               />
             </label>
 
             {declining && (
               <label style={{ display: 'grid', gap: '0.4rem', textAlign: 'left' }}>
-                <span style={{ fontWeight: 600 }}>Powód odmowy, opcjonalnie</span>
+                <span className='public-label'>Powód odmowy, opcjonalnie</span>
                 <textarea
                   value={declineReason}
                   onChange={event => setDeclineReason(event.target.value)}
                   placeholder='Możesz krótko napisać, dlaczego nie możesz przyjść.'
-                  style={{ padding: '0.8rem', borderRadius: '10px', border: '1px solid #d8cfc2', resize: 'vertical' }}
+                  style={{ padding: '0.8rem', borderRadius: '10px', border: '1px solid var(--border)', resize: 'vertical' }}
                 />
               </label>
             )}

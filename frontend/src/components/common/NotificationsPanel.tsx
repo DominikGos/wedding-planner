@@ -97,13 +97,13 @@ export function NotificationsPanel({ token }: NotificationsPanelProps) {
     : 0
 
   return (
-    <div ref={containerRef} style={{ position: 'relative' }}>
+    <div ref={containerRef} className='notifications-panel' style={{ position: 'relative' }}>
       <button type='button' className={unreadCount > 0 ? 'button-primary' : 'button-secondary'} onClick={() => void togglePanel()} style={{ minHeight: '38px', padding: '0.4rem 0.75rem' }}>
         Powiadomienia{unreadCount > 0 ? ` (${unreadCount})` : ''}
       </button>
 
       {open && (
-        <section className='page-card' style={{ position: 'absolute', top: 'calc(100% + 0.6rem)', right: 0, width: 'min(380px, calc(100vw - 2rem))', padding: '1rem', display: 'grid', gap: '0.75rem', zIndex: 110 }}>
+        <section className='page-card notifications-dropdown' style={{ position: 'absolute', top: 'calc(100% + 0.6rem)', right: 0, width: 'min(380px, calc(100vw - 2rem))', padding: '1rem', display: 'grid', gap: '0.75rem', zIndex: 110 }}>
           <strong>Powiadomienia</strong>
           {!token && <span style={{ color: 'var(--muted)' }}>Powiadomienia są dostępne po zalogowaniu przez Google.</span>}
           {token && loading && <span style={{ color: 'var(--muted)' }}>Ładowanie powiadomień...</span>}
@@ -113,7 +113,7 @@ export function NotificationsPanel({ token }: NotificationsPanelProps) {
           {token && !loading && notifications.length > 0 && (
             <div style={{ maxHeight: '330px', overflowY: 'auto', display: 'grid', gap: '0.75rem', paddingRight: '0.25rem' }}>
               {notifications.map(notification => (
-                <div key={notification.id} style={{ padding: '0.75rem', borderRadius: '10px', border: '1px solid #efe1d0', background: unreadBeforeOpen.includes(notification.id) ? '#fff3e9' : '#fffdfa', display: 'grid', gap: '0.45rem' }}>
+                <div key={notification.id} style={{ padding: '0.75rem', borderRadius: '10px', border: '1px solid var(--border)', background: unreadBeforeOpen.includes(notification.id) ? 'var(--primary-soft)' : 'var(--surface)', display: 'grid', gap: '0.45rem' }}>
                   <span style={{ whiteSpace: 'normal', lineHeight: 1.4 }}>{formatMessage(notification.message)}</span>
                   <small style={{ color: 'var(--muted)' }}>{new Date(notification.createdAt).toLocaleString('pl-PL')}</small>
                 </div>

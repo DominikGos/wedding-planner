@@ -26,17 +26,17 @@ export function PaymentTable({ payments, onAction, actionLoadingId }: PaymentTab
   const getStatusStyle = (status: PaymentStatus) => {
     switch (status) {
       case 'SUCCESS':
-        return { bg: '#eef8f3', text: '#35684f', label: 'Opłacono', icon: 'check' as const }
+        return { className: 'status-pill status-pill-success', label: 'Opłacono', icon: 'check' as const, iconColor: 'var(--ok)' }
       case 'PENDING':
-        return { bg: '#fff9eb', text: '#8c5a12', label: 'Oczekuje', icon: 'clock' as const }
+        return { className: 'status-pill status-pill-warning', label: 'Oczekuje', icon: 'clock' as const, iconColor: 'var(--warning)' }
       case 'FAILED':
-        return { bg: '#fff2f2', text: '#c53030', label: 'Nieudana', icon: 'alert' as const }
+        return { className: 'status-pill status-pill-danger', label: 'Nieudana', icon: 'alert' as const, iconColor: 'var(--danger)' }
       case 'CANCELLED':
-        return { bg: '#f4f1ed', text: '#6f6256', label: 'Anulowana', icon: 'file-text' as const }
+        return { className: 'status-pill', label: 'Anulowana', icon: 'file-text' as const, iconColor: 'var(--muted)' }
       case 'OFFLINE':
-        return { bg: '#f4f1ed', text: '#6f6256', label: 'Offline', icon: 'file-text' as const }
+        return { className: 'status-pill', label: 'Offline', icon: 'file-text' as const, iconColor: 'var(--muted)' }
       case 'OFFLINE_APPROVED':
-        return { bg: '#eef4ff', text: '#2f6db5', label: 'Offline zatwierdzone', icon: 'check' as const }
+        return { className: 'status-pill status-pill-info', label: 'Offline zatwierdzone', icon: 'check' as const, iconColor: 'var(--info)' }
     }
   }
 
@@ -56,10 +56,10 @@ export function PaymentTable({ payments, onAction, actionLoadingId }: PaymentTab
   }
 
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+    <div className='data-table-wrapper'>
+      <table className='data-table'>
         <thead>
-          <tr style={{ borderBottom: '1px solid var(--border)' }}>
+          <tr>
             <th style={headerStyle}>Dostawca</th>
             <th style={headerStyle}>Usługa</th>
             <th style={headerStyle}>Kwota</th>
@@ -75,7 +75,7 @@ export function PaymentTable({ payments, onAction, actionLoadingId }: PaymentTab
             const isActionLoading = actionLoadingId === payment.id
 
             return (
-              <tr key={payment.id} style={{ borderBottom: '1px solid #f6f3ed' }}>
+              <tr key={payment.id}>
                 <td style={cellStyle}>
                   <div style={{ fontWeight: 600 }}>{payment.vendor}</div>
                   <div style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>{payment.invoiceNumber}</div>
@@ -87,27 +87,14 @@ export function PaymentTable({ payments, onAction, actionLoadingId }: PaymentTab
                 <td style={cellStyle}>
                   <div>{payment.date}</div>
                   {payment.paidAt && (
-                    <div style={{ fontSize: '0.75rem', color: '#35684f' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--ok)' }}>
                       Opłacono: {payment.paidAt}
                     </div>
                   )}
                 </td>
                 <td style={cellStyle}>
-                  <span
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.4rem',
-                      padding: '0.35rem 0.75rem',
-                      borderRadius: '999px',
-                      fontSize: '0.85rem',
-                      fontWeight: 500,
-                      background: status.bg,
-                      color: status.text,
-                    }}
-                    title={payment.failureReason || undefined}
-                  >
-                    <BudgetIcon name={status.icon} color={status.text} size={14} strokeWidth={2.5} />
+                  <span className={status.className} title={payment.failureReason || undefined}>
+                    <BudgetIcon name={status.icon} color={status.iconColor} size={14} strokeWidth={2.5} />
                     {status.label}
                   </span>
                 </td>
@@ -141,14 +128,12 @@ export function PaymentTable({ payments, onAction, actionLoadingId }: PaymentTab
 }
 
 const headerStyle: React.CSSProperties = {
-  padding: '1rem 0.75rem',
   fontSize: '0.85rem',
   fontWeight: 600,
   color: 'var(--muted)',
 }
 
 const cellStyle: React.CSSProperties = {
-  padding: '1.25rem 0.75rem',
   fontSize: '0.95rem',
   verticalAlign: 'top',
 }
@@ -163,9 +148,9 @@ const iconButtonStyle: React.CSSProperties = {
 }
 
 const actionButtonStyle: React.CSSProperties = {
-  background: 'var(--primary-soft)',
+  background: 'var(--surface)',
   color: 'var(--primary)',
-  border: 'none',
+  border: '1px solid var(--border)',
   borderRadius: '8px',
   padding: '0.4rem 0.8rem',
   fontSize: '0.85rem',

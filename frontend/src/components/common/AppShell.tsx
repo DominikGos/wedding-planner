@@ -12,9 +12,27 @@ export function AppShell() {
   const dispatch = useDispatch()
   const { user, token, activeWeddingId, weddings } = useSelector((state: RootState) => state.auth)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [theme, setTheme] = useState(() => (
+    localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'
+  ))
 
   const activeWedding = weddings.find(w => w.id === activeWeddingId)
   const userDisplayName = user?.email?.split('@')[0] || 'Użytkownik'
+
+  useEffect(() => {
+    document.documentElement.removeAttribute('data-theme')
+
+    const syncTheme = () => {
+      setTheme(localStorage.getItem('theme') === 'dark' ? 'dark' : 'light')
+    }
+
+    window.addEventListener('theme:change', syncTheme)
+    window.addEventListener('storage', syncTheme)
+    return () => {
+      window.removeEventListener('theme:change', syncTheme)
+      window.removeEventListener('storage', syncTheme)
+    }
+  }, [])
 
   useEffect(() => {
     if (!user || !token) return
@@ -56,10 +74,10 @@ export function AppShell() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'radial-gradient(circle at top right, var(--bg-accent), var(--bg))', display: 'flex', flexDirection: 'column' }}>
+    <div data-theme={user ? theme : 'light'} style={{ minHeight: '100vh', background: 'radial-gradient(circle at top right, var(--bg-accent), var(--bg))', display: 'flex', flexDirection: 'column' }}>
       
       {/* Premium Top Brand/Nav Bar */}
-      <header style={{
+      <header className='app-header' style={{
         background: 'rgba(255, 255, 253, 0.85)',
         backdropFilter: 'blur(12px)',
         borderBottom: '1px solid var(--border)',
@@ -84,7 +102,7 @@ export function AppShell() {
             }
           `}
         </style>
-        <div style={{
+        <div className="app-header-grid" style={{
           width: '100%',
           maxWidth: 'none',
           padding: '0.9rem 2rem',
@@ -94,23 +112,30 @@ export function AppShell() {
           gap: '1rem'
         }}>
           {/* Brand Logo */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '0.75rem', minWidth: 0 }}>
-            <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0, whiteSpace: 'nowrap' }}>
-              <span style={{ fontSize: '1.6rem', lineHeight: 1 }}>✨</span>
-              <strong style={{
-                fontFamily: "'Playfair Display', Georgia, serif",
-                fontSize: '1.25rem',
-                letterSpacing: '0.04em',
-                color: 'var(--text)',
-                fontWeight: 600
-              }}>
-                WEDDING PLANNER
-              </strong>
-            </Link>
+          <div className="app-header-brand" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '0.75rem', minWidth: 0 }}>
+            <div className="app-brand-stack">
+              <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: '1.6rem', lineHeight: 1 }}>✨</span>
+                <strong style={{
+                  fontFamily: "'Playfair Display', Georgia, serif",
+                  fontSize: '1.25rem',
+                  letterSpacing: '0.04em',
+                  color: 'var(--text)',
+                  fontWeight: 600
+                }}>
+                  WEDDING PLANNER
+                </strong>
+              </Link>
+              {activeWedding && (
+                <span className="mobile-wedding-name">
+                  {activeWedding.name}
+                </span>
+              )}
+            </div>
             
             {/* active wedding indicator in header */}
             {activeWedding && (
-              <div style={{
+              <div className="active-wedding-pill" style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.2rem',
@@ -154,12 +179,12 @@ export function AppShell() {
           </div>
 
           {/* Desktop Navigation */}
-          <div className="center-header-section" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="center-header-section desktop-nav-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <MainNav />
           </div>
           
           {/* User Auth actions */}
-          <div className="right-header-section" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '1rem', minWidth: 0, whiteSpace: 'nowrap' }}>
+          <div className="right-header-section desktop-nav-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '1rem', minWidth: 0, whiteSpace: 'nowrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderLeft: '1px solid var(--border)', paddingLeft: '1.5rem', flexShrink: 0 }}>
               {user ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
@@ -249,7 +274,10 @@ export function AppShell() {
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               {mobileMenuOpen ? (
-                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <>
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </>
               ) : (
                 <>
                   <line x1="3" y1="12" x2="21" y2="12"></line>
@@ -265,8 +293,8 @@ export function AppShell() {
 
       {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
-        <div style={{
-          background: '#fff',
+        <div className="mobile-menu-panel" style={{
+          background: 'var(--surface)',
           borderBottom: '1px solid var(--border)',
           padding: '1rem 1.5rem',
           display: 'flex',
@@ -281,8 +309,13 @@ export function AppShell() {
           animation: 'fadeIn 0.2s ease'
         }}>
           <MainNav mobileCallback={() => setMobileMenuOpen(false)} />
+          {user && (
+            <div className="mobile-notifications-row">
+              <NotificationsPanel token={token} />
+            </div>
+          )}
           
-          <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="mobile-menu-user" style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             {user ? (
               <>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -360,8 +393,8 @@ export function AppShell() {
       </main>
 
       {/* Luxury Footer */}
-      <footer style={{
-        background: '#fff',
+      <footer className='app-footer' style={{
+        background: 'var(--surface)',
         borderTop: '1px solid var(--border)',
         padding: '2.5rem 1.5rem',
         marginTop: 'auto',

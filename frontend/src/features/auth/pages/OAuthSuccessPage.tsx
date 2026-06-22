@@ -21,7 +21,7 @@ export function OAuthSuccessPage() {
 
   if (!token) {
     return (
-      <div style={{ maxWidth: '480px', margin: '3rem auto', padding: '1rem' }}>
+      <div className='public-page' style={{ maxWidth: '480px', margin: '3rem auto', padding: '1rem' }}>
         <div className="page-card" style={{ textAlign: 'center' }}>
           <h1 className="page-title">Nie udało się zalogować</h1>
           <p className="page-subtitle">
@@ -50,7 +50,7 @@ export function OAuthSuccessPage() {
   }
 
   return (
-    <div style={{ maxWidth: '480px', margin: '3rem auto', padding: '1rem', textAlign: 'center', color: 'var(--muted)' }}>
+    <div className='public-page' style={{ maxWidth: '480px', margin: '3rem auto', padding: '1rem', textAlign: 'center', color: 'var(--muted)' }}>
       Trwa logowanie...
     </div>
   )

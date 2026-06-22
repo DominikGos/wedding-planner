@@ -7,33 +7,21 @@ type GuestStatCardProps = {
   color: string
   background: string
   icon: DashboardIconName
-  isHovered: boolean
-  onHoverStart: () => void
-  onHoverEnd: () => void
 }
 
 export function GuestStatCard({
   value,
   label,
   color,
-  background,
   icon,
-  isHovered,
-  onHoverStart,
-  onHoverEnd,
 }: GuestStatCardProps) {
   return (
     <div
-      onMouseEnter={onHoverStart}
-      onMouseLeave={onHoverEnd}
+      className='guest-stat-card'
       style={{
-        border: `1px solid ${isHovered ? color : `${color}33`}`,
         borderRadius: '16px',
-        background,
         padding: '1.4rem 1rem',
         textAlign: 'center',
-        boxShadow: isHovered ? '0 8px 24px rgba(47, 42, 36, 0.06)' : 'none',
-        transition: 'border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease',
       }}
     >
       <div style={{ display: 'grid', placeItems: 'center' }}>

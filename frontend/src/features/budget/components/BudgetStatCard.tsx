@@ -14,7 +14,7 @@ export function BudgetStatCard({ title, value, color, icon }: BudgetStatCardProp
       alignItems: 'center', 
       gap: '1rem', 
       padding: '1.25rem',
-      background: '#fff'
+      background: 'var(--surface)',
     }}>
       <div style={{
         width: '3rem',
@@ -29,7 +29,7 @@ export function BudgetStatCard({ title, value, color, icon }: BudgetStatCardProp
       </div>
       <div>
         <span style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>{title}</span>
-        <strong style={{ display: 'block', color: '#2f2a24', fontSize: '1.4rem', marginTop: '0.2rem' }}>
+        <strong style={{ display: 'block', color: 'var(--text)', fontSize: '1.4rem', marginTop: '0.2rem' }}>
           {value}
         </strong>
       </div>
