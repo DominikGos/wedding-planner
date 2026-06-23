@@ -211,7 +211,7 @@ export function AppShell() {
           </div>
           
           {/* User Auth actions */}
-          <div className="right-header-section desktop-nav-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem', minWidth: 0, overflow: 'hidden' }}>
+          <div className="right-header-section desktop-nav-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem', minWidth: 0 }}>
             
             {/* Theme Toggle Button */}
             <button
@@ -239,7 +239,7 @@ export function AppShell() {
                 e.currentTarget.style.borderColor = 'var(--border)';
                 e.currentTarget.style.background = 'none';
               }}
-              title="Przełącz motyw"
+              title={t('settings.themeRowTitle')}
             >
               {theme === 'dark' ? '☀️' : '🌙'}
             </button>
@@ -272,7 +272,7 @@ export function AppShell() {
                 e.currentTarget.style.borderColor = 'var(--border)';
                 e.currentTarget.style.background = 'none';
               }}
-              title="Zmień język / Change language"
+              title={t('settings.langRowTitle')}
             >
               {i18n.language === 'pl' ? '🇬🇧 EN' : '🇵🇱 PL'}
             </button>
@@ -442,7 +442,7 @@ export function AppShell() {
                 transition: 'all 0.2s'
               }}
             >
-              {theme === 'dark' ? '☀️ Jasny' : '🌙 Ciemny'}
+              {theme === 'dark' ? `☀️ ${t('settings.themeLight')}` : `🌙 ${t('settings.themeDark')}`}
             </button>
           </div>
 

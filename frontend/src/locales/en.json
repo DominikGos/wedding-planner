@@ -226,7 +226,21 @@
     "settings": "Settings",
     "logout": "Log Out",
     "login": "Log In",
-    "register": "Register"
+    "register": "Register",
+    "changeWedding": "Change wedding"
+  },
+  "notifications": {
+    "button": "Notifications",
+    "title": "Notifications",
+    "requiresLogin": "Notifications are available after logging in with Google.",
+    "loading": "Loading notifications...",
+    "empty": "No notifications.",
+    "loadError": "Failed to fetch notifications.",
+    "actionError": "Failed to fetch or mark notifications as read.",
+    "statusPending": "To Do",
+    "statusInProgress": "In Progress",
+    "statusCompleted": "Done",
+    "statusChanged": "Changed task status for \"{{task}}\": {{from}} → {{to}}"
   },
   "loginPage": {
     "backToHome": "Back to home page",
@@ -249,7 +263,38 @@
     "weddingDateLabel": "Planned Wedding Date (optional)",
     "registerSubmit": "Register and Create Planner",
     "registerLoading": "Registering...",
-    "registerGoogle": "Register with Google"
+    "registerGoogle": "Register with Google",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
+  },
+  "rsvp": {
+    "title": "RSVP Confirmation",
+    "loading": "Loading invitation...",
+    "inviteCode": "Invitation code",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "findInvite": "Find invitation",
+    "backHome": "Back to home page",
+    "invalidLink": "The invitation does not exist or the link is invalid.",
+    "multipleFound": "More than one guest was found with this data. Please contact the couple.",
+    "notFound": "Invitation not found. Check the code, first name and last name.",
+    "checkError": "Failed to check the invitation. Please try again.",
+    "saveError": "Failed to save your response. Please try again.",
+    "confirmedMessage": "Thank you. Your attendance has been confirmed. You will be redirected shortly.",
+    "savedMessage": "Thank you. Your response has been saved. You will be redirected shortly.",
+    "statusPending": "Pending",
+    "statusConfirmed": "Confirmed",
+    "statusDeclined": "Declined",
+    "invitationFor": "Invitation for: {{name}}",
+    "weddingLabel": "Wedding: {{name}}",
+    "currentStatus": "Current status: {{status}}",
+    "allergies": "Allergies or dietary notes",
+    "allergiesPlaceholder": "e.g., nuts, gluten, vegetarian diet",
+    "declineReason": "Reason for declining, optional",
+    "declinePlaceholder": "You can briefly explain why you cannot attend.",
+    "confirmPresence": "Confirm attendance",
+    "saveDecline": "Save decline",
+    "cannotAttend": "I cannot attend"
   },
   "settings": {
     "title": "Settings",
@@ -289,6 +334,12 @@
     "shortPassword": "Password must be at least 6 characters.",
     "loginFailed": "Login failed. Check your email and password or try logging in with Google.",
     "registerFailed": "Registration failed. The email address may already be in use."
+  },
+  "oauth": {
+    "loginFailedTitle": "Login failed",
+    "loginFailedText": "The backend did not provide a login token. Please try again.",
+    "backToLogin": "Back to login",
+    "loggingIn": "Logging in..."
   },
   "footer": {
     "rights": "© {{year}} Premium Wedding Planner Pro. All rights reserved.",
@@ -576,13 +627,26 @@
     "fieldContact": "Contact / Email",
     "fieldContactPlaceholder": "e.g., contact@company.com",
     "fieldPrice": "Approximate Price",
+    "categories": {
+      "catering": "Catering",
+      "florist": "Florist",
+      "photography": "Photography",
+      "music": "Music",
+      "decorations": "Decorations",
+      "venue": "Venue",
+      "transport": "Transport",
+      "other": "Other"
+    },
     "cancelBtn": "Cancel",
     "addBtn": "Add",
     "sidebarTitle": "Vendor Details",
     "sidebarRating": "Service Rating:",
     "sidebarStatus": "Collaboration Status:",
     "sidebarBudgetPct": "% of vendor budget",
-    "sidebarBudgetLimit": "Budget limit: {{amount}} PLN"
+    "sidebarBudgetLimit": "Budget limit: {{amount}} PLN",
+    "unnamedVendor": "Unnamed vendor",
+    "noPrice": "No price",
+    "pricePerPerson": "{{amount}} PLN/person"
   },
   "catering": {
     "pageTag": "Culinary Module",
@@ -640,6 +704,61 @@
     "notesLabel": "Chef Notes / Logistics:",
     "notesPlaceholder": "e.g., Hot meal delivery at 17:00, 19:30, 22:00...",
     "budgetPrompt": "Enter new catering budget limit:"
+  },
+  "createEvent": {
+    "tag": "Wedding Creator",
+    "title": "Design Your Wedding",
+    "subtitle": "We will guide you through a few simple steps to start your schedule.",
+    "stepBasic": "Basics",
+    "stepBudget": "Budget",
+    "stepStyle": "Style",
+    "stepSummary": "Summary",
+    "step1Title": "Step 1: Names and Venue",
+    "step2Title": "Step 2: Estimated Budget and Guests",
+    "step3Title": "Step 3: Your Wedding Style",
+    "step4Title": "Step 4: Wedding Summary",
+    "partnerA": "Your Name",
+    "partnerB": "Partner's Name",
+    "date": "Wedding Date",
+    "venue": "Venue / Wedding Hall (optional)",
+    "venuePlaceholder": "e.g., Golden Manor, Warsaw",
+    "helperNotSaved": "These details are currently only helpful estimates and are not saved in the backend yet.",
+    "styleNotSaved": "The selected style is not saved in the backend yet.",
+    "summaryBackendNote": "The backend will save the name, date, location and PLANNED status. Budget, guest count and style will not be saved yet.",
+    "totalBudget": "Total Budget",
+    "estimatedGuests": "Estimated Guest Count",
+    "budgetMin": "10k PLN",
+    "budgetMid": "120k PLN",
+    "budgetMax": "250k PLN",
+    "peopleCount": "{{count}} people",
+    "summaryCouple": "Couple",
+    "location": "Location",
+    "budget": "Budget",
+    "guestsCount": "Guest Count",
+    "mainStyle": "Main Style",
+    "createHint": "Click create and we will automatically generate your interactive wedding planner!",
+    "submit": "Create Event ✨",
+    "defaultPartner": "Partner",
+    "notSpecified": "Not specified",
+    "saveError": "Failed to create the event. Check your backend connection and try again.",
+    "styles": {
+      "glamour": {
+        "name": "Glamour",
+        "desc": "Sparkle, crystals, elegant gold and class."
+      },
+      "boho": {
+        "name": "Boho",
+        "desc": "Relaxed, natural, feathers and pampas grass."
+      },
+      "rustic": {
+        "name": "Rustic",
+        "desc": "Wood, jute, warm light and a forest mood."
+      },
+      "classic": {
+        "name": "Classic",
+        "desc": "Traditional elegance, white and deep red."
+      }
+    }
   },
   "editEvent": {
     "loading": "Loading event...",

@@ -1,4 +1,5 @@
 import type { Guest } from '../data/guestsMock'
+import { useTranslation } from 'react-i18next'
 import { StatusBadge } from './StatusBadge'
 
 type GuestRowProps = {
@@ -10,6 +11,7 @@ export function GuestRow({
   guest,
   onEdit,
 }: GuestRowProps) {
+  const { t } = useTranslation()
   const isDeclined = guest.status === 'Odrzucony'
 
   return (
@@ -63,7 +65,7 @@ export function GuestRow({
           }}
           className='table-action-link'
         >
-          Edytuj
+          {t('common.edit')}
         </button>
       </span>
     </div>

@@ -8,17 +8,23 @@ export function LandingPage() {
 
   return (
     <div className='public-page' style={{ display: 'grid', gap: '2.5rem' }}>
-      <section style={{
+      <section className="landing-hero" style={{
         padding: '4rem 2rem',
         textAlign: 'center',
         background: 'linear-gradient(135deg, #fffcf6 0%, #f7f1e5 50%, #efe7dc 100%)',
         borderRadius: '16px',
-        border: '1px solid var(--border)',
+        border: '1px solid color-mix(in srgb, var(--border) 70%, transparent)',
         position: 'relative',
         overflow: 'hidden'
       }}>
-        <div style={{ position: 'absolute', top: '10px', left: '10px', fontSize: '3rem', opacity: 0.1 }}>🌸</div>
-        <div style={{ position: 'absolute', bottom: '10px', right: '10px', fontSize: '3rem', opacity: 0.1 }}>🌸</div>
+        <div className="decorative-flower" style={{ position: 'absolute', top: '14px', left: '18px', fontSize: '2.6rem', transform: 'rotate(-18deg)' }}>
+          <span className="decorative-flower-light">🌸</span>
+          <span className="decorative-flower-dark">🥀</span>
+        </div>
+        <div className="decorative-flower" style={{ position: 'absolute', bottom: '14px', right: '18px', fontSize: '2.6rem', transform: 'rotate(16deg)' }}>
+          <span className="decorative-flower-light">🌸</span>
+          <span className="decorative-flower-dark">🥀</span>
+        </div>
 
         <span style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.2em', color: 'var(--primary)', fontWeight: 600 }}>
           {t('landing.welcome')}

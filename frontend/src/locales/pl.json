@@ -226,7 +226,21 @@
     "settings": "Ustawienia",
     "logout": "Wyloguj",
     "login": "Zaloguj się",
-    "register": "Zarejestruj się"
+    "register": "Zarejestruj się",
+    "changeWedding": "Zmień wesele"
+  },
+  "notifications": {
+    "button": "Powiadomienia",
+    "title": "Powiadomienia",
+    "requiresLogin": "Powiadomienia są dostępne po zalogowaniu przez Google.",
+    "loading": "Ładowanie powiadomień...",
+    "empty": "Brak powiadomień.",
+    "loadError": "Nie udało się pobrać powiadomień.",
+    "actionError": "Nie udało się pobrać lub oznaczyć powiadomień jako przeczytane.",
+    "statusPending": "Do zrobienia",
+    "statusInProgress": "W trakcie",
+    "statusCompleted": "Zrobione",
+    "statusChanged": "Zmieniono status zadania „{{task}}”: {{from}} → {{to}}"
   },
   "loginPage": {
     "backToHome": "Wróć do strony głównej",
@@ -249,7 +263,38 @@
     "weddingDateLabel": "Planowana Data Ślubu (opcjonalnie)",
     "registerSubmit": "Zarejestruj i Stwórz Planer",
     "registerLoading": "Trwa rejestracja...",
-    "registerGoogle": "Zarejestruj przez Google"
+    "registerGoogle": "Zarejestruj przez Google",
+    "showPassword": "Pokaż hasło",
+    "hidePassword": "Ukryj hasło"
+  },
+  "rsvp": {
+    "title": "Potwierdzenie obecności",
+    "loading": "Ładowanie zaproszenia...",
+    "inviteCode": "Kod zaproszenia",
+    "firstName": "Imię",
+    "lastName": "Nazwisko",
+    "findInvite": "Znajdź zaproszenie",
+    "backHome": "Wróć do strony głównej",
+    "invalidLink": "Zaproszenie nie istnieje lub link jest nieprawidłowy.",
+    "multipleFound": "Znaleziono więcej niż jednego gościa o tych danych. Skontaktuj się z parą młodą.",
+    "notFound": "Nie znaleziono zaproszenia. Sprawdź kod, imię i nazwisko.",
+    "checkError": "Nie udało się sprawdzić zaproszenia. Spróbuj ponownie.",
+    "saveError": "Nie udało się zapisać odpowiedzi. Spróbuj ponownie.",
+    "confirmedMessage": "Dziękujemy. Twoja obecność została potwierdzona. Za chwilę nastąpi przekierowanie.",
+    "savedMessage": "Dziękujemy. Twoja odpowiedź została zapisana. Za chwilę nastąpi przekierowanie.",
+    "statusPending": "Oczekuje",
+    "statusConfirmed": "Potwierdzony",
+    "statusDeclined": "Odmówiony",
+    "invitationFor": "Zaproszenie dla: {{name}}",
+    "weddingLabel": "Wesele: {{name}}",
+    "currentStatus": "Aktualny status: {{status}}",
+    "allergies": "Alergie lub uwagi żywieniowe",
+    "allergiesPlaceholder": "np. orzechy, gluten, dieta wegetariańska",
+    "declineReason": "Powód odmowy, opcjonalnie",
+    "declinePlaceholder": "Możesz krótko napisać, dlaczego nie możesz przyjść.",
+    "confirmPresence": "Potwierdzam obecność",
+    "saveDecline": "Zapisz odmowę",
+    "cannotAttend": "Nie mogę przyjść"
   },
   "settings": {
     "title": "Ustawienia",
@@ -289,6 +334,12 @@
     "shortPassword": "Hasło musi mieć co najmniej 6 znaków.",
     "loginFailed": "Błąd logowania. Sprawdź e-mail i hasło lub spróbuj zalogować się przez Google.",
     "registerFailed": "Rejestracja nie powiodła się. Prawdopodobnie e-mail jest już zajęty."
+  },
+  "oauth": {
+    "loginFailedTitle": "Nie udało się zalogować",
+    "loginFailedText": "Backend nie przekazał tokena logowania. Spróbuj ponownie.",
+    "backToLogin": "Wróć do logowania",
+    "loggingIn": "Trwa logowanie..."
   },
   "footer": {
     "rights": "© {{year}} Premium Wedding Planner Pro. Wszelkie prawa zastrzeżone.",
@@ -576,13 +627,26 @@
     "fieldContact": "Kontakt / E-mail",
     "fieldContactPlaceholder": "np. kontakt@biuro.pl",
     "fieldPrice": "Cena Orientacyjna",
+    "categories": {
+      "catering": "Catering",
+      "florist": "Florystyka",
+      "photography": "Fotografia",
+      "music": "Muzyka",
+      "decorations": "Dekoracje",
+      "venue": "Sala",
+      "transport": "Transport",
+      "other": "Inne"
+    },
     "cancelBtn": "Anuluj",
     "addBtn": "Dodaj",
     "sidebarTitle": "Szczegóły Dostawcy",
     "sidebarRating": "Ocena usług:",
     "sidebarStatus": "Status współpracy:",
     "sidebarBudgetPct": "% z budżetu na dostawców",
-    "sidebarBudgetLimit": "Limit budżetu: {{amount}} PLN"
+    "sidebarBudgetLimit": "Limit budżetu: {{amount}} PLN",
+    "unnamedVendor": "Dostawca bez nazwy",
+    "noPrice": "Brak ceny",
+    "pricePerPerson": "{{amount}} PLN / os."
   },
   "catering": {
     "pageTag": "Moduł Kulinarny",
@@ -640,6 +704,61 @@
     "notesLabel": "Uwagi kucharza / Logistyka:",
     "notesPlaceholder": "np. Dowóz ciepłych posiłków o godz. 17:00, 19:30, 22:00...",
     "budgetPrompt": "Wpisz nowy limit budżetu na catering:"
+  },
+  "createEvent": {
+    "tag": "Kreator Wesela",
+    "title": "Zaprojektuj Swój Ślub",
+    "subtitle": "Przeprowadzimy Cię przez kilka prostych kroków, aby zainicjować Twój harmonogram.",
+    "stepBasic": "Podstawowe",
+    "stepBudget": "Budżet",
+    "stepStyle": "Styl",
+    "stepSummary": "Podsumowanie",
+    "step1Title": "Krok 1: Imiona i Miejsce",
+    "step2Title": "Krok 2: Szacowany Budżet i Goście",
+    "step3Title": "Krok 3: Styl Twojego Ślubu",
+    "step4Title": "Krok 4: Podsumowanie Wesela",
+    "partnerA": "Twoje Imię",
+    "partnerB": "Imię Partnera/Partnerki",
+    "date": "Data Ślubu",
+    "venue": "Miejsce / Sala Weselna (opcjonalnie)",
+    "venuePlaceholder": "np. Złoty Dwór, Warszawa",
+    "helperNotSaved": "Te informacje mają obecnie charakter pomocniczy i nie są jeszcze zapisywane w backendzie.",
+    "styleNotSaved": "Wybrany styl nie jest jeszcze zapisywany w backendzie.",
+    "summaryBackendNote": "Backend zapisze nazwę, datę, lokalizację i status PLANNED. Budżet, liczba gości oraz styl nie zostaną jeszcze zapisane.",
+    "totalBudget": "Budżet Całkowity",
+    "estimatedGuests": "Szacowana Liczba Gości",
+    "budgetMin": "10k PLN",
+    "budgetMid": "120k PLN",
+    "budgetMax": "250k PLN",
+    "peopleCount": "{{count}} osób",
+    "summaryCouple": "Narzeczeni",
+    "location": "Lokalizacja",
+    "budget": "Budżet",
+    "guestsCount": "Liczba gości",
+    "mainStyle": "Styl przewodzący",
+    "createHint": "Klikając stwórz, automatycznie wygenerujemy Twój interaktywny planer weselny!",
+    "submit": "Stwórz Wydarzenie ✨",
+    "defaultPartner": "Partner",
+    "notSpecified": "Nie określono",
+    "saveError": "Nie udało się utworzyć wydarzenia. Sprawdź połączenie z backendem i spróbuj ponownie.",
+    "styles": {
+      "glamour": {
+        "name": "Glamour",
+        "desc": "Błysk, kryształy, eleganckie złoto i klasa."
+      },
+      "boho": {
+        "name": "Boho",
+        "desc": "Luz, naturalność, pióra, trawy pampasowe."
+      },
+      "rustic": {
+        "name": "Rustykalny",
+        "desc": "Drewno, juta, ciepłe światło i leśny klimat."
+      },
+      "classic": {
+        "name": "Klasyczny",
+        "desc": "Tradycyjna elegancja, biel i czerwień."
+      }
+    }
   },
   "editEvent": {
     "loading": "Ładowanie wydarzenia...",

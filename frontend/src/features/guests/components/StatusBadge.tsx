@@ -1,4 +1,5 @@
 import type { GuestStatus } from '../data/guestsMock'
+import { useTranslation } from 'react-i18next'
 
 function getStatusClass(status: GuestStatus) {
   if (status === 'Potwierdzony') return 'status-pill status-pill-success'
@@ -11,9 +12,16 @@ type StatusBadgeProps = {
 }
 
 export function StatusBadge({ status }: StatusBadgeProps) {
+  const { t } = useTranslation()
+  const label = status === 'Potwierdzony'
+    ? t('guests.statusConfirmed')
+    : status === 'Odrzucony'
+      ? t('guests.statusRejected')
+      : t('guests.statusWaiting')
+
   return (
     <span className={getStatusClass(status)}>
-      {status}
+      {label}
     </span>
   )
 }

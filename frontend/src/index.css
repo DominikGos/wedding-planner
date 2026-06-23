@@ -411,6 +411,27 @@ select.task-status-select {
   overflow-x: auto;
 }
 
+.app-header-grid,
+.right-header-section,
+.filter-toolbar,
+.stats-grid,
+.guest-summary-grid,
+.vendors-filters,
+.data-table-row,
+.data-table td,
+.data-table th {
+  min-width: 0;
+}
+
+.page-title,
+.page-subtitle,
+.status-pill,
+.table-action-link,
+.button-primary,
+.button-secondary {
+  overflow-wrap: anywhere;
+}
+
 .data-table {
   width: 100%;
   border-collapse: collapse;
@@ -546,6 +567,11 @@ select.task-status-select {
 [data-theme='dark'] .notifications-dropdown,
 [data-theme='dark'] .modal-card {
   background: var(--surface) !important;
+}
+
+[data-theme='dark'] .landing-hero {
+  background: linear-gradient(135deg, #162428 0%, #1b2a2e 52%, #223438 100%) !important;
+  border-color: color-mix(in srgb, var(--border) 55%, transparent) !important;
 }
 
 [data-theme='dark'] input,
@@ -741,15 +767,44 @@ table {
 
 .rsvp-card-header {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: 1fr;
   align-items: center;
-  gap: 1rem;
-  text-align: left;
+  justify-items: center;
+  min-height: 2rem;
+  position: relative;
+  text-align: center;
 }
 
 .rsvp-card-header h1,
 .rsvp-card-header span {
   margin: 0;
+}
+
+.rsvp-card-header .rsvp-back-link {
+  position: absolute;
+  left: 0;
+}
+
+.decorative-flower {
+  color: #d9a8b2;
+  opacity: 0.2;
+}
+
+.decorative-flower-dark {
+  display: none;
+}
+
+[data-theme='dark'] .decorative-flower {
+  color: #8f7b83;
+  opacity: 0.17;
+}
+
+[data-theme='dark'] .decorative-flower-light {
+  display: none;
+}
+
+[data-theme='dark'] .decorative-flower-dark {
+  display: inline;
 }
 
 @media (max-width: 1250px) {

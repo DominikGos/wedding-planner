@@ -53,7 +53,7 @@ function getTestStore(loggedIn = true) {
     },
     preloadedState: {
       auth: {
-        user: loggedIn ? { email: 'planner@example.com', role: 'planner' } : null,
+        user: loggedIn ? { name: 'Test Planner', email: 'planner@example.com', role: 'planner' as const } : null,
         token: loggedIn ? 'valid-token' : null,
         activeWeddingId: 1,
         weddings: [],

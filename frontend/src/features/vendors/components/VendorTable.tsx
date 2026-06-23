@@ -6,9 +6,10 @@ type VendorTableProps = {
   vendors: Vendor[]
   onSelectVendor: (vendor: Vendor) => void
   selectedVendorId: string | null
+  getCategoryLabel: (category: string) => string
 }
 
-export function VendorTable({ vendors, onSelectVendor, selectedVendorId }: VendorTableProps) {
+export function VendorTable({ vendors, onSelectVendor, selectedVendorId, getCategoryLabel }: VendorTableProps) {
   const { t } = useTranslation()
 
   const getStatusStyle = (status: Vendor['status']) => {
@@ -69,7 +70,7 @@ export function VendorTable({ vendors, onSelectVendor, selectedVendorId }: Vendo
                     </div>
                   </div>
                 </td>
-                <td style={cellStyle}>{v.category}</td>
+                <td style={cellStyle}>{getCategoryLabel(v.category)}</td>
                 <td style={cellStyle}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                     <VendorIcon name="star" color="#d9a15f" size={16} />
