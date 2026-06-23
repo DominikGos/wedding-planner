@@ -19,6 +19,12 @@ import type { Guest, GuestStatus } from '../data/guestsMock'
 
 const statusOptions: GuestStatus[] = ['Potwierdzony', 'Oczekuje', 'Odrzucony']
 
+function getGuestStatusLabel(status: GuestStatus, t: (key: string) => string) {
+  if (status === 'Potwierdzony') return t('guests.statusConfirmed')
+  if (status === 'Odrzucony') return t('guests.statusRejected')
+  return t('guests.statusWaiting')
+}
+
 function toUiStatus(status: string | null | undefined): GuestStatus {
   const normalized = (status ?? '').toUpperCase()
 
@@ -431,7 +437,7 @@ export function GuestsPage() {
               className='filter-control'
             >
               <option value='Wszystkie'>{t('guests.allStatuses')}</option>
-              {statusOptions.map(status => <option key={status} value={status}>{status}</option>)}
+              {statusOptions.map(status => <option key={status} value={status}>{getGuestStatusLabel(status, t)}</option>)}
             </select>
           </div>
 
@@ -573,7 +579,7 @@ export function GuestsPage() {
                 }}
               >
                 {statusOptions.map(status => (
-                  <option key={status} value={status}>{status}</option>
+                  <option key={status} value={status}>{getGuestStatusLabel(status, t)}</option>
                 ))}
               </select>
             </label>

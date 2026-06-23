@@ -13,6 +13,7 @@ type VendorSidebarProps = {
   onDelete: () => void
   onClose: () => void
   userRole?: string
+  getCategoryLabel: (category: string) => string
 }
 
 export function VendorSidebar({ 
@@ -24,7 +25,8 @@ export function VendorSidebar({
   onStatusChange,
   onDelete,
   onClose,
-  userRole = 'couple'
+  userRole = 'couple',
+  getCategoryLabel
 }: VendorSidebarProps) {
   const { t } = useTranslation()
   const [isEditing, setIsEditing] = useState(false)
@@ -108,7 +110,7 @@ export function VendorSidebar({
           <div style={{ display: 'grid', gap: '0.75rem', fontSize: '0.9rem', marginBottom: '1.25rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: 'var(--muted)' }}>{t('vendorSidebar.categoryLabel')}</span>
-              <strong style={{ color: 'var(--text)' }}>{selectedVendor.category}</strong>
+              <strong style={{ color: 'var(--text)' }}>{getCategoryLabel(selectedVendor.category)}</strong>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: 'var(--muted)' }}>{t('vendorSidebar.priceLabel')}</span>
@@ -183,7 +185,7 @@ export function VendorSidebar({
                 }}>
                   <VendorIcon name={cat.icon as VendorIconName} color="var(--primary)" size={18} />
                 </div>
-                <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{cat.name}</span>
+                <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{getCategoryLabel(cat.name)}</span>
               </div>
               <span style={{ fontSize: '0.85rem', color: 'var(--muted)', fontWeight: 600 }}>{cat.count}</span>
             </div>

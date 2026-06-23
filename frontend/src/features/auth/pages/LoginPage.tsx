@@ -43,11 +43,13 @@ export function LoginPage() {
   // Login Form State
   const [loginEmail, setLoginEmail] = useState('')
   const [loginPassword, setLoginPassword] = useState('')
+  const [showLoginPassword, setShowLoginPassword] = useState(false)
 
   // Register Form State
   const [coupleName, setCoupleName] = useState('')
   const [registerEmail, setRegisterEmail] = useState('')
   const [registerPassword, setRegisterPassword] = useState('')
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false)
   const [weddingDate, setWeddingDate] = useState('')
 
   // Status State
@@ -336,24 +338,34 @@ export function LoginPage() {
                   <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: 'var(--muted)' }}>
                     {t('loginPage.passwordLabel')}
                   </label>
-                  <input
-                    type="password"
-                    placeholder={t('loginPage.passwordPlaceholder')}
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    required
-                    disabled={isLoading}
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem 0.9rem',
-                      borderRadius: '10px',
-                      border: '1px solid var(--border)',
-                      fontSize: '0.95rem',
-                      background: 'var(--bg)',
-                      color: 'var(--text)',
-                      outline: 'none'
-                    }}
-                  />
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showLoginPassword ? 'text' : 'password'}
+                      placeholder={t('loginPage.passwordPlaceholder')}
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      required
+                      disabled={isLoading}
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem 2.8rem 0.75rem 0.9rem',
+                        borderRadius: '10px',
+                        border: '1px solid var(--border)',
+                        fontSize: '0.95rem',
+                        background: 'var(--bg)',
+                        color: 'var(--text)',
+                        outline: 'none'
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowLoginPassword(current => !current)}
+                      aria-label={showLoginPassword ? t('loginPage.hidePassword') : t('loginPage.showPassword')}
+                      style={passwordToggleStyle}
+                    >
+                      👁
+                    </button>
+                  </div>
                 </div>
 
                 <div style={{ textAlign: 'right', marginTop: '-0.25rem' }}>
@@ -457,24 +469,34 @@ export function LoginPage() {
                   <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: 'var(--muted)' }}>
                     {t('loginPage.passwordLabel')}
                   </label>
-                  <input
-                    type="password"
-                    placeholder={t('loginPage.registerPasswordPlaceholder')}
-                    value={registerPassword}
-                    onChange={(e) => setRegisterPassword(e.target.value)}
-                    required
-                    disabled={isLoading}
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem 0.9rem',
-                      borderRadius: '10px',
-                      border: '1px solid var(--border)',
-                      fontSize: '0.95rem',
-                      background: 'var(--bg)',
-                      color: 'var(--text)',
-                      outline: 'none'
-                    }}
-                  />
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showRegisterPassword ? 'text' : 'password'}
+                      placeholder={t('loginPage.registerPasswordPlaceholder')}
+                      value={registerPassword}
+                      onChange={(e) => setRegisterPassword(e.target.value)}
+                      required
+                      disabled={isLoading}
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem 2.8rem 0.75rem 0.9rem',
+                        borderRadius: '10px',
+                        border: '1px solid var(--border)',
+                        fontSize: '0.95rem',
+                        background: 'var(--bg)',
+                        color: 'var(--text)',
+                        outline: 'none'
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowRegisterPassword(current => !current)}
+                      aria-label={showRegisterPassword ? t('loginPage.hidePassword') : t('loginPage.showPassword')}
+                      style={passwordToggleStyle}
+                    >
+                      👁
+                    </button>
+                  </div>
                 </div>
 
                 <div>
@@ -547,4 +569,20 @@ export function LoginPage() {
       </div>
     </div>
   )
+}
+
+const passwordToggleStyle: React.CSSProperties = {
+  position: 'absolute',
+  top: '50%',
+  right: '0.55rem',
+  transform: 'translateY(-50%)',
+  width: '2rem',
+  height: '2rem',
+  border: 'none',
+  borderRadius: '8px',
+  background: 'transparent',
+  color: 'var(--muted)',
+  cursor: 'pointer',
+  display: 'grid',
+  placeItems: 'center',
 }

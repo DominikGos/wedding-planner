@@ -31,30 +31,44 @@ function normalizeServiceType(serviceType: string | null | undefined) {
   return serviceType
 }
 
+function getVendorCategoryLabel(category: string, t: (key: string) => string) {
+  const labels: Record<string, string> = {
+    Catering: t('vendors.categories.catering'),
+    Florystyka: t('vendors.categories.florist'),
+    Fotografia: t('vendors.categories.photography'),
+    'Sala weselna': t('vendors.categories.venue'),
+    Muzyka: t('vendors.categories.music'),
+    Dekoracje: t('vendors.categories.decorations'),
+    Transport: t('vendors.categories.transport'),
+    Inne: t('vendors.categories.other'),
+  }
+  return labels[category] ?? category
+}
+
 function getPriceValue(price: VendorResponse['price']) {
   if (typeof price === 'number') return price
   if (typeof price === 'string') return Number(price) || 0
   return 0
 }
 
-function formatVendorPrice(price: number, category: string) {
+function formatVendorPrice(price: number, category: string, t: (key: string, options?: Record<string, string>) => string) {
   const formatted = price.toLocaleString('pl-PL')
-  return category === 'Catering' ? `${formatted} PLN / os.` : `${formatted} PLN`
+  return category === 'Catering' ? t('vendors.pricePerPerson', { amount: formatted }) : `${formatted} PLN`
 }
 
-function toVendor(response: VendorResponse): Vendor {
+function toVendor(response: VendorResponse, t: (key: string, options?: Record<string, string>) => string): Vendor {
   const category = normalizeServiceType(response.serviceType)
   const price = getPriceValue(response.price)
 
   return {
     id: String(response.id),
-    name: response.companyName || 'Dostawca bez nazwy',
+    name: response.companyName || t('vendors.unnamedVendor'),
     email: response.contact || '',
     category,
     rating: 0,
     reviewsCount: 0,
     status: 'pending',
-    priceFrom: price > 0 ? formatVendorPrice(price, category) : 'Brak ceny',
+    priceFrom: price > 0 ? formatVendorPrice(price, category, t) : t('vendors.noPrice'),
     icon: iconMap[category] || 'users',
   }
 }
@@ -166,7 +180,7 @@ export function VendorsPage() {
         serviceType: newVendor.serviceType,
         contact: newVendor.contact.trim(),
         price,
-      }, { token: token ?? undefined }))
+      }, { token: token ?? undefined }), t)
 
       dispatch(addVendor(created))
       showNotification(t('vendors.addedSuccess', { name: created.name }), 'success')
@@ -216,7 +230,7 @@ export function VendorsPage() {
       getVendors({ token: token ?? undefined })
         .then((items) => {
           if (cancelled) return
-          dispatch(setVendors(items.map(toVendor)))
+          dispatch(setVendors(items.map(item => toVendor(item, t))))
         })
         .catch(() => {
           if (!cancelled) setError(t('vendors.loadError'))
@@ -371,7 +385,7 @@ export function VendorsPage() {
               }}
             >
               <option value="All">{t('vendors.categoryAll')}</option>
-              {categories.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+              {categories.map(c => <option key={c.name} value={c.name}>{getVendorCategoryLabel(c.name, t)}</option>)}
             </select>
             <select 
               value={statusFilter}
@@ -397,6 +411,7 @@ export function VendorsPage() {
               vendors={filteredVendors} 
               onSelectVendor={(v) => setSelectedVendorId(v.id)} 
               selectedVendorId={selectedVendorId}
+              getCategoryLabel={(category) => getVendorCategoryLabel(category, t)}
             />
             {!loading && filteredVendors.length === 0 && (
               <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--muted)' }}>
@@ -433,6 +448,7 @@ export function VendorsPage() {
           onDelete={() => void handleDeleteVendor()}
           onClose={() => setSelectedVendorId(null)}
           userRole={userRole}
+          getCategoryLabel={(category) => getVendorCategoryLabel(category, t)}
         />
       </div>
 
@@ -507,11 +523,11 @@ export function VendorsPage() {
                 onChange={(e) => setNewVendor(prev => ({ ...prev, serviceType: e.target.value }))}
                 style={{ padding: '0.7rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.95rem', background: 'var(--surface)', color: 'var(--text)' }}
               >
-                <option value="Catering">Catering</option>
-                <option value="Florystyka">Florystyka</option>
-                <option value="Fotografia">Fotografia</option>
-                <option value="Sala weselna">Sala weselna</option>
-                <option value="Muzyka">Muzyka</option>
+                <option value="Catering">{t('vendors.categories.catering')}</option>
+                <option value="Florystyka">{t('vendors.categories.florist')}</option>
+                <option value="Fotografia">{t('vendors.categories.photography')}</option>
+                <option value="Sala weselna">{t('vendors.categories.venue')}</option>
+                <option value="Muzyka">{t('vendors.categories.music')}</option>
               </select>
             </label>
 
