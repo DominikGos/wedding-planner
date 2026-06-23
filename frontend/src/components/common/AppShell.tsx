@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Outlet, useNavigate, Link } from 'react-router-dom'
+import { Outlet, useNavigate, Link, useLocation, Navigate } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
 import { useTranslation } from 'react-i18next'
 import type { RootState } from '../../store'
@@ -12,7 +12,13 @@ export function AppShell() {
   const navigate = useNavigate()
   const dispatch = useDispatch()
   const { t, i18n } = useTranslation()
+  const { pathname } = useLocation()
   const { user, token, activeWeddingId, weddings } = useSelector((state: RootState) => state.auth)
+
+  if ((!user || !token) && pathname !== '/') {
+    return <Navigate to="/login?tab=login" replace />
+  }
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [theme, setTheme] = useState(() => (
     localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'

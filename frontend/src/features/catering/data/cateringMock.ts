@@ -29,6 +29,24 @@ export type CateringDocument = {
   uploadedAt: string
 }
 
+export const emptyMenuSections: CateringMenuSectionData[] = [
+  {
+    id: 'starters',
+    title: 'Przystawki',
+    items: [],
+  },
+  {
+    id: 'main',
+    title: 'Danie glowne',
+    items: [],
+  },
+  {
+    id: 'dessert',
+    title: 'Deser',
+    items: [],
+  },
+]
+
 export const initialMenuSections: CateringMenuSectionData[] = [
   {
     id: 'starters',

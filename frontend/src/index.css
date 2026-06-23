@@ -700,12 +700,34 @@ table {
   color: var(--text);
 }
 
+[data-theme='dark'] .public-page,
+[data-theme='dark'].public-page {
+  --bg: #0e181b;
+  --bg-accent: #162428;
+  --surface: #1b2a2e;
+  --surface-soft: #223438;
+  --text: #f3eadf;
+  --muted: #b9c7c2;
+  --border: #355057;
+  --primary: #d98a4a;
+  --primary-soft: #2d463f;
+  --on-primary: #1a120d;
+  --danger: #ff8c8c;
+  --danger-soft: #432727;
+}
+
 .public-page input,
 .public-page textarea,
 .public-page select {
   background: #fffdf9;
   color: var(--text);
   border-color: var(--border);
+}
+
+[data-theme='dark'] .public-page input,
+[data-theme='dark'] .public-page textarea,
+[data-theme='dark'] .public-page select {
+  background: var(--bg);
 }
 
 .public-page ::placeholder {
@@ -730,7 +752,7 @@ table {
   margin: 0;
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1250px) {
   body {
     overflow-x: hidden;
   }
@@ -746,7 +768,7 @@ table {
   }
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1250px) {
   .app-header-grid {
     grid-template-columns: minmax(0, 1fr) auto !important;
   }

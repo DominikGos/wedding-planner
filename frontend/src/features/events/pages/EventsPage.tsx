@@ -5,6 +5,7 @@ import { getTaskSchedule, type TaskResponse, type TaskStatus, type TaskType } fr
 import type { RootState } from '../../../store'
 import { setTasks } from '../../../store/slices/tasksSlice'
 import { TimelineCard } from '../components/TimelineCard'
+import { useTranslation } from 'react-i18next'
 
 type ScheduleGroup = {
   date: string | null
@@ -12,29 +13,8 @@ type ScheduleGroup = {
   tasks: TaskResponse[]
 }
 
-const statusOptions: Array<{ value: TaskStatus | 'ALL'; label: string }> = [
-  { value: 'ALL', label: 'Wszystkie statusy' },
-  { value: 'PENDING', label: 'Do zrobienia' },
-  { value: 'IN_PROGRESS', label: 'W trakcie' },
-  { value: 'COMPLETED', label: 'Zrobione' },
-]
-
-const typeOptions: Array<{ value: TaskType | 'ALL'; label: string }> = [
-  { value: 'ALL', label: 'Wszystkie typy' },
-  { value: 'CATERING', label: 'Catering' },
-  { value: 'DECORATION', label: 'Dekoracje' },
-  { value: 'ENTERTAINMENT', label: 'Rozrywka' },
-]
-
-const priorityOptions = [
-  { value: 'ALL', label: 'Wszystkie priorytety' },
-  { value: '1', label: 'Niski' },
-  { value: '2', label: 'Średni' },
-  { value: '3', label: 'Wysoki' },
-]
-
-function formatDateLabel(date: string) {
-  return new Intl.DateTimeFormat('pl-PL', {
+function formatDateLabel(date: string, locale: string) {
+  return new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'pl-PL', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -54,6 +34,7 @@ function getMonthDays(year: number, month: number) {
 }
 
 export function EventsPage() {
+  const { t, i18n } = useTranslation()
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const tasks = useSelector((state: RootState) => state.tasks.items)
@@ -68,6 +49,27 @@ export function EventsPage() {
   const [calendarDate, setCalendarDate] = useState(() => new Date())
   const loading = Boolean(activeWeddingId && token && loadedWeddingId !== activeWeddingId)
 
+  const statusOptions = useMemo<Array<{ value: TaskStatus | 'ALL'; label: string }>>(() => [
+    { value: 'ALL', label: t('schedule.allStatuses') },
+    { value: 'PENDING', label: t('schedule.statusPending') },
+    { value: 'IN_PROGRESS', label: t('schedule.statusInProgress') },
+    { value: 'COMPLETED', label: t('schedule.statusDone') },
+  ], [t])
+
+  const typeOptions = useMemo<Array<{ value: TaskType | 'ALL'; label: string }>>(() => [
+    { value: 'ALL', label: t('schedule.allTypes') },
+    { value: 'CATERING', label: t('schedule.typeCatering') },
+    { value: 'DECORATION', label: t('schedule.typeDecoration') },
+    { value: 'ENTERTAINMENT', label: t('schedule.typeEntertainment') },
+  ], [t])
+
+  const priorityOptions = useMemo(() => [
+    { value: 'ALL', label: t('schedule.allPriorities') },
+    { value: '1', label: t('schedule.priorityLow') },
+    { value: '2', label: t('schedule.priorityMedium') },
+    { value: '3', label: t('schedule.priorityHigh') },
+  ], [t])
+
   useEffect(() => {
     if (!activeWeddingId || !token) return
 
@@ -76,9 +78,9 @@ export function EventsPage() {
         dispatch(setTasks(schedule))
         setError(null)
       })
-      .catch(() => setError('Nie udało się pobrać harmonogramu z backendu.'))
+      .catch(() => setError(t('schedule.loadError')))
       .finally(() => setLoadedWeddingId(activeWeddingId))
-  }, [activeWeddingId, dispatch, token])
+  }, [activeWeddingId, dispatch, token, t])
 
   const today = new Intl.DateTimeFormat('en-CA').format(new Date())
   const summary = {
@@ -87,12 +89,12 @@ export function EventsPage() {
     withoutDate: tasks.filter(task => !task.dueDate).length,
     completed: tasks.filter(task => task.status === 'COMPLETED').length,
   }
-  const summaryCards = [
-    { label: 'Wszystkie zadania', value: summary.all, color: '#db7e45' },
-    { label: 'Najbliższe zadania', value: summary.upcoming, color: '#2f6db5' },
-    { label: 'Bez terminu', value: summary.withoutDate, color: '#8c5a12' },
-    { label: 'Zrobione', value: summary.completed, color: '#35684f' },
-  ]
+  const summaryCards = useMemo(() => [
+    { label: t('schedule.statAll'), value: summary.all, color: '#db7e45' },
+    { label: t('schedule.statUpcoming'), value: summary.upcoming, color: '#2f6db5' },
+    { label: t('schedule.statNoDate'), value: summary.withoutDate, color: '#8c5a12' },
+    { label: t('schedule.statDone'), value: summary.completed, color: '#35684f' },
+  ], [t, summary])
 
   const filteredTasks = useMemo(() => {
     const phrase = search.trim().toLowerCase()
@@ -123,7 +125,7 @@ export function EventsPage() {
       if (!lastGroup || lastGroup.date !== date) {
         result.push({
           date,
-          label: date ? formatDateLabel(date) : 'Bez terminu',
+          label: date ? formatDateLabel(date, i18n.language) : t('schedule.noDeadline'),
           tasks: [task],
         })
       } else {
@@ -132,12 +134,12 @@ export function EventsPage() {
     })
 
     return result
-  }, [filteredTasks])
+  }, [filteredTasks, t, i18n.language])
 
   const calendarYear = calendarDate.getFullYear()
   const calendarMonth = calendarDate.getMonth()
   const monthDays = getMonthDays(calendarYear, calendarMonth)
-  const monthLabel = new Intl.DateTimeFormat('pl-PL', { month: 'long', year: 'numeric' }).format(calendarDate)
+  const monthLabel = new Intl.DateTimeFormat(i18n.language === 'en' ? 'en-US' : 'pl-PL', { month: 'long', year: 'numeric' }).format(calendarDate)
   const taskCountByDate = tasks.reduce<Record<string, number>>((counts, task) => {
     const date = task.dueDate?.split('T')[0]
     if (date) counts[date] = (counts[date] ?? 0) + 1
@@ -153,15 +155,15 @@ export function EventsPage() {
   }
 
   if (!user) {
-    return <section className='page-card' style={{ padding: '2rem', textAlign: 'center' }}>Zaloguj się, aby zobaczyć harmonogram.</section>
+    return <section className='page-card' style={{ padding: '2rem', textAlign: 'center' }}>{t('schedule.requiresLogin')}</section>
   }
 
   if (!activeWeddingId) {
-    return <section className='page-card' style={{ padding: '2rem', textAlign: 'center' }}>Wybierz aktywne wesele, aby zobaczyć harmonogram.</section>
+    return <section className='page-card' style={{ padding: '2rem', textAlign: 'center' }}>{t('schedule.noActiveEvent')}</section>
   }
 
   if (!token) {
-    return <section className='page-card' style={{ padding: '2rem', textAlign: 'center' }}>Harmonogram z backendu jest dostępny po zalogowaniu przez Google.</section>
+    return <section className='page-card' style={{ padding: '2rem', textAlign: 'center' }}>{t('schedule.requiresGoogleLogin')}</section>
   }
 
   return (
@@ -169,11 +171,11 @@ export function EventsPage() {
       <article className='page-card' style={{ padding: '1.6rem', background: 'linear-gradient(180deg, var(--surface) 0%, var(--surface-soft) 100%)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <div>
-            <h1 className='page-title' style={{ fontSize: '2rem' }}>Harmonogram</h1>
-            <p className='page-subtitle'>Plan zadań aktywnego wesela uporządkowany według terminów.</p>
+            <h1 className='page-title' style={{ fontSize: '2rem' }}>{t('schedule.pageTitle')}</h1>
+            <p className='page-subtitle'>{t('schedule.pageSubtitle')}</p>
           </div>
           <button type='button' onClick={() => navigate('/tasks', { state: { openForm: true } })} className='button-primary'>
-            Dodaj nowe zadanie
+            {t('schedule.addTask')}
           </button>
         </div>
 
@@ -192,13 +194,13 @@ export function EventsPage() {
       <div className='schedule-layout'>
         <article className='page-card' style={{ padding: '1.2rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
-            <button type='button' onClick={() => setCalendarDate(new Date(calendarYear, calendarMonth - 1, 1))} className='button-secondary' style={{ minHeight: '38px', padding: '0.45rem 0.7rem' }}>Poprzedni</button>
+            <button type='button' onClick={() => setCalendarDate(new Date(calendarYear, calendarMonth - 1, 1))} className='button-secondary' style={{ minHeight: '38px', padding: '0.45rem 0.7rem' }}>{t('schedule.prev')}</button>
             <strong style={{ textTransform: 'capitalize' }}>{monthLabel}</strong>
-            <button type='button' onClick={() => setCalendarDate(new Date(calendarYear, calendarMonth + 1, 1))} className='button-secondary' style={{ minHeight: '38px', padding: '0.45rem 0.7rem' }}>Następny</button>
+            <button type='button' onClick={() => setCalendarDate(new Date(calendarYear, calendarMonth + 1, 1))} className='button-secondary' style={{ minHeight: '38px', padding: '0.45rem 0.7rem' }}>{t('schedule.next')}</button>
           </div>
 
           <div style={{ marginTop: '1rem', display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.35rem', textAlign: 'center' }}>
-            {['Pon', 'Wt', 'Śr', 'Czw', 'Pt', 'Sob', 'Nd'].map(day => <strong key={day} style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>{day}</strong>)}
+            {(i18n.language === 'en' ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] : ['Pon', 'Wt', 'Śr', 'Czw', 'Pt', 'Sob', 'Nd']).map(day => <strong key={day} style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>{day}</strong>)}
             {monthDays.map((day, index) => {
               const date = day ? `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}` : ''
               const count = taskCountByDate[date] ?? 0
@@ -207,28 +209,28 @@ export function EventsPage() {
               return day ? (
                 <button key={date} type='button' onClick={() => setSelectedDate(selected ? null : date)} style={{ minHeight: '48px', padding: '0.25rem', borderRadius: '10px', border: selected ? '1px solid var(--primary)' : '1px solid transparent', background: selected ? 'var(--primary-soft)' : count ? 'var(--surface-soft)' : 'transparent', cursor: 'pointer' }}>
                   <span style={{ display: 'block', fontWeight: selected ? 700 : 500 }}>{day}</span>
-                  {count > 0 && <span style={{ display: 'block', marginTop: '0.15rem', color: '#db7e45', fontSize: '0.65rem', fontWeight: 600 }}>{count} zad.</span>}
+                  {count > 0 && <span style={{ display: 'block', marginTop: '0.15rem', color: '#db7e45', fontSize: '0.65rem', fontWeight: 600 }}>{t('schedule.taskCount', { count })}</span>}
                 </button>
               ) : <span key={`empty-${index}`} />
             })}
           </div>
 
-          {selectedDate && <button type='button' onClick={() => setSelectedDate(null)} className='button-secondary' style={{ marginTop: '1rem', width: '100%' }}>Pokaż wszystkie</button>}
+          {selectedDate && <button type='button' onClick={() => setSelectedDate(null)} className='button-secondary' style={{ marginTop: '1rem', width: '100%' }}>{t('schedule.showAll')}</button>}
         </article>
 
         <div style={{ display: 'grid', gap: '1rem' }}>
           <article className='page-card schedule-filter-panel' style={{ padding: '1rem' }}>
-            <input value={search} onChange={event => setSearch(event.target.value)} placeholder='Szukaj po nazwie lub opisie...' className='filter-control schedule-filter-search' />
+            <input value={search} onChange={event => setSearch(event.target.value)} placeholder={t('schedule.searchPlaceholder')} className='filter-control schedule-filter-search' />
             <div className='schedule-filter-row'>
               <select value={statusFilter} onChange={event => setStatusFilter(event.target.value as TaskStatus | 'ALL')} className='filter-control'>{statusOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>
               <select value={typeFilter} onChange={event => setTypeFilter(event.target.value as TaskType | 'ALL')} className='filter-control'>{typeOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>
               <select value={priorityFilter} onChange={event => setPriorityFilter(event.target.value)} className='filter-control'>{priorityOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>
-              <button type='button' onClick={clearFilters} className='button-secondary'>Wyczyść filtry</button>
+              <button type='button' onClick={clearFilters} className='button-secondary'>{t('schedule.clearFilters')}</button>
             </div>
           </article>
 
           <article className='page-card' style={{ padding: '1.2rem', display: 'grid', gap: '1.5rem' }}>
-            {loading && <div style={{ padding: '1rem', color: 'var(--muted)' }}>Ładowanie harmonogramu...</div>}
+            {loading && <div style={{ padding: '1rem', color: 'var(--muted)' }}>{t('schedule.loadingSchedule')}</div>}
 
             {!loading && !error && groups.map(group => (
               <section key={group.label} style={{ display: 'grid', gap: '0.9rem' }}>
@@ -239,7 +241,7 @@ export function EventsPage() {
 
             {!loading && !error && groups.length === 0 && (
               <div style={{ padding: '2rem 1rem', color: 'var(--muted)', textAlign: 'center' }}>
-                {selectedDate ? 'Brak zadań w wybranym dniu.' : tasks.length === 0 ? 'Brak zadań w harmonogramie aktywnego wesela.' : 'Brak wyników dla wybranych filtrów.'}
+                {selectedDate ? t('schedule.noTasksOnDate') : tasks.length === 0 ? t('schedule.noTasks') : t('schedule.noResults')}
               </div>
             )}
           </article>

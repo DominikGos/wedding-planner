@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { type VendorCategory, type Vendor } from '../data/vendorsMock'
 import { VendorIcon, type VendorIconName } from './VendorIcon'
+import { useTranslation } from 'react-i18next'
 
 type VendorSidebarProps = {
   categories: VendorCategory[]
@@ -25,6 +26,7 @@ export function VendorSidebar({
   onClose,
   userRole = 'couple'
 }: VendorSidebarProps) {
+  const { t } = useTranslation()
   const [isEditing, setIsEditing] = useState(false)
   const [inputValue, setInputValue] = useState(budgetLimit.toString())
   
@@ -79,7 +81,7 @@ export function VendorSidebar({
           </button>
 
           <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--primary)', fontWeight: 600 }}>
-            Szczegóły Dostawcy
+            {t('vendorSidebar.detailsTitle')}
           </span>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.75rem', marginBottom: '1.25rem' }}>
@@ -105,23 +107,23 @@ export function VendorSidebar({
 
           <div style={{ display: 'grid', gap: '0.75rem', fontSize: '0.9rem', marginBottom: '1.25rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--muted)' }}>Kategoria:</span>
+              <span style={{ color: 'var(--muted)' }}>{t('vendorSidebar.categoryLabel')}</span>
               <strong style={{ color: 'var(--text)' }}>{selectedVendor.category}</strong>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--muted)' }}>Orientacyjna cena:</span>
+              <span style={{ color: 'var(--muted)' }}>{t('vendorSidebar.priceLabel')}</span>
               <strong style={{ color: 'var(--primary)' }}>{selectedVendor.priceFrom}</strong>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: 'var(--muted)' }}>Ocena usług:</span>
+              <span style={{ color: 'var(--muted)' }}>{t('vendorSidebar.ratingLabel')}</span>
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', fontWeight: 600 }}>
-                ⭐ {selectedVendor.rating} <span style={{ color: 'var(--muted)', fontWeight: 400, fontSize: '0.8rem' }}>({selectedVendor.reviewsCount} opinii)</span>
+                ⭐ {selectedVendor.rating} <span style={{ color: 'var(--muted)', fontWeight: 400, fontSize: '0.8rem' }}>({t('vendorSidebar.reviews', { count: selectedVendor.reviewsCount })})</span>
               </span>
             </div>
           </div>
 
           <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem', display: 'grid', gap: '0.5rem' }}>
-            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)' }}>Status współpracy:</label>
+            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)' }}>{t('vendorSidebar.collaborationStatus')}</label>
             <select 
               value={selectedVendor.status}
               onChange={(e) => onStatusChange(e.target.value as Vendor['status'])}
@@ -138,9 +140,9 @@ export function VendorSidebar({
                 cursor: userRole === 'couple' ? 'not-allowed' : 'pointer'
               }}
             >
-              <option value="confirmed">Potwierdzony</option>
-              <option value="pending">Oczekujący</option>
-              <option value="unavailable">Niedostępny</option>
+              <option value="confirmed">{t('vendorSidebar.statusConfirmed')}</option>
+              <option value="pending">{t('vendorSidebar.statusPending')}</option>
+              <option value="unavailable">{t('vendorSidebar.statusUnavailable')}</option>
             </select>
           </div>
 
@@ -159,14 +161,14 @@ export function VendorSidebar({
               cursor: 'pointer',
             }}
           >
-            Usuń dostawcę
+            {t('vendorSidebar.deleteBtn')}
           </button>
         </section>
       )}
 
       {/* POPULAR CATEGORIES */}
       <section className='page-card' style={{ padding: '1.25rem' }}>
-        <h3 style={{ margin: '0 0 1.25rem', fontSize: '1rem', fontWeight: 700 }}>Popularne kategorie</h3>
+        <h3 style={{ margin: '0 0 1.25rem', fontSize: '1rem', fontWeight: 700 }}>{t('vendorSidebar.popularCategories')}</h3>
         <div style={{ display: 'grid', gap: '1rem' }}>
           {categories.map((cat) => (
             <div key={cat.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -191,8 +193,8 @@ export function VendorSidebar({
 
       {/* PLANNED EXPENSES */}
       <section className='page-card' style={{ padding: '1.25rem' }}>
-        <h3 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 700 }}>Planowane wydatki</h3>
-        <p style={{ margin: '0 0 1.25rem', fontSize: '0.85rem', color: 'var(--muted)' }}>Suma szacunkowa</p>
+        <h3 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 700 }}>{t('vendorSidebar.plannedExpenses')}</h3>
+        <p style={{ margin: '0 0 1.25rem', fontSize: '0.85rem', color: 'var(--muted)' }}>{t('vendorSidebar.estimatedSum')}</p>
         
         <div style={{ marginBottom: '1.25rem' }}>
           <strong style={{ fontSize: '1.6rem', color: 'var(--text)' }}>
@@ -218,7 +220,7 @@ export function VendorSidebar({
         
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--muted)', marginBottom: '1rem' }}>
           <span style={{ color: percentage > 100 ? 'var(--danger)' : 'var(--muted)', fontWeight: percentage > 100 ? 600 : 400 }}>
-            {percentage}% z budżetu na dostawców
+            {t('vendorSidebar.budgetPercent', { pct: percentage })}
           </span>
         </div>
 
@@ -243,7 +245,7 @@ export function VendorSidebar({
             </div>
           ) : (
             <>
-              <span style={{ color: 'var(--muted)' }}>Limit budżetu: {budgetLimit.toLocaleString()} PLN</span>
+              <span style={{ color: 'var(--muted)' }}>{t('vendorSidebar.budgetLimit', { amount: budgetLimit.toLocaleString() })}</span>
               {userRole === 'planner' && (
                 <button 
                   onClick={() => setIsEditing(true)}

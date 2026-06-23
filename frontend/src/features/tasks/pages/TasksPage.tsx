@@ -230,11 +230,19 @@ export function TasksPage() {
             <input value={search} onChange={event => setSearch(event.target.value)} placeholder={t('tasks.searchPlaceholder')} className='filter-control' />
             <select value={typeFilter} onChange={event => setTypeFilter(event.target.value)} className='filter-control'>
               <option value='ALL'>{t('tasks.allTypes')}</option>
-              {taskTypes.map(type => <option key={type.value} value={type.value}>{type.label}</option>)}
+              {taskTypes.map(type => (
+                <option key={type.value} value={type.value}>
+                  {t(`tasks.types.${type.value}`)}
+                </option>
+              ))}
             </select>
             <select value={statusFilter} onChange={event => setStatusFilter(event.target.value)} className='filter-control'>
               <option value='ALL'>{t('tasks.allStatuses')}</option>
-              {taskStatuses.map(status => <option key={status.value} value={status.value}>{status.label}</option>)}
+              {taskStatuses.map(status => (
+                <option key={status.value} value={status.value}>
+                  {t(`tasks.statuses.${status.value}`)}
+                </option>
+              ))}
             </select>
             <button type='button' onClick={() => { setSearch(''); setTypeFilter('ALL'); setStatusFilter('ALL') }} className='button-secondary'>{t('tasks.clearFilters')}</button>
           </div>

@@ -1,5 +1,6 @@
 import { type Vendor } from '../data/vendorsMock'
 import { VendorIcon, type VendorIconName } from './VendorIcon'
+import { useTranslation } from 'react-i18next'
 
 type VendorTableProps = {
   vendors: Vendor[]
@@ -8,14 +9,16 @@ type VendorTableProps = {
 }
 
 export function VendorTable({ vendors, onSelectVendor, selectedVendorId }: VendorTableProps) {
+  const { t } = useTranslation()
+
   const getStatusStyle = (status: Vendor['status']) => {
     switch (status) {
       case 'confirmed':
-        return { className: 'status-pill status-pill-success', label: 'Potwierdzony' }
+        return { className: 'status-pill status-pill-success', label: t('vendors.statusConfirmed') }
       case 'pending':
-        return { className: 'status-pill status-pill-warning', label: 'Oczekujący' }
+        return { className: 'status-pill status-pill-warning', label: t('vendors.statusPending') }
       case 'unavailable':
-        return { className: 'status-pill status-pill-danger', label: 'Niedostępny' }
+        return { className: 'status-pill status-pill-danger', label: t('vendors.statusUnavailable') }
     }
   }
 
@@ -24,11 +27,11 @@ export function VendorTable({ vendors, onSelectVendor, selectedVendorId }: Vendo
       <table className='data-table'>
         <thead>
           <tr>
-            <th style={headerStyle}>Dostawca</th>
-            <th style={headerStyle}>Kategoria</th>
-            <th style={headerStyle}>Ocena</th>
-            <th style={headerStyle}>Status</th>
-            <th style={headerStyle}>Cena od</th>
+            <th style={headerStyle}>{t('vendors.colVendor')}</th>
+            <th style={headerStyle}>{t('vendors.colCategory')}</th>
+            <th style={headerStyle}>{t('vendors.colRating')}</th>
+            <th style={headerStyle}>{t('vendors.colStatus')}</th>
+            <th style={headerStyle}>{t('vendors.colPriceFrom')}</th>
             <th style={headerStyle}></th>
           </tr>
         </thead>

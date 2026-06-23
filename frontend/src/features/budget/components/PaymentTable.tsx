@@ -1,5 +1,6 @@
 import type { PaymentStatus } from '../../../api/paymentApi'
 import { BudgetIcon } from './BudgetIcon'
+import { useTranslation } from 'react-i18next'
 
 export type PaymentTablePayment = {
   id: number
@@ -24,27 +25,29 @@ type PaymentTableProps = {
 }
 
 export function PaymentTable({ payments, onAction, actionLoadingId, userRole }: PaymentTableProps) {
+  const { t } = useTranslation()
+
   const getStatusStyle = (status: PaymentStatus) => {
     switch (status) {
       case 'SUCCESS':
-        return { className: 'status-pill status-pill-success', label: 'Opłacono', icon: 'check' as const, iconColor: 'var(--ok)' }
+        return { className: 'status-pill status-pill-success', label: t('budget.table.statusSuccess'), icon: 'check' as const, iconColor: 'var(--ok)' }
       case 'PENDING':
-        return { className: 'status-pill status-pill-warning', label: 'Oczekuje', icon: 'clock' as const, iconColor: 'var(--warning)' }
+        return { className: 'status-pill status-pill-warning', label: t('budget.table.statusPending'), icon: 'clock' as const, iconColor: 'var(--warning)' }
       case 'FAILED':
-        return { className: 'status-pill status-pill-danger', label: 'Nieudana', icon: 'alert' as const, iconColor: 'var(--danger)' }
+        return { className: 'status-pill status-pill-danger', label: t('budget.table.statusFailed'), icon: 'alert' as const, iconColor: 'var(--danger)' }
       case 'CANCELLED':
-        return { className: 'status-pill', label: 'Anulowana', icon: 'file-text' as const, iconColor: 'var(--muted)' }
+        return { className: 'status-pill', label: t('budget.table.statusCancelled'), icon: 'file-text' as const, iconColor: 'var(--muted)' }
       case 'OFFLINE':
-        return { className: 'status-pill', label: 'Offline', icon: 'file-text' as const, iconColor: 'var(--muted)' }
+        return { className: 'status-pill', label: t('budget.table.statusOffline'), icon: 'file-text' as const, iconColor: 'var(--muted)' }
       case 'OFFLINE_APPROVED':
-        return { className: 'status-pill status-pill-info', label: 'Offline zatwierdzone', icon: 'check' as const, iconColor: 'var(--info)' }
+        return { className: 'status-pill status-pill-info', label: t('budget.table.statusOfflineApproved'), icon: 'check' as const, iconColor: 'var(--info)' }
     }
   }
 
   if (payments.length === 0) {
     return (
       <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--muted)' }}>
-        Brak płatności do wyświetlenia.
+        {t('budget.table.noPayments')}
       </div>
     )
   }
@@ -54,12 +57,12 @@ export function PaymentTable({ payments, onAction, actionLoadingId, userRole }: 
       <table className='data-table'>
         <thead>
           <tr>
-            <th style={headerStyle}>Dostawca</th>
-            <th style={headerStyle}>Usługa</th>
-            <th style={headerStyle}>Kwota</th>
-            <th style={headerStyle}>Data</th>
-            <th style={headerStyle}>Status płatności</th>
-            <th style={headerStyle}>Akcje</th>
+            <th style={headerStyle}>{t('budget.table.vendor')}</th>
+            <th style={headerStyle}>{t('budget.table.service')}</th>
+            <th style={headerStyle}>{t('budget.table.amount')}</th>
+            <th style={headerStyle}>{t('budget.table.date')}</th>
+            <th style={headerStyle}>{t('budget.table.status')}</th>
+            <th style={headerStyle}>{t('budget.table.actions')}</th>
           </tr>
         </thead>
         <tbody>
@@ -81,7 +84,7 @@ export function PaymentTable({ payments, onAction, actionLoadingId, userRole }: 
                   <div>{payment.date}</div>
                   {payment.paidAt && (
                     <div style={{ fontSize: '0.75rem', color: 'var(--ok)' }}>
-                      Opłacono: {payment.paidAt}
+                      {t('budget.table.paidAt', { date: payment.paidAt })}
                     </div>
                   )}
                 </td>
@@ -93,7 +96,7 @@ export function PaymentTable({ payments, onAction, actionLoadingId, userRole }: 
                 </td>
                 <td style={cellStyle}>
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    <button style={iconButtonStyle} title="Pokaż szczegóły płatności">
+                    <button style={iconButtonStyle} title={t('budget.table.tooltipDetails')}>
                       <BudgetIcon name='file-text' color='var(--muted)' size={18} />
                     </button>
                     {payment.status === 'PENDING' && userRole === 'couple' && (
@@ -102,7 +105,7 @@ export function PaymentTable({ payments, onAction, actionLoadingId, userRole }: 
                         disabled={isActionLoading}
                         onClick={() => onAction(payment.id, 'pay-online')}
                       >
-                        {isActionLoading ? 'Trwa...' : 'Opłać'}
+                        {isActionLoading ? t('budget.table.btnLoading') : t('budget.table.btnPay')}
                       </button>
                     )}
                     {payment.status === 'PENDING' && (
@@ -111,7 +114,7 @@ export function PaymentTable({ payments, onAction, actionLoadingId, userRole }: 
                         disabled={isActionLoading}
                         onClick={() => onAction(payment.id, 'cancel')}
                       >
-                        {isActionLoading ? 'Trwa...' : 'Anuluj'}
+                        {isActionLoading ? t('budget.table.btnLoading') : t('budget.table.btnCancel')}
                       </button>
                     )}
                     {(payment.status === 'FAILED' || payment.status === 'CANCELLED') && userRole === 'couple' && (
@@ -120,7 +123,7 @@ export function PaymentTable({ payments, onAction, actionLoadingId, userRole }: 
                         disabled={isActionLoading}
                         onClick={() => onAction(payment.id, 'retry')}
                       >
-                        {isActionLoading ? 'Trwa...' : 'Ponów'}
+                        {isActionLoading ? t('budget.table.btnLoading') : t('budget.table.btnRetry')}
                       </button>
                     )}
                     {payment.status === 'OFFLINE' && userRole === 'planner' && (
@@ -129,7 +132,7 @@ export function PaymentTable({ payments, onAction, actionLoadingId, userRole }: 
                         disabled={isActionLoading}
                         onClick={() => onAction(payment.id, 'approve-offline')}
                       >
-                        {isActionLoading ? 'Trwa...' : 'Zatwierdź'}
+                        {isActionLoading ? t('budget.table.btnLoading') : t('budget.table.btnApprove')}
                       </button>
                     )}
                   </div>

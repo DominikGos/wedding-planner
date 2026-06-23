@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import type { RootState } from '../../../store'
 import { getEvent, updateEvent, type EventResponse } from '../../../api/eventApi'
 
-import { initialMenuSections } from '../data/cateringMock'
+import { initialMenuSections, emptyMenuSections } from '../data/cateringMock'
 import type { CateringMenuSectionData, CateringMenuItem } from '../data/cateringMock'
 import type { Vendor } from '../../vendors/data/vendorsMock'
 
@@ -22,10 +22,12 @@ export function CateringPage() {
   const token = useSelector((state: RootState) => state.auth.token)
   
   // Local State
-  const [menuSections, setMenuSections] = useState<CateringMenuSectionData[]>(initialMenuSections)
+  const [menuSections, setMenuSections] = useState<CateringMenuSectionData[]>(emptyMenuSections)
   const [selectedVendorId, setSelectedVendorId] = useState(caterers[0]?.id || 'delicious')
   const [notes, setNotes] = useState('')
   const [budgetLimit, setBudgetLimit] = useState(30000)
+  const [showBudgetModal, setShowBudgetModal] = useState(false)
+  const [tempBudget, setTempBudget] = useState('')
   const [cateringNotification, setCateringNotification] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
   const [currentEvent, setCurrentEvent] = useState<EventResponse | null>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -37,6 +39,15 @@ export function CateringPage() {
     }, 4000)
   }
 
+  const handleSaveBudget = (e: React.FormEvent) => {
+    e.preventDefault()
+    const val = Number(tempBudget)
+    if (!isNaN(val) && val >= 0) {
+      setBudgetLimit(val)
+      setShowBudgetModal(false)
+    }
+  }
+
   useEffect(() => {
     if (!activeWeddingId || !token) return
     let active = true
@@ -46,15 +57,16 @@ export function CateringPage() {
         const eventData = await getEvent(activeWeddingId, { token })
         if (!active) return
         setCurrentEvent(eventData)
-        if (eventData.cateringNotes) {
-          setNotes(eventData.cateringNotes)
-        }
+        setNotes(eventData.cateringNotes || '')
         if (eventData.cateringMenu) {
           try {
             setMenuSections(JSON.parse(eventData.cateringMenu))
           } catch (e) {
             console.error("Failed to parse catering menu JSON:", e)
+            setMenuSections(emptyMenuSections)
           }
+        } else {
+          setMenuSections(emptyMenuSections)
         }
       } catch (err) {
         console.error("Failed to load event catering config:", err)
@@ -277,8 +289,8 @@ export function CateringPage() {
             <strong style={{ fontSize: '1.5rem' }}>{budgetLimit.toLocaleString()} PLN</strong>
             <button 
               onClick={() => {
-                const val = prompt(t('catering.budgetPrompt'), budgetLimit.toString())
-                if (val && !isNaN(Number(val))) setBudgetLimit(Number(val))
+                setTempBudget(budgetLimit.toString())
+                setShowBudgetModal(true)
               }}
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)' }}
             >
@@ -321,7 +333,13 @@ export function CateringPage() {
                     paddingBottom: '0.5rem',
                     fontWeight: 400
                   }}>
-                    {section.title}
+                    {section.id === 'starters' 
+                      ? t('catering.catStarters') 
+                      : section.id === 'main' 
+                        ? t('catering.catMain') 
+                        : section.id === 'dessert' 
+                          ? t('catering.catDessert') 
+                          : section.title}
                   </h3>
                   
                   <div style={{ display: 'grid', gap: '0.75rem' }}>
@@ -577,6 +595,90 @@ export function CateringPage() {
         </div>
 
       </div>
+
+      {/* Premium Budget Dialog Modal */}
+      {showBudgetModal && (
+        <div className="modal-backdrop" style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(47, 42, 36, 0.4)',
+          backdropFilter: 'blur(5px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          animation: 'fadeIn 0.2s ease'
+        }}>
+          <form 
+            onSubmit={handleSaveBudget}
+            className="page-card modal-card"
+            style={{
+              width: '100%',
+              maxWidth: '400px',
+              background: 'var(--surface)',
+              padding: '2.2rem',
+              borderRadius: '20px',
+              boxShadow: '0 20px 50px rgba(47, 42, 36, 0.15)',
+              display: 'grid',
+              gap: '1.2rem',
+              position: 'relative'
+            }}
+          >
+            <button 
+              type="button"
+              onClick={() => setShowBudgetModal(false)}
+              style={{
+                position: 'absolute',
+                top: '15px',
+                right: '15px',
+                background: 'none',
+                border: 'none',
+                fontSize: '1.2rem',
+                color: 'var(--muted)',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              ✕
+            </button>
+
+            <header style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
+              <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--primary)', fontWeight: 600 }}>{t('catering.cateringBudget')}</span>
+              <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.6rem', margin: '0.25rem 0', fontWeight: 500 }}>{t('catering.cateringBudget')}</h2>
+              <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.85rem' }}>{t('catering.budgetPrompt')}</p>
+            </header>
+
+            <label style={{ display: 'grid', gap: '0.4rem' }}>
+              <input 
+                type="number"
+                min="0"
+                value={tempBudget}
+                onChange={(e) => setTempBudget(e.target.value)}
+                required
+                style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '1.05rem', textAlign: 'center', fontWeight: 600, background: 'var(--surface)', color: 'var(--text)' }}
+              />
+            </label>
+
+            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+              <button 
+                type="button" 
+                onClick={() => setShowBudgetModal(false)} 
+                className="button-secondary" 
+                style={{ flex: 1, minHeight: '44px' }}
+              >
+                {t('common.cancel')}
+              </button>
+              <button 
+                type="submit" 
+                className="button-primary" 
+                style={{ flex: 1, minHeight: '44px' }}
+              >
+                {t('common.save')}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   )
 }

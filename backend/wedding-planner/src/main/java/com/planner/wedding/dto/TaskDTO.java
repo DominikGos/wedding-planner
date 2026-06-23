@@ -3,7 +3,6 @@ package com.planner.wedding.dto;
 import com.planner.wedding.entities.TaskType;
 import lombok.*;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Getter

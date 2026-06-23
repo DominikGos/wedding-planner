@@ -1,5 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { useSelector } from 'react-redux'
+import { useTranslation } from 'react-i18next'
 import type { RootState } from '../../../store'
 import {
   approveOfflinePayment,
@@ -41,12 +42,6 @@ const emptyCostSummary: EventCostSummaryResponse = {
   totalCost: 0,
 }
 
-const taskTypeLabels: Record<EventCostSummaryResponse['tasks'][number]['taskType'], string> = {
-  CATERING: 'Catering',
-  DECORATION: 'Dekoracje',
-  ENTERTAINMENT: 'Rozrywka',
-}
-
 const initialCreatePaymentForm = {
   expenseId: '',
   vendorId: '',
@@ -55,19 +50,26 @@ const initialCreatePaymentForm = {
   currency: 'PLN',
 }
 
-function formatDate(value: string | null) {
+function formatDate(value: string | null, locale: string) {
   if (!value) return '-'
 
-  return new Date(value).toLocaleDateString('pl-PL')
+  return new Date(value).toLocaleDateString(locale === 'en' ? 'en-US' : 'pl-PL')
 }
 
 // mapPaymentToTable has been replaced with inline mapping in filteredPayments to resolve vendor and expense names.
 
 export function BudgetPage() {
+  const { t, i18n } = useTranslation()
   const user = useSelector((state: RootState) => state.auth.user)
   const token = useSelector((state: RootState) => state.auth.token)
   const activeWeddingId = useSelector((state: RootState) => state.auth.activeWeddingId)
   const userRole = user?.role || 'couple'
+
+  const taskTypeLabels: Record<EventCostSummaryResponse['tasks'][number]['taskType'], string> = useMemo(() => ({
+    CATERING: t('schedule.typeCatering'),
+    DECORATION: t('schedule.typeDecoration'),
+    ENTERTAINMENT: t('schedule.typeEntertainment'),
+  }), [t])
 
   const [payments, setPayments] = useState<PaymentResponse[]>([])
   const [summary, setSummary] = useState<PaymentSummaryResponse>(emptySummary)
@@ -106,7 +108,7 @@ export function BudgetPage() {
       setPayments(paymentsResponse)
       setSummary(summaryResponse)
     } catch {
-      setError('Nie udało się pobrać płatności z backendu. Sprawdź, czy serwer działa na localhost:8080.')
+      setError(t('budget.loadError'))
       setPayments([])
       setSummary(emptySummary)
     } finally {
@@ -143,7 +145,7 @@ export function BudgetPage() {
       setCostSummary(await getEventCostSummary(activeWeddingId, { token }))
     } catch {
       setCostSummary({ ...emptyCostSummary, eventId: activeWeddingId })
-      setCostError('Nie udało się pobrać podsumowania kosztów zadań dla aktywnego wydarzenia.')
+      setCostError(t('budget.loadCostsError'))
     } finally {
       setIsCostLoading(false)
     }
@@ -202,20 +204,20 @@ export function BudgetPage() {
       const expenseObj = expensesList.find(e => e.id === payment.expenseId)
       return {
         id: payment.id,
-        vendor: vendorObj ? (vendorObj.companyName || `Dostawca #${payment.vendorId}`) : `Dostawca #${payment.vendorId}`,
-        invoiceNumber: `Płatność #${payment.id}`,
-        service: expenseObj ? (expenseObj.description || `Wydatek #${payment.expenseId}`) : `Wydatek #${payment.expenseId}`,
+        vendor: vendorObj ? (vendorObj.companyName || `${t('common.vendor')} #${payment.vendorId}`) : `${t('common.vendor')} #${payment.vendorId}`,
+        invoiceNumber: `${t('common.payment')} #${payment.id}`,
+        service: expenseObj ? (expenseObj.description || `${t('common.expense')} #${payment.expenseId}`) : `${t('common.expense')} #${payment.expenseId}`,
         amount: payment.amount,
         currency: payment.currency,
-        date: formatDate(payment.updatedAt || payment.createdAt),
+        date: formatDate(payment.updatedAt || payment.createdAt, i18n.language),
         paidAt: payment.status === 'SUCCESS' || payment.status === 'OFFLINE_APPROVED'
-          ? formatDate(payment.approvedAt || payment.updatedAt)
+          ? formatDate(payment.approvedAt || payment.updatedAt, i18n.language)
           : undefined,
         status: payment.status,
         failureReason: payment.failureReason,
       }
     })
-  }, [payments, filter, vendorsList, expensesList])
+  }, [payments, filter, vendorsList, expensesList, t, i18n.language])
 
   const unpaidExpenses = useMemo(() => {
     return expensesList.filter(exp => {
@@ -226,10 +228,11 @@ export function BudgetPage() {
 
   const generatedHistory = useMemo(() => {
     const entries: (HistoryEntry & { timestamp: number })[] = []
+    const currentLocale = i18n.language === 'en' ? 'en-US' : 'pl-PL'
 
     payments.forEach((payment) => {
       const vendorObj = vendorsList.find(v => v.id === payment.vendorId)
-      const vendorName = vendorObj?.companyName || `Dostawca #${payment.vendorId}`
+      const vendorName = vendorObj?.companyName || `${t('common.vendor')} #${payment.vendorId}`
       const formattedAmount = `${payment.amount.toLocaleString()} ${payment.currency}`
 
       const createdTime = new Date(payment.createdAt).getTime()
@@ -239,13 +242,13 @@ export function BudgetPage() {
       entries.push({
         id: `c-${payment.id}`,
         type: 'invoice_created',
-        title: 'Utworzono płatność',
-        description: `Utworzono żądanie płatności dla ${vendorName} na kwotę ${formattedAmount} (${payment.method})`,
-        date: new Date(payment.createdAt).toLocaleString('pl-PL', { dateStyle: 'short', timeStyle: 'short' }),
+        title: t('budget.history.invoiceCreatedTitle'),
+        description: t('budget.history.invoiceCreatedDesc', { vendor: vendorName, amount: formattedAmount, method: payment.method }),
+        date: new Date(payment.createdAt).toLocaleString(currentLocale, { dateStyle: 'short', timeStyle: 'short' }),
         timestamp: createdTime,
         user: {
-          name: 'Wedding Planner',
-          initials: 'WP'
+          name: t('budget.history.system'),
+          initials: t('budget.history.initialsSystem')
         }
       })
 
@@ -254,59 +257,59 @@ export function BudgetPage() {
         entries.push({
           id: `s-${payment.id}`,
           type: 'payment_confirmed',
-          title: 'Opłacono online',
-          description: `Zatwierdzono transakcję online dla ${vendorName} na kwotę ${formattedAmount}`,
-          date: new Date(payment.approvedAt || payment.updatedAt).toLocaleString('pl-PL', { dateStyle: 'short', timeStyle: 'short' }),
+          title: t('budget.history.paidOnlineTitle'),
+          description: t('budget.history.paidOnlineDesc', { vendor: vendorName, amount: formattedAmount }),
+          date: new Date(payment.approvedAt || payment.updatedAt).toLocaleString(currentLocale, { dateStyle: 'short', timeStyle: 'short' }),
           timestamp: updatedTime,
           user: {
-            name: 'Para Młoda',
-            initials: 'PM'
+            name: t('budget.history.userCouple'),
+            initials: t('budget.history.initialsCouple')
           }
         })
       } else if (payment.status === 'OFFLINE_APPROVED') {
         entries.push({
           id: `a-${payment.id}`,
           type: 'payment_confirmed',
-          title: 'Zatwierdzono offline',
-          description: `Płatność gotówkowa dla ${vendorName} została zatwierdzona przez ${payment.approvedBy || 'ADMIN'}`,
-          date: new Date(payment.approvedAt || payment.updatedAt).toLocaleString('pl-PL', { dateStyle: 'short', timeStyle: 'short' }),
+          title: t('budget.history.approvedOfflineTitle'),
+          description: t('budget.history.approvedOfflineDesc', { vendor: vendorName, user: payment.approvedBy || 'ADMIN' }),
+          date: new Date(payment.approvedAt || payment.updatedAt).toLocaleString(currentLocale, { dateStyle: 'short', timeStyle: 'short' }),
           timestamp: updatedTime,
           user: {
-            name: payment.approvedBy || 'Wedding Planner',
-            initials: (payment.approvedBy || 'WP').substring(0, 2).toUpperCase()
+            name: payment.approvedBy || t('budget.history.system'),
+            initials: (payment.approvedBy || t('budget.history.initialsSystem')).substring(0, 2).toUpperCase()
           }
         })
       } else if (payment.status === 'FAILED') {
         entries.push({
           id: `f-${payment.id}`,
           type: 'reminder_sent',
-          title: 'Płatność nieudana',
-          description: `Błąd bramki dla ${vendorName}: ${payment.failureReason || 'Brak środków'}`,
-          date: new Date(payment.updatedAt).toLocaleString('pl-PL', { dateStyle: 'short', timeStyle: 'short' }),
+          title: t('budget.history.paymentFailedTitle'),
+          description: t('budget.history.paymentFailedDesc', { vendor: vendorName, reason: payment.failureReason || t('budget.history.noFunds') }),
+          date: new Date(payment.updatedAt).toLocaleString(currentLocale, { dateStyle: 'short', timeStyle: 'short' }),
           timestamp: updatedTime,
           user: {
-            name: 'System',
-            initials: 'SYS'
+            name: t('budget.history.system'),
+            initials: t('budget.history.initialsSystem')
           }
         })
       } else if (payment.status === 'CANCELLED') {
         entries.push({
           id: `x-${payment.id}`,
           type: 'reminder_sent',
-          title: 'Anulowano płatność',
-          description: `Płatność dla ${vendorName} została anulowana`,
-          date: new Date(payment.updatedAt).toLocaleString('pl-PL', { dateStyle: 'short', timeStyle: 'short' }),
+          title: t('budget.history.paymentCancelledTitle'),
+          description: t('budget.history.paymentCancelledDesc', { vendor: vendorName }),
+          date: new Date(payment.updatedAt).toLocaleString(currentLocale, { dateStyle: 'short', timeStyle: 'short' }),
           timestamp: updatedTime,
           user: {
-            name: 'Użytkownik',
-            initials: 'U'
+            name: t('budget.history.userSingle'),
+            initials: t('budget.history.initialsSingle')
           }
         })
       }
     })
 
     return entries.sort((a, b) => b.timestamp - a.timestamp)
-  }, [payments, vendorsList])
+  }, [payments, vendorsList, t, i18n.language])
 
   const handlePaymentAction = async (id: number, action: PaymentTableAction) => {
     if (action === 'pay-online') {
@@ -320,23 +323,23 @@ export function BudgetPage() {
     try {
       if (action === 'retry') {
         await retryPayment(id, { token: token ?? undefined })
-        showNotification('Ponowiono płatność.', 'success')
+        showNotification(t('budget.paymentRetried'), 'success')
       }
 
       if (action === 'cancel') {
         await cancelPayment(id, {}, { token: token ?? undefined })
-        showNotification('Płatność została anulowana.', 'info')
+        showNotification(t('budget.paymentCancelled'), 'info')
       }
 
       if (action === 'approve-offline') {
         await approveOfflinePayment(id, {}, { token: token ?? undefined })
-        showNotification('Płatność offline została zatwierdzona.', 'success')
+        showNotification(t('budget.paymentApproved'), 'success')
       }
 
       await loadPayments()
       await loadDropdownData()
     } catch {
-      setError('Nie udało się wykonać akcji płatności. Spróbuj ponownie.')
+      setError(t('budget.actionError'))
     } finally {
       setActionLoadingId(null)
     }
@@ -363,22 +366,22 @@ export function BudgetPage() {
 
       showNotification(
         success
-          ? 'Płatność online zakończona sukcesem.'
-          : `Płatność nieudana: ${reason || 'Błąd bramki'}`,
+          ? t('budget.paymentConfirmed')
+          : `${t('budget.history.paymentFailedTitle')}: ${reason || 'Error'}`,
         success ? 'success' : 'info'
       )
       setOnlinePaymentId(null)
       await loadPayments()
       await loadDropdownData()
     } catch {
-      setError('Nie udało się potwierdzić płatności w bramce.')
+      setError(t('budget.actionError'))
     } finally {
       setIsGatewaySimulating(false)
     }
   }
 
   const handleExport = () => {
-    showNotification('Eksport raportu nie jest jeszcze podłączony do backendu.', 'info')
+    showNotification(t('budget.actionError') || 'Export is not connected.', 'info')
   }
 
   const handleCreatePayment = async (event: FormEvent<HTMLFormElement>) => {
@@ -397,11 +400,11 @@ export function BudgetPage() {
 
       setCreatePaymentForm(initialCreatePaymentForm)
       setIsCreateFormOpen(false)
-      showNotification('Płatność została dodana.', 'success')
+      showNotification(t('budget.paymentCreated'), 'success')
       await loadPayments()
       await loadDropdownData()
     } catch {
-      setError('Nie udało się dodać płatności. Sprawdź wpisane ID i spróbuj ponownie.')
+      setError(t('budget.createErrorDetails'))
     } finally {
       setIsCreatingPayment(false)
     }
@@ -432,22 +435,22 @@ export function BudgetPage() {
 
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 className='page-title'>Panel Płatności</h1>
+          <h1 className='page-title'>{t('budget.pageTitle')}</h1>
           <p className='page-subtitle'>
             {userRole === 'planner'
-              ? 'Koordynuj płatności Pary Młodej, zatwierdzaj rachunki i śledź faktury'
-              : 'Zarządzaj płatnościami dostawców i rejestruj wykonane przelewy'
+              ? t('budget.pageSubtitlePlanner')
+              : t('budget.pageSubtitleCouple')
             }
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           <button onClick={handleExport} className='button-secondary'>
             <BudgetIcon name='file-text' color='var(--text)' size={18} />
-            Eksportuj Raport
+            {t('budget.exportReport')}
           </button>
           {userRole === 'planner' && (
             <button onClick={() => setIsCreateFormOpen((isOpen) => !isOpen)} className='button-primary'>
-              Dodaj płatność
+              {t('budget.addPayment')}
             </button>
           )}
         </div>
@@ -456,7 +459,7 @@ export function BudgetPage() {
       {isCreateFormOpen && userRole === 'planner' && (
         <section className='page-card' style={{ padding: '1.25rem', display: 'grid', gap: '1rem' }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Dodaj płatność</h2>
+            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{t('budget.addPayment')}</h2>
           </div>
 
           <form
@@ -473,7 +476,7 @@ export function BudgetPage() {
               gap: '1rem',
             }}>
               <label style={{ display: 'grid', gap: '0.4rem', fontWeight: 600 }}>
-                Wydatek / Zadanie
+                {t('budget.formExpense')}
                 <select
                   required
                   value={createPaymentForm.expenseId}
@@ -488,7 +491,7 @@ export function BudgetPage() {
                   }}
                   style={{ padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
                 >
-                  <option value="">Wybierz wydatek...</option>
+                  <option value="">{t('budget.formSelectExpense')}</option>
                   {unpaidExpenses.map(exp => (
                     <option key={exp.id} value={exp.id}>
                       {exp.description} ({exp.amount} PLN)
@@ -498,17 +501,17 @@ export function BudgetPage() {
               </label>
 
               <label style={{ display: 'grid', gap: '0.4rem', fontWeight: 600 }}>
-                Dostawca
+                {t('budget.formVendor')}
                 <select
                   required
                   value={createPaymentForm.vendorId}
                   onChange={(event) => setCreatePaymentForm((form) => ({ ...form, vendorId: event.target.value }))}
                   style={{ padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
                 >
-                  <option value="">Wybierz dostawcę...</option>
+                  <option value="">{t('budget.formSelectVendor')}</option>
                   {vendorsList.map(v => (
                     <option key={v.id} value={v.id}>
-                      {v.companyName || `Dostawca #${v.id}`} ({v.serviceType})
+                      {v.companyName || `${t('common.vendor')} #${v.id}`} ({v.serviceType})
                     </option>
                   ))}
                 </select>
@@ -522,7 +525,7 @@ export function BudgetPage() {
               gap: '1rem',
             }}>
               <label style={{ display: 'grid', gap: '0.4rem', fontWeight: 600 }}>
-                Kwota
+                {t('budget.formAmount')}
                 <input
                   type='number'
                   min='0.01'
@@ -535,19 +538,19 @@ export function BudgetPage() {
               </label>
 
               <label style={{ display: 'grid', gap: '0.4rem', fontWeight: 600 }}>
-                Metoda
+                {t('budget.formMethod')}
                 <select
                   value={createPaymentForm.method}
                   onChange={(event) => setCreatePaymentForm((form) => ({ ...form, method: event.target.value as PaymentMethod }))}
                   style={{ padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
                 >
-                  <option value='ONLINE'>ONLINE</option>
-                  <option value='OFFLINE'>OFFLINE</option>
+                  <option value='ONLINE'>{t('budget.formMethodOnline')}</option>
+                  <option value='OFFLINE'>{t('budget.formMethodOffline')}</option>
                 </select>
               </label>
 
               <label style={{ display: 'grid', gap: '0.4rem', fontWeight: 600 }}>
-                Waluta
+                {t('budget.formCurrency')}
                 <input
                   value={createPaymentForm.currency}
                   onChange={(event) => setCreatePaymentForm((form) => ({ ...form, currency: event.target.value }))}
@@ -564,7 +567,7 @@ export function BudgetPage() {
                 className='button-secondary'
                 style={{ cursor: isCreatingPayment ? 'not-allowed' : 'pointer', minWidth: '100px' }}
               >
-                Anuluj
+                {t('budget.formCancelBtn')}
               </button>
               <button
                 type='submit'
@@ -572,7 +575,7 @@ export function BudgetPage() {
                 className='button-primary'
                 style={{ cursor: isCreatingPayment ? 'not-allowed' : 'pointer', opacity: isCreatingPayment ? 0.75 : 1, minWidth: '130px' }}
               >
-                {isCreatingPayment ? 'Zapisywanie...' : 'Zapisz płatność'}
+                {isCreatingPayment ? t('budget.formSubmitting') : t('budget.formSaveBtn')}
               </button>
             </div>
           </form>
@@ -581,31 +584,31 @@ export function BudgetPage() {
 
       <div className='stats-grid'>
         <BudgetStatCard
-          title="Suma płatności"
+          title={t('budget.statTotal')}
           value={`${stats.total.toLocaleString()} PLN`}
           color="#b85a1f"
           icon="trend"
         />
         <BudgetStatCard
-          title="Koszt zadań"
+          title={t('budget.statTasksCost')}
           value={`${stats.taskTotal.toLocaleString('pl-PL')} PLN`}
           color="#2f6db5"
           icon="wallet"
         />
         <BudgetStatCard
-          title="Opłacone"
+          title={t('budget.statPaid')}
           value={`${stats.paid.toLocaleString()} PLN`}
           color="#35684f"
           icon="check"
         />
         <BudgetStatCard
-          title="Oczekujące"
+          title={t('budget.statPending')}
           value={`${stats.pending.toLocaleString()} PLN`}
           color="#8c5a12"
           icon="clock"
         />
         <BudgetStatCard
-          title="Nieudane"
+          title={t('budget.statFailed')}
           value={`${stats.overdue.toLocaleString()} PLN`}
           color="#c53030"
           icon="alert"
@@ -615,25 +618,25 @@ export function BudgetPage() {
       <section className='page-card' style={{ padding: '1.25rem', display: 'grid', gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Koszty zadań wydarzenia</h2>
+            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{t('budget.tasksCostTitle')}</h2>
             <p className='page-subtitle'>
-              Suma kosztów zadań
+              {t('budget.tasksCostSubtitle')}
             </p>
           </div>
           <div className='status-pill status-pill-info' style={{ padding: '0.7rem 1rem', fontWeight: 800, whiteSpace: 'nowrap' }}>
-            {isCostLoading ? 'Liczenie...' : `${costSummary.totalCost.toLocaleString('pl-PL')} PLN`}
+            {isCostLoading ? t('budget.calculating') : `${costSummary.totalCost.toLocaleString('pl-PL')} PLN`}
           </div>
         </div>
 
         {!activeWeddingId && (
           <div className='surface-panel' style={{ padding: '1rem', color: 'var(--muted)' }}>
-            Wybierz aktywne wydarzenie, aby zobaczyć koszty zadań.
+            {t('budget.noActiveEvent')}
           </div>
         )}
 
         {activeWeddingId && !token && (
           <div className='surface-panel' style={{ padding: '1rem', color: 'var(--muted)' }}>
-            Podsumowanie kosztów zadań jest dostępne po zalogowaniu przez Google.
+            {t('budget.requiresGoogleLogin')}
           </div>
         )}
 
@@ -644,12 +647,12 @@ export function BudgetPage() {
         )}
 
         {isCostLoading && (
-          <div style={{ padding: '1rem', color: 'var(--muted)' }}>Ładowanie kosztów zadań...</div>
+          <div style={{ padding: '1rem', color: 'var(--muted)' }}>{t('budget.loadingTasksCost')}</div>
         )}
 
         {!isCostLoading && activeWeddingId && token && !costError && costSummary.tasks.length === 0 && (
           <div className='surface-panel' style={{ padding: '1rem', color: 'var(--muted)' }}>
-            Brak zadań z wyliczalnym kosztem dla tego wydarzenia.
+            {t('budget.noTasksWithCost')}
           </div>
         )}
 
@@ -659,9 +662,9 @@ export function BudgetPage() {
               <table className='data-table'>
                 <thead>
                   <tr>
-                    <th style={{ padding: '0.8rem 0.75rem', color: 'var(--muted)', fontSize: '0.85rem' }}>Zadanie</th>
-                    <th style={{ padding: '0.8rem 0.75rem', color: 'var(--muted)', fontSize: '0.85rem' }}>Typ</th>
-                    <th style={{ padding: '0.8rem 0.75rem', color: 'var(--muted)', fontSize: '0.85rem', textAlign: 'right' }}>Koszt</th>
+                    <th style={{ padding: '0.8rem 0.75rem', color: 'var(--muted)', fontSize: '0.85rem' }}>{t('budget.tableTask')}</th>
+                    <th style={{ padding: '0.8rem 0.75rem', color: 'var(--muted)', fontSize: '0.85rem' }}>{t('budget.tableType')}</th>
+                    <th style={{ padding: '0.8rem 0.75rem', color: 'var(--muted)', fontSize: '0.85rem', textAlign: 'right' }}>{t('budget.tableCost')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -688,7 +691,7 @@ export function BudgetPage() {
                   <div style={{ height: '8px', borderRadius: '999px', background: 'var(--border)', overflow: 'hidden', marginTop: '0.75rem' }}>
                     <div style={{ height: '100%', width: `${stat.percentage}%`, background: 'var(--info)' }} />
                   </div>
-                  <div style={{ marginTop: '0.4rem', color: 'var(--muted)', fontSize: '0.85rem' }}>{stat.percentage}% kosztów zadań</div>
+                  <div style={{ marginTop: '0.4rem', color: 'var(--muted)', fontSize: '0.85rem' }}>{t('budget.percentOfTasksCost', { percentage: stat.percentage })}</div>
                 </div>
               ))}
             </div>
@@ -704,7 +707,7 @@ export function BudgetPage() {
       }}>
         <section className='page-card' style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Lista płatności</h2>
+            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{t('budget.paymentsListTitle')}</h2>
             <div style={{ display: 'flex', gap: '0.75rem' }}>
               <select
                 value={filter}
@@ -718,13 +721,13 @@ export function BudgetPage() {
                   color: 'var(--text)'
                 }}
               >
-                <option value="all">Wszystkie statusy</option>
-                <option value="SUCCESS">Opłacono</option>
-                <option value="PENDING">Oczekuje</option>
-                <option value="FAILED">Nieudane</option>
-                <option value="CANCELLED">Anulowane</option>
-                <option value="OFFLINE">Offline</option>
-                <option value="OFFLINE_APPROVED">Offline zatwierdzone</option>
+                <option value="all">{t('budget.allStatusesOption')}</option>
+                <option value="SUCCESS">{t('budget.table.statusSuccess')}</option>
+                <option value="PENDING">{t('budget.table.statusPending')}</option>
+                <option value="FAILED">{t('budget.table.statusFailed')}</option>
+                <option value="CANCELLED">{t('budget.table.statusCancelled')}</option>
+                <option value="OFFLINE">{t('budget.table.statusOffline')}</option>
+                <option value="OFFLINE_APPROVED">{t('budget.table.statusOfflineApproved')}</option>
               </select>
               <button style={{
                 width: '32px',
@@ -744,7 +747,7 @@ export function BudgetPage() {
           <div style={{ padding: '0.5rem' }}>
             {isLoading ? (
               <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--muted)' }}>
-                Ładowanie płatności...
+                {t('budget.loadingPayments')}
               </div>
             ) : (
               <PaymentTable
@@ -761,13 +764,13 @@ export function BudgetPage() {
           <section className='page-card' style={{ padding: '1.25rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
               <BudgetIcon name='history' color='var(--primary)' size={20} />
-              <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Historia Zmian i Akceptacji</h2>
+              <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{t('budget.historyTitle')}</h2>
             </div>
             <PaymentHistory history={generatedHistory} />
           </section>
 
           <section className='page-card' style={{ padding: '1.25rem' }}>
-            <h2 style={{ margin: 0, fontSize: '1.1rem', marginBottom: '1.25rem' }}>Podsumowanie Faktur</h2>
+            <h2 style={{ margin: 0, fontSize: '1.1rem', marginBottom: '1.25rem' }}>{t('budget.invoicesSummaryTitle')}</h2>
             <BudgetSummary
               paidCount={stats.paidCount}
               totalCount={stats.totalCount}
@@ -808,10 +811,10 @@ export function BudgetPage() {
               <header style={{ textAlign: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
                 <span style={{ fontSize: '1.8rem' }}>💳</span>
                 <h3 style={{ margin: '0.4rem 0 0', fontFamily: 'Georgia, serif', fontSize: '1.25rem' }}>
-                  Bramka Płatnicza (Sandbox)
+                  {t('budget.gateway.title')}
                 </h3>
                 <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.85rem' }}>
-                  Symulacja bezpiecznej płatności online
+                  {t('budget.gateway.subtitle')}
                 </p>
               </header>
 
@@ -834,35 +837,35 @@ export function BudgetPage() {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontFamily: 'monospace' }}>
                   <div>
-                    <div style={{ opacity: 0.7, fontSize: '0.6rem' }}>WŁAŚCICIEL</div>
+                    <div style={{ opacity: 0.7, fontSize: '0.6rem' }}>{t('budget.gateway.cardOwner')}</div>
                     <div>PARA MŁODA</div>
                   </div>
                   <div>
-                    <div style={{ opacity: 0.7, fontSize: '0.6rem' }}>DATA WAŻN.</div>
+                    <div style={{ opacity: 0.7, fontSize: '0.6rem' }}>{t('budget.gateway.cardExpiryLabel')}</div>
                     <div>12 / 29</div>
                   </div>
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gap: '0.5rem', background: 'var(--surface-soft)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
+               <div style={{ display: 'grid', gap: '0.55rem', background: 'var(--surface-soft)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
                 {(() => {
                   const vendorObj = vendorsList.find(v => v.id === payment.vendorId)
                   const expenseObj = expensesList.find(e => e.id === payment.expenseId)
                   return (
                     <>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                        <span style={{ color: 'var(--muted)' }}>Usługa / Wydatek:</span>
-                        <strong>{expenseObj ? (expenseObj.description || `Wydatek #${payment.expenseId}`) : `Wydatek #${payment.expenseId}`}</strong>
+                        <span style={{ color: 'var(--muted)' }}>{t('budget.gateway.serviceLabel')}</span>
+                        <strong>{expenseObj ? (expenseObj.description || `${t('common.expense')} #${payment.expenseId}`) : `${t('common.expense')} #${payment.expenseId}`}</strong>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                        <span style={{ color: 'var(--muted)' }}>Dla dostawcy:</span>
-                        <strong>{vendorObj ? (vendorObj.companyName || `Dostawca #${payment.vendorId}`) : `Dostawca #${payment.vendorId}`}</strong>
+                        <span style={{ color: 'var(--muted)' }}>{t('budget.gateway.vendorLabel')}</span>
+                        <strong>{vendorObj ? (vendorObj.companyName || `${t('common.vendor')} #${payment.vendorId}`) : `${t('common.vendor')} #${payment.vendorId}`}</strong>
                       </div>
                     </>
                   )
                 })()}
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem', fontWeight: 'bold', borderTop: '1px dashed var(--border)', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
-                  <span>Do zapłaty:</span>
+                  <span>{t('budget.gateway.amountLabel')}</span>
                   <span style={{ color: 'var(--primary)' }}>{payment.amount.toLocaleString()} {payment.currency}</span>
                 </div>
               </div>
@@ -884,7 +887,7 @@ export function BudgetPage() {
                     boxShadow: '0 4px 12px rgba(53, 104, 79, 0.25)'
                   }}
                 >
-                  {isGatewaySimulating ? 'Autoryzacja...' : '✓ Zakończ Płatność Sukcesem'}
+                  {isGatewaySimulating ? t('budget.gateway.authorizing') : t('budget.gateway.successBtn')}
                 </button>
                 
                 <button
@@ -903,7 +906,7 @@ export function BudgetPage() {
                     boxShadow: '0 4px 12px rgba(197, 48, 48, 0.25)'
                   }}
                 >
-                  {isGatewaySimulating ? 'Autoryzacja...' : '✕ Symuluj Błąd (Brak Środków)'}
+                  {isGatewaySimulating ? t('budget.gateway.authorizing') : t('budget.gateway.failBtn')}
                 </button>
 
                 <button
@@ -921,7 +924,7 @@ export function BudgetPage() {
                     cursor: isGatewaySimulating ? 'wait' : 'pointer'
                   }}
                 >
-                  Anuluj i Wróć
+                  {t('budget.gateway.cancelBtn')}
                 </button>
               </div>
             </article>

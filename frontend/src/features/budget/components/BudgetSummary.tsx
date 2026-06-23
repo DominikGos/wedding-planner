@@ -1,4 +1,5 @@
 import { BudgetIcon } from './BudgetIcon'
+import { useTranslation } from 'react-i18next'
 
 type BudgetSummaryProps = {
   paidCount: number
@@ -8,25 +9,26 @@ type BudgetSummaryProps = {
 }
 
 export function BudgetSummary({ paidCount, totalCount, totalRemaining, hasOverdue }: BudgetSummaryProps) {
+  const { t } = useTranslation()
   const percentage = totalCount > 0 ? Math.round((paidCount / totalCount) * 100) : 0
 
   return (
     <div style={{ display: 'grid', gap: '1.5rem' }}>
       <div className='surface-panel' style={{ padding: '1.25rem' }}>
         <div style={{ marginBottom: '1rem' }}>
-          <span style={{ fontSize: '0.9rem', color: 'var(--muted)' }}>Postęp płatności</span>
+          <span style={{ fontSize: '0.9rem', color: 'var(--muted)' }}>{t('budget.summary.progressTitle')}</span>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem', marginTop: '0.25rem' }}>
             <strong style={{ fontSize: '1.5rem', color: 'var(--primary)' }}>{percentage}%</strong>
-            <span style={{ fontSize: '0.9rem', color: 'var(--muted)' }}>ukończono</span>
+            <span style={{ fontSize: '0.9rem', color: 'var(--muted)' }}>{t('budget.summary.completed')}</span>
           </div>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', marginBottom: '0.5rem' }}>
-          <span style={{ color: 'var(--muted)' }}>Opłacone faktury</span>
+          <span style={{ color: 'var(--muted)' }}>{t('budget.summary.paidInvoices')}</span>
           <span style={{ fontWeight: 600 }}>{paidCount}/{totalCount}</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-          <span style={{ color: 'var(--muted)' }}>Pozostało do zapłaty</span>
+          <span style={{ color: 'var(--muted)' }}>{t('budget.summary.remainingToPay')}</span>
           <span style={{ fontWeight: 600 }}>{totalRemaining.toLocaleString()} PLN</span>
         </div>
       </div>
@@ -39,9 +41,9 @@ export function BudgetSummary({ paidCount, totalCount, totalRemaining, hasOverdu
         }}>
           <BudgetIcon name='alert' color='var(--danger)' size={20} />
           <div>
-            <h5 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600 }}>Uwaga: Zaległe płatności</h5>
+            <h5 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600 }}>{t('budget.summary.overdueAlert')}</h5>
             <p style={{ margin: '0.2rem 0 0', fontSize: '0.85rem' }}>
-              Płatności wymagają natychmiastowej uwagi
+              {t('budget.summary.overdueDesc')}
             </p>
           </div>
         </div>

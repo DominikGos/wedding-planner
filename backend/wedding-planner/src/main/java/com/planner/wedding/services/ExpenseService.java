@@ -42,18 +42,21 @@ public class ExpenseService {
                 ensureExpensesForTasks(eventId);
                 List<Task> tasks = taskRepository.findByEventId(eventId);
                 List<Long> taskIds = tasks.stream().map(Task::getId).toList();
-                expenses = taskIds.isEmpty() ? List.of() : taskIds.stream()
-                        .flatMap(id -> expenseRepository.findByTaskId(id).stream())
-                        .toList();
+                expenses = taskIds.isEmpty() ? List.of()
+                        : taskIds.stream()
+                                .flatMap(id -> expenseRepository.findByTaskId(id).stream())
+                                .toList();
             } else {
                 List<Long> eventIds = eventService.findAll(user).stream().map(Event::getId).toList();
-                List<Long> taskIds = eventIds.isEmpty() ? List.of() : eventIds.stream()
-                        .flatMap(id -> taskRepository.findByEventId(id).stream())
-                        .map(Task::getId)
-                        .toList();
-                expenses = taskIds.isEmpty() ? List.of() : taskIds.stream()
-                        .flatMap(id -> expenseRepository.findByTaskId(id).stream())
-                        .toList();
+                List<Long> taskIds = eventIds.isEmpty() ? List.of()
+                        : eventIds.stream()
+                                .flatMap(id -> taskRepository.findByEventId(id).stream())
+                                .map(Task::getId)
+                                .toList();
+                expenses = taskIds.isEmpty() ? List.of()
+                        : taskIds.stream()
+                                .flatMap(id -> expenseRepository.findByTaskId(id).stream())
+                                .toList();
             }
         } else {
             // permitAll / unauthenticated local testing
@@ -63,9 +66,10 @@ public class ExpenseService {
                 ensureExpensesForTasks(eventId);
                 List<Task> tasks = taskRepository.findByEventId(eventId);
                 List<Long> taskIds = tasks.stream().map(Task::getId).toList();
-                expenses = taskIds.isEmpty() ? List.of() : taskIds.stream()
-                        .flatMap(id -> expenseRepository.findByTaskId(id).stream())
-                        .toList();
+                expenses = taskIds.isEmpty() ? List.of()
+                        : taskIds.stream()
+                                .flatMap(id -> expenseRepository.findByTaskId(id).stream())
+                                .toList();
             } else {
                 expenses = expenseRepository.findAll();
             }
@@ -169,9 +173,9 @@ public class ExpenseService {
                     expenseRepository.save(expense);
                 } else {
                     Expense expense = existing.get(0);
-                    if (expense.getPayment() == null || 
-                        (expense.getPayment().getStatus() != PaymentStatus.SUCCESS && 
-                         expense.getPayment().getStatus() != PaymentStatus.OFFLINE_APPROVED)) {
+                    if (expense.getPayment() == null ||
+                            (expense.getPayment().getStatus() != PaymentStatus.SUCCESS &&
+                                    expense.getPayment().getStatus() != PaymentStatus.OFFLINE_APPROVED)) {
                         expense.setAmount(cost);
                         expense.setDescription(task.getName());
                         expenseRepository.save(expense);
@@ -182,7 +186,8 @@ public class ExpenseService {
     }
 
     private BigDecimal calculateTaskCost(Task task) {
-        if (task.getType() == null) return BigDecimal.ZERO;
+        if (task.getType() == null)
+            return BigDecimal.ZERO;
         switch (task.getType()) {
             case CATERING:
                 if (task.getPricePerGuest() != null && task.getNumberOfGuests() != null) {
