@@ -114,7 +114,7 @@ export function BudgetPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [token, activeWeddingId])
+  }, [token, activeWeddingId, t])
 
   const loadDropdownData = useCallback(async () => {
     if (!token) return
@@ -149,7 +149,7 @@ export function BudgetPage() {
     } finally {
       setIsCostLoading(false)
     }
-  }, [activeWeddingId, token])
+  }, [activeWeddingId, token, t])
 
   useEffect(() => {
     queueMicrotask(() => void loadPayments())
@@ -195,7 +195,7 @@ export function BudgetPage() {
         percentage: costSummary.totalCost > 0 ? Math.round((amount / costSummary.totalCost) * 100) : 0,
       }))
       .sort((a, b) => b.amount - a.amount)
-  }, [costSummary])
+  }, [costSummary, taskTypeLabels])
 
   const filteredPayments = useMemo(() => {
     const list = filter === 'all' ? payments : payments.filter(payment => payment.status === filter)
@@ -387,7 +387,11 @@ export function BudgetPage() {
   const handleCreatePayment = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setIsCreatingPayment(true)
-    setError(null)
+    if (!createPaymentForm.expenseId || !createPaymentForm.vendorId || !createPaymentForm.amount) {
+      setError(t('budget.fillAllRequiredFields'))
+      setIsCreatingPayment(false)
+      return
+    }
 
     try {
       await createPayment({
@@ -462,123 +466,141 @@ export function BudgetPage() {
             <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{t('budget.addPayment')}</h2>
           </div>
 
-          <form
-            onSubmit={handleCreatePayment}
-            style={{
-              display: 'grid',
-              gap: '1.25rem',
-            }}
-          >
-            {/* Row 1: Wide selectors */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-              gap: '1rem',
-            }}>
-              <label style={{ display: 'grid', gap: '0.4rem', fontWeight: 600 }}>
-                {t('budget.formExpense')}
-                <select
-                  required
-                  value={createPaymentForm.expenseId}
-                  onChange={(event) => {
-                    const selectedId = event.target.value
-                    const exp = unpaidExpenses.find(e => e.id === Number(selectedId))
-                    setCreatePaymentForm((form) => ({
-                      ...form,
-                      expenseId: selectedId,
-                      amount: exp ? String(exp.amount) : form.amount,
-                    }))
-                  }}
-                  style={{ padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
+          {unpaidExpenses.length === 0 || vendorsList.length === 0 ? (
+            <div style={{ display: 'grid', gap: '1rem' }}>
+              <div className="app-alert app-alert-warning" style={{ margin: 0, padding: '1rem', borderRadius: '8px', background: 'var(--danger-soft)', color: 'var(--danger)', border: '1px solid var(--danger)' }}>
+                {t('budget.noUnpaidExpensesOrVendors')}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button
+                  type='button'
+                  onClick={() => setIsCreateFormOpen(false)}
+                  className='button-secondary'
+                  style={{ minWidth: '100px' }}
                 >
-                  <option value="">{t('budget.formSelectExpense')}</option>
-                  {unpaidExpenses.map(exp => (
-                    <option key={exp.id} value={exp.id}>
-                      {exp.description} ({exp.amount} PLN)
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  {t('budget.formCancelBtn')}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <form
+              onSubmit={handleCreatePayment}
+              style={{
+                display: 'grid',
+                gap: '1.25rem',
+              }}
+            >
+              {/* Row 1: Wide selectors */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                gap: '1rem',
+              }}>
+                <label style={{ display: 'grid', gap: '0.4rem', fontWeight: 600 }}>
+                  {t('budget.formExpense')}
+                  <select
+                    required
+                    value={createPaymentForm.expenseId}
+                    onChange={(event) => {
+                      const selectedId = event.target.value
+                      const exp = unpaidExpenses.find(e => e.id === Number(selectedId))
+                      setCreatePaymentForm((form) => ({
+                        ...form,
+                        expenseId: selectedId,
+                        amount: exp ? String(exp.amount) : form.amount,
+                      }))
+                    }}
+                    style={{ padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
+                  >
+                    <option value="">{t('budget.formSelectExpense')}</option>
+                    {unpaidExpenses.map(exp => (
+                      <option key={exp.id} value={exp.id}>
+                        {exp.description} ({exp.amount} PLN)
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-              <label style={{ display: 'grid', gap: '0.4rem', fontWeight: 600 }}>
-                {t('budget.formVendor')}
-                <select
-                  required
-                  value={createPaymentForm.vendorId}
-                  onChange={(event) => setCreatePaymentForm((form) => ({ ...form, vendorId: event.target.value }))}
-                  style={{ padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
+                <label style={{ display: 'grid', gap: '0.4rem', fontWeight: 600 }}>
+                  {t('budget.formVendor')}
+                  <select
+                    required
+                    value={createPaymentForm.vendorId}
+                    onChange={(event) => setCreatePaymentForm((form) => ({ ...form, vendorId: event.target.value }))}
+                    style={{ padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
+                  >
+                    <option value="">{t('budget.formSelectVendor')}</option>
+                    {vendorsList.map(v => (
+                      <option key={v.id} value={v.id}>
+                        {v.companyName || `${t('common.vendor')} #${v.id}`} ({v.serviceType})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              {/* Row 2: Short inputs */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                gap: '1rem',
+              }}>
+                <label style={{ display: 'grid', gap: '0.4rem', fontWeight: 600 }}>
+                  {t('budget.formAmount')}
+                  <input
+                    type='number'
+                    min='0.01'
+                    step='0.01'
+                    required
+                    value={createPaymentForm.amount}
+                    onChange={(event) => setCreatePaymentForm((form) => ({ ...form, amount: event.target.value }))}
+                    style={{ padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
+                  />
+                </label>
+
+                <label style={{ display: 'grid', gap: '0.4rem', fontWeight: 600 }}>
+                  {t('budget.formMethod')}
+                  <select
+                    value={createPaymentForm.method}
+                    onChange={(event) => setCreatePaymentForm((form) => ({ ...form, method: event.target.value as PaymentMethod }))}
+                    style={{ padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
+                  >
+                    <option value='ONLINE'>{t('budget.formMethodOnline')}</option>
+                    <option value='OFFLINE'>{t('budget.formMethodOffline')}</option>
+                  </select>
+                </label>
+
+                <label style={{ display: 'grid', gap: '0.4rem', fontWeight: 600 }}>
+                  {t('budget.formCurrency')}
+                  <input
+                    value={createPaymentForm.currency}
+                    onChange={(event) => setCreatePaymentForm((form) => ({ ...form, currency: event.target.value }))}
+                    style={{ padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
+                  />
+                </label>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', borderTop: '1px solid var(--border)', paddingTop: '1.25rem', marginTop: '0.5rem' }}>
+                <button
+                  type='button'
+                  onClick={() => setIsCreateFormOpen(false)}
+                  disabled={isCreatingPayment}
+                  className='button-secondary'
+                  style={{ cursor: isCreatingPayment ? 'not-allowed' : 'pointer', minWidth: '100px' }}
                 >
-                  <option value="">{t('budget.formSelectVendor')}</option>
-                  {vendorsList.map(v => (
-                    <option key={v.id} value={v.id}>
-                      {v.companyName || `${t('common.vendor')} #${v.id}`} ({v.serviceType})
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            {/* Row 2: Short inputs */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-              gap: '1rem',
-            }}>
-              <label style={{ display: 'grid', gap: '0.4rem', fontWeight: 600 }}>
-                {t('budget.formAmount')}
-                <input
-                  type='number'
-                  min='0.01'
-                  step='0.01'
-                  required
-                  value={createPaymentForm.amount}
-                  onChange={(event) => setCreatePaymentForm((form) => ({ ...form, amount: event.target.value }))}
-                  style={{ padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
-                />
-              </label>
-
-              <label style={{ display: 'grid', gap: '0.4rem', fontWeight: 600 }}>
-                {t('budget.formMethod')}
-                <select
-                  value={createPaymentForm.method}
-                  onChange={(event) => setCreatePaymentForm((form) => ({ ...form, method: event.target.value as PaymentMethod }))}
-                  style={{ padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
+                  {t('budget.formCancelBtn')}
+                </button>
+                <button
+                  type='submit'
+                  disabled={isCreatingPayment}
+                  className='button-primary'
+                  style={{ cursor: isCreatingPayment ? 'not-allowed' : 'pointer', opacity: isCreatingPayment ? 0.75 : 1, minWidth: '130px' }}
                 >
-                  <option value='ONLINE'>{t('budget.formMethodOnline')}</option>
-                  <option value='OFFLINE'>{t('budget.formMethodOffline')}</option>
-                </select>
-              </label>
-
-              <label style={{ display: 'grid', gap: '0.4rem', fontWeight: 600 }}>
-                {t('budget.formCurrency')}
-                <input
-                  value={createPaymentForm.currency}
-                  onChange={(event) => setCreatePaymentForm((form) => ({ ...form, currency: event.target.value }))}
-                  style={{ padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
-                />
-              </label>
-            </div>
-
-            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', borderTop: '1px solid var(--border)', paddingTop: '1.25rem', marginTop: '0.5rem' }}>
-              <button
-                type='button'
-                onClick={() => setIsCreateFormOpen(false)}
-                disabled={isCreatingPayment}
-                className='button-secondary'
-                style={{ cursor: isCreatingPayment ? 'not-allowed' : 'pointer', minWidth: '100px' }}
-              >
-                {t('budget.formCancelBtn')}
-              </button>
-              <button
-                type='submit'
-                disabled={isCreatingPayment}
-                className='button-primary'
-                style={{ cursor: isCreatingPayment ? 'not-allowed' : 'pointer', opacity: isCreatingPayment ? 0.75 : 1, minWidth: '130px' }}
-              >
-                {isCreatingPayment ? t('budget.formSubmitting') : t('budget.formSaveBtn')}
-              </button>
-            </div>
-          </form>
+                  {isCreatingPayment ? t('budget.formSubmitting') : t('budget.formSaveBtn')}
+                </button>
+              </div>
+            </form>
+          )}
         </section>
       )}
 

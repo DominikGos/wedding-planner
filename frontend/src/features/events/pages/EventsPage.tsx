@@ -82,13 +82,16 @@ export function EventsPage() {
       .finally(() => setLoadedWeddingId(activeWeddingId))
   }, [activeWeddingId, dispatch, token, t])
 
-  const today = new Intl.DateTimeFormat('en-CA').format(new Date())
-  const summary = {
-    all: tasks.length,
-    upcoming: tasks.filter(task => task.status !== 'COMPLETED' && task.dueDate && task.dueDate.split('T')[0] >= today).length,
-    withoutDate: tasks.filter(task => !task.dueDate).length,
-    completed: tasks.filter(task => task.status === 'COMPLETED').length,
-  }
+  const summary = useMemo(() => {
+    const today = new Intl.DateTimeFormat('en-CA').format(new Date())
+    return {
+      all: tasks.length,
+      upcoming: tasks.filter(task => task.status !== 'COMPLETED' && task.dueDate && task.dueDate.split('T')[0] >= today).length,
+      withoutDate: tasks.filter(task => !task.dueDate).length,
+      completed: tasks.filter(task => task.status === 'COMPLETED').length,
+    }
+  }, [tasks])
+
   const summaryCards = useMemo(() => [
     { label: t('schedule.statAll'), value: summary.all, color: '#db7e45' },
     { label: t('schedule.statUpcoming'), value: summary.upcoming, color: '#2f6db5' },

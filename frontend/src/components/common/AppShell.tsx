@@ -15,9 +15,6 @@ export function AppShell() {
   const { pathname } = useLocation()
   const { user, token, activeWeddingId, weddings } = useSelector((state: RootState) => state.auth)
 
-  if ((!user || !token) && pathname !== '/') {
-    return <Navigate to="/login?tab=login" replace />
-  }
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [theme, setTheme] = useState(() => (
@@ -87,6 +84,10 @@ export function AppShell() {
       active = false
     }
   }, [dispatch, navigate, token, user])
+
+  if ((!user || !token) && pathname !== '/') {
+    return <Navigate to="/login?tab=login" replace />
+  }
 
   const handleLogout = () => {
     dispatch(logout())

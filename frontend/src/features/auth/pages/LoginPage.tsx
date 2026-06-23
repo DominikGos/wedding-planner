@@ -89,7 +89,7 @@ export function LoginPage() {
       }))
 
       navigate('/')
-    } catch (err: any) {
+    } catch {
       setError(t('loginPageErrors.loginFailed'))
     } finally {
       setIsLoading(false)
@@ -133,7 +133,7 @@ export function LoginPage() {
       }))
 
       navigate('/events/new')
-    } catch (err: any) {
+    } catch {
       setError(t('loginPageErrors.registerFailed'))
     } finally {
       setIsLoading(false)
@@ -149,34 +149,11 @@ export function LoginPage() {
   return (
     <div data-theme={theme} style={{ minHeight: '100vh', background: 'radial-gradient(circle at top right, var(--bg-accent), var(--bg))', padding: '2rem 1rem' }}>
       {/* Switcher Controls */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', maxWidth: '480px', margin: '0 auto 1.5rem auto' }}>
-        {/* Theme button */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '480px', margin: '0 auto 1.5rem auto' }}>
+        {/* Back to Home Button */}
         <button
           type="button"
-          onClick={toggleTheme}
-          style={{
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: '10px',
-            width: '36px',
-            height: '36px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '1rem',
-            color: 'var(--text)',
-            transition: 'all 0.2s ease',
-          }}
-          title="Przełącz motyw"
-        >
-          {theme === 'dark' ? '☀️' : '🌙'}
-        </button>
-
-        {/* Language button */}
-        <button
-          type="button"
-          onClick={toggleLanguage}
+          onClick={() => navigate('/')}
           style={{
             background: 'var(--surface)',
             border: '1px solid var(--border)',
@@ -187,16 +164,68 @@ export function LoginPage() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '0.3rem',
+            gap: '0.35rem',
             fontSize: '0.85rem',
             fontWeight: 600,
             color: 'var(--text)',
             transition: 'all 0.2s ease',
           }}
-          title="Zmień język / Change language"
+          title={t('loginPage.backToHome')}
         >
-          {i18n.language === 'pl' ? '🇬🇧 EN' : '🇵🇱 PL'}
+          <span>←</span>
+          <span>{t('loginPage.backToHome')}</span>
         </button>
+
+        {/* Theme and Language switchers */}
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          {/* Theme button */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: '10px',
+              width: '36px',
+              height: '36px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1rem',
+              color: 'var(--text)',
+              transition: 'all 0.2s ease',
+            }}
+            title="Przełącz motyw"
+          >
+            {theme === 'dark' ? '☀️' : '🌙'}
+          </button>
+
+          {/* Language button */}
+          <button
+            type="button"
+            onClick={toggleLanguage}
+            style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: '10px',
+              padding: '0 0.75rem',
+              height: '36px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.3rem',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              color: 'var(--text)',
+              transition: 'all 0.2s ease',
+            }}
+            title="Zmień język / Change language"
+          >
+            {i18n.language === 'pl' ? '🇬🇧 EN' : '🇵🇱 PL'}
+          </button>
+        </div>
       </div>
 
       <div className='public-page' style={{ maxWidth: '480px', margin: '0 auto', padding: '1rem' }}>

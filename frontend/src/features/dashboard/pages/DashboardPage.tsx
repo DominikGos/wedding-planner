@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+/* eslint-disable react-hooks/preserve-manual-memoization */
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
 import { useTranslation } from 'react-i18next'
@@ -110,21 +111,21 @@ export function DashboardPage() {
     }
   }, [activeWeddingId, token, t])
 
-  function getTaskTypeName(type: string) {
+  const getTaskTypeName = useCallback((type: string) => {
     if (type === 'CATERING') return t('dashboard.catering')
     if (type === 'DECORATION') return t('dashboard.decoration')
     if (type === 'ENTERTAINMENT') return t('dashboard.entertainment')
     return t('dashboard.other')
-  }
+  }, [t])
 
-  function getTimelineStatus(task: TaskResponse) {
+  const getTimelineStatus = useCallback((task: TaskResponse) => {
     if (task.status === 'COMPLETED') return t('dashboard.done')
     if (task.priority != null && task.priority <= 1) return t('dashboard.important')
     if (task.status === 'IN_PROGRESS') return t('dashboard.inProgress')
     return t('dashboard.planned')
-  }
+  }, [t])
 
-  function getTaskDateParts(task: TaskResponse) {
+  const getTaskDateParts = useCallback((task: TaskResponse) => {
     if (!task.dueDate) {
       return { date: t('dashboard.noDeadline'), time: '-' }
     }
@@ -133,7 +134,7 @@ export function DashboardPage() {
       date: date || t('dashboard.noDeadline'),
       time: rawTime?.slice(0, 5) || '-',
     }
-  }
+  }, [t])
 
   const budgetItems = useMemo<BudgetItem[]>(() => {
     const costTasks = costSummary?.tasks ?? []
@@ -151,7 +152,7 @@ export function DashboardPage() {
         amount: formatCurrency(amount),
         color: budgetColors[index % budgetColors.length],
       }))
-  }, [costSummary, t])
+  }, [costSummary, getTaskTypeName])
 
   const budgetGradient = useMemo(() => {
     const costTasks = costSummary?.tasks ?? []
@@ -186,9 +187,11 @@ export function DashboardPage() {
     },
     { confirmed: 0, waiting: 0, rejected: 0 },
   )
+  const { confirmed: confirmedCount, waiting: waitingCount, rejected: rejectedCount } = guestBuckets
   const allGuests = dashboardGuests.length
-  const daysUntilWedding = getDaysUntil(activeWedding?.date ?? '')
-  const guestConfirmationRate = allGuests > 0 ? Math.round((guestBuckets.confirmed / allGuests) * 100) : 0
+  const activeWeddingDate = activeWedding?.date
+  const daysUntilWedding = getDaysUntil(activeWeddingDate ?? '')
+  const guestConfirmationRate = allGuests > 0 ? Math.round((confirmedCount / allGuests) * 100) : 0
   const taskProgressRate = dashboardTasks.length > 0 ? Math.round((completedTasks / dashboardTasks.length) * 100) : 0
 
   const topCards = useMemo<TopCardItem[]>(() => [
@@ -203,7 +206,7 @@ export function DashboardPage() {
     {
       id: 'guests',
       title: t('dashboard.confirmedGuests'),
-      value: `${guestBuckets.confirmed}/${allGuests}`,
+      value: `${confirmedCount}/${allGuests}`,
       note: `${guestConfirmationRate}${t('dashboard.confirmations')}`,
       color: '#0ea44b',
       icon: 'users',
@@ -220,11 +223,11 @@ export function DashboardPage() {
       id: 'days',
       title: t('dashboard.daysToWedding'),
       value: daysUntilWedding == null ? '-' : String(daysUntilWedding),
-      note: activeWedding?.date || t('dashboard.noEventDate'),
+      note: activeWeddingDate || t('dashboard.noEventDate'),
       color: '#ff3d6c',
       icon: 'calendar',
     },
-  ], [activeWedding?.date, allGuests, completedTasks, dashboardTasks.length, daysUntilWedding, guestBuckets.confirmed, guestConfirmationRate, taskProgressRate, visibleTotalCost, t])
+  ], [activeWeddingDate, allGuests, completedTasks, dashboardTasks.length, daysUntilWedding, confirmedCount, guestConfirmationRate, taskProgressRate, visibleTotalCost, t])
 
   const timelineEvents = useMemo<DashboardEvent[]>(() => {
     return [...dashboardTasks]
@@ -241,14 +244,14 @@ export function DashboardPage() {
           status: getTimelineStatus(task),
         }
       })
-  }, [dashboardTasks, t])
+  }, [dashboardTasks, getTaskDateParts, getTimelineStatus])
 
   const guestStats = useMemo<GuestStat[]>(() => [
-    { id: 'confirmed', value: String(guestBuckets.confirmed), label: t('dashboard.guestConfirmed'), color: '#0ea44b', background: '#eefbf2', icon: 'check-circle' },
-    { id: 'waiting', value: String(guestBuckets.waiting), label: t('dashboard.guestWaiting'), color: '#ef8a00', background: 'var(--surface)', icon: 'clock' },
-    { id: 'rejected', value: String(guestBuckets.rejected), label: t('dashboard.guestRejected'), color: '#eb1d1d', background: 'var(--surface)', icon: 'alert' },
+    { id: 'confirmed', value: String(confirmedCount), label: t('dashboard.guestConfirmed'), color: '#0ea44b', background: '#eefbf2', icon: 'check-circle' },
+    { id: 'waiting', value: String(waitingCount), label: t('dashboard.guestWaiting'), color: '#ef8a00', background: 'var(--surface)', icon: 'clock' },
+    { id: 'rejected', value: String(rejectedCount), label: t('dashboard.guestRejected'), color: '#eb1d1d', background: 'var(--surface)', icon: 'alert' },
     { id: 'all', value: String(allGuests), label: t('dashboard.guestAll'), color: 'var(--primary)', background: 'var(--surface)', icon: 'group' },
-  ], [allGuests, guestBuckets.confirmed, guestBuckets.rejected, guestBuckets.waiting, t])
+  ], [allGuests, confirmedCount, rejectedCount, waitingCount, t])
 
   // ----------------------------------------------------
   // CASE 1: NOT LOGGED IN - PUBLIC LANDING PAGE

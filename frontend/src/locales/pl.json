@@ -111,8 +111,8 @@
     "loadCostsError": "Nie udało się pobrać podsumowania kosztów zadań dla aktywnego wydarzenia.",
     "createError": "Nie udało się utworzyć płatności.",
     "formTitle": "Nowa Płatność",
-    "formExpense": "Wydatek (opcjonalnie)",
-    "formVendor": "Dostawca (opcjonalnie)",
+    "formExpense": "Wydatek",
+    "formVendor": "Dostawca",
     "formAmount": "Kwota (PLN)",
     "formMethod": "Metoda płatności",
     "formMethodOnline": "Online (symulacja)",
@@ -126,6 +126,8 @@
     "formSelectVendor": "Wybierz dostawcę...",
     "formCurrency": "Waluta",
     "formSaveBtn": "Zapisz płatność",
+    "fillAllRequiredFields": "Proszę wybrać wydatek oraz dostawcę i wpisać kwotę.",
+    "noUnpaidExpensesOrVendors": "Aby dodać nową płatność, musisz najpierw posiadać przynajmniej jednego dostawcę oraz nieopłacony wydatek zadania.",
     "statTasksCost": "Koszt zadań",
     "tasksCostTitle": "Koszty zadań wydarzenia",
     "tasksCostSubtitle": "Suma kosztów zadań",
@@ -227,6 +229,7 @@
     "register": "Zarejestruj się"
   },
   "loginPage": {
+    "backToHome": "Wróć do strony głównej",
     "title": "Wedding Planner",
     "subtitle": "Twój osobisty planer ślubu i wesela klasy Premium.",
     "loginTab": "Zaloguj się",

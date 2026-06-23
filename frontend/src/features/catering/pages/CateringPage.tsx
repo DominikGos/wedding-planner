@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import type { RootState } from '../../../store'
 import { getEvent, updateEvent, type EventResponse } from '../../../api/eventApi'
 
-import { initialMenuSections, emptyMenuSections } from '../data/cateringMock'
+import { emptyMenuSections } from '../data/cateringMock'
 import type { CateringMenuSectionData, CateringMenuItem } from '../data/cateringMock'
 import type { Vendor } from '../../vendors/data/vendorsMock'
 

@@ -111,8 +111,8 @@
     "loadCostsError": "Failed to fetch task cost summary for the active event.",
     "createError": "Failed to create payment.",
     "formTitle": "New Payment",
-    "formExpense": "Expense (optional)",
-    "formVendor": "Vendor (optional)",
+    "formExpense": "Expense",
+    "formVendor": "Vendor",
     "formAmount": "Amount (PLN)",
     "formMethod": "Payment Method",
     "formMethodOnline": "Online (simulation)",
@@ -126,6 +126,8 @@
     "formSelectVendor": "Select vendor...",
     "formCurrency": "Currency",
     "formSaveBtn": "Save payment",
+    "fillAllRequiredFields": "Please select an expense and a vendor, and enter the amount.",
+    "noUnpaidExpensesOrVendors": "To add a new payment, you must first have at least one vendor and an unpaid task expense.",
     "statTasksCost": "Task cost",
     "tasksCostTitle": "Event Task Costs",
     "tasksCostSubtitle": "Total sum of task costs",
@@ -227,6 +229,7 @@
     "register": "Register"
   },
   "loginPage": {
+    "backToHome": "Back to home page",
     "title": "Wedding Planner",
     "subtitle": "Your personal Premium wedding planner.",
     "loginTab": "Log In",
