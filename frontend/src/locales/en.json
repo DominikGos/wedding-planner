@@ -660,6 +660,7 @@
     "dishNameRequired": "Please provide the dish name and price!",
     "invalidDishPrice": "Price must be a valid positive number!",
     "dishAddedSuccess": "Successfully added dish \"{{name}}\" to the category!",
+    "removeDishBtn": "Remove",
     "costPerPerson": "COST PER PERSON",
     "selectedDishes": "Selected dishes: {{count}}",
     "costEstimate": "COST ESTIMATE",

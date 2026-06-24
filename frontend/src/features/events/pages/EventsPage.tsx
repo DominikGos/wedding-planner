@@ -197,9 +197,9 @@ export function EventsPage() {
       <div className='schedule-layout'>
         <article className='page-card' style={{ padding: '1.2rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
-            <button type='button' onClick={() => setCalendarDate(new Date(calendarYear, calendarMonth - 1, 1))} className='button-secondary' style={{ minHeight: '38px', padding: '0.45rem 0.7rem' }}>{t('schedule.prev')}</button>
-            <strong style={{ textTransform: 'capitalize' }}>{monthLabel}</strong>
-            <button type='button' onClick={() => setCalendarDate(new Date(calendarYear, calendarMonth + 1, 1))} className='button-secondary' style={{ minHeight: '38px', padding: '0.45rem 0.7rem' }}>{t('schedule.next')}</button>
+            <button type='button' onClick={() => setCalendarDate(new Date(calendarYear, calendarMonth - 1, 1))} className='button-secondary' style={{ minHeight: '38px', padding: '0.45rem 0.7rem', whiteSpace: 'nowrap', minWidth: '104px', flexShrink: 0 }}>{t('schedule.prev')}</button>
+            <strong style={{ textTransform: 'capitalize', textAlign: 'center', minWidth: 0 }}>{monthLabel}</strong>
+            <button type='button' onClick={() => setCalendarDate(new Date(calendarYear, calendarMonth + 1, 1))} className='button-secondary' style={{ minHeight: '38px', padding: '0.45rem 0.7rem', whiteSpace: 'nowrap', minWidth: '104px', flexShrink: 0 }}>{t('schedule.next')}</button>
           </div>
 
           <div style={{ marginTop: '1rem', display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.35rem', textAlign: 'center' }}>

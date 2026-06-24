@@ -660,6 +660,7 @@
     "dishNameRequired": "Proszę podać nazwę potrawy oraz cenę!",
     "invalidDishPrice": "Cena musi być poprawną liczbą dodatnią!",
     "dishAddedSuccess": "Pomyślnie dodano potrawę \"{{name}}\" do kategorii!",
+    "removeDishBtn": "Usuń",
     "costPerPerson": "CENA ZA OSOBĘ",
     "selectedDishes": "Wybranych dań: {{count}}",
     "costEstimate": "SZACUNKI KOSZTÓW",
