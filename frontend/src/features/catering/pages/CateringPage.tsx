@@ -172,6 +172,19 @@ export function CateringPage() {
     )
   }
 
+  const removeMenuItem = (sectionId: string, itemId: string) => {
+    setMenuSections(current =>
+      current.map(section =>
+        section.id !== sectionId
+          ? section
+          : {
+              ...section,
+              items: section.items.filter(item => item.id !== itemId)
+            }
+      )
+    )
+  }
+
   // Adding Custom Dish
   const handleAddDish = (e: React.FormEvent) => {
     e.preventDefault()
@@ -367,7 +380,29 @@ export function CateringPage() {
                           />
                           <span style={{ fontWeight: item.checked ? 600 : 500, color: 'var(--text)', fontSize: '0.95rem' }}>{item.name}</span>
                         </div>
-                        <strong style={{ color: 'var(--primary)', fontSize: '1rem' }}>{item.price} PLN</strong>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
+                          <strong style={{ color: 'var(--primary)', fontSize: '1rem', whiteSpace: 'nowrap' }}>{item.price} PLN</strong>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.preventDefault()
+                              removeMenuItem(section.id, item.id)
+                            }}
+                            style={{
+                              padding: '0.3rem 0.55rem',
+                              borderRadius: '8px',
+                              border: '1px solid var(--border)',
+                              background: 'var(--surface)',
+                              color: 'var(--danger)',
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            {t('catering.removeDishBtn')}
+                          </button>
+                        </div>
                       </label>
                     ))}
                   </div>

@@ -18,25 +18,21 @@ public class EventController {
         this.eventService = eventService;
     }
 
-    // READ ALL
     @GetMapping
     public List<Event> getAllEvents(@AuthenticationPrincipal User user) {
         return eventService.findAll(user);
     }
 
-    // READ ONE
     @GetMapping("/{id}")
     public Event getEvent(@PathVariable Long id, @AuthenticationPrincipal User user) {
         return eventService.findById(id, user);
     }
 
-    // CREATE
     @PostMapping
     public Event createEvent(@RequestBody Event event, @AuthenticationPrincipal User user) {
         return eventService.create(event, user);
     }
 
-    // UPDATE
     @PutMapping("/{id}")
     public Event updateEvent(
             @PathVariable Long id,
@@ -46,7 +42,6 @@ public class EventController {
         return eventService.update(id, event, user);
     }
 
-    // DELETE
     @DeleteMapping("/{id}")
     public void deleteEvent(@PathVariable Long id, @AuthenticationPrincipal User user) {
         eventService.delete(id, user);
