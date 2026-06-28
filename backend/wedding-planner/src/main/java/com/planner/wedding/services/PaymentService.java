@@ -31,20 +31,41 @@ public class PaymentService {
         Expense expense = expenseRepository.findById(request.getExpenseId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Expense not found"));
 
+        Payment payment = expense.getPayment();
+        PaymentMethod paymentMethod = expense.getTask() != null
+                && expense.getTask().getPaymentMethod() != null
+                ? expense.getTask().getPaymentMethod()
+                : null;
+        if (paymentMethod == null
+                && payment != null
+                && payment.getStatus() == PaymentStatus.CANCELLED
+                && payment.getMethod() != null) {
+            paymentMethod = payment.getMethod();
+        }
+        if (paymentMethod == null) {
+            paymentMethod = PaymentMethod.ONLINE;
+        }
+
+        if (payment != null && payment.getStatus() != PaymentStatus.CANCELLED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Expense already has a payment");
+        }
+
         Vendor vendor = vendorRepository.findById(request.getVendorId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vendor not found"));
 
-        Payment payment = new Payment();
+        if (payment == null) {
+            payment = new Payment();
+        }
         payment.setExpense(expense);
         payment.setVendor(vendor);
         payment.setAmount(request.getAmount());
-        payment.setMethod(request.getMethod());
+        payment.setMethod(paymentMethod);
         payment.setCurrency(resolveCurrency(request.getCurrency()));
         payment.setFailureReason(null);
         payment.setApprovedAt(null);
         payment.setApprovedBy(null);
 
-        if (request.getMethod() == PaymentMethod.ONLINE) {
+        if (paymentMethod == PaymentMethod.ONLINE) {
             payment.setStatus(PaymentStatus.PENDING);
             payment.setGatewayPaymentId(
                     paymentGatewayClient.createSandboxPayment(
@@ -217,9 +238,6 @@ public class PaymentService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Amount must be greater than 0");
         }
 
-        if (request.getMethod() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payment method is required");
-        }
     }
 
     private Payment findPayment(Long id) {

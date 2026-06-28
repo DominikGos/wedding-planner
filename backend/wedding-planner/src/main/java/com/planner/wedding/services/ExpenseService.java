@@ -4,6 +4,7 @@ import com.planner.wedding.dto.CreateExpenseRequest;
 import com.planner.wedding.dto.ExpenseResponse;
 import com.planner.wedding.entities.Event;
 import com.planner.wedding.entities.Expense;
+import com.planner.wedding.entities.PaymentMethod;
 import com.planner.wedding.entities.Task;
 import com.planner.wedding.entities.User;
 import com.planner.wedding.entities.TaskType;
@@ -152,7 +153,20 @@ public class ExpenseService {
                 .date(expense.getDate())
                 .status(expense.getStatus())
                 .paymentId(expense.getPayment() != null ? expense.getPayment().getId() : null)
+                .paymentMethod(resolvePaymentMethod(expense))
                 .build();
+    }
+
+    private PaymentMethod resolvePaymentMethod(Expense expense) {
+        if (expense.getTask() != null && expense.getTask().getPaymentMethod() != null) {
+            return expense.getTask().getPaymentMethod();
+        }
+        if (expense.getPayment() != null
+                && expense.getPayment().getStatus() == PaymentStatus.CANCELLED
+                && expense.getPayment().getMethod() != null) {
+            return expense.getPayment().getMethod();
+        }
+        return PaymentMethod.ONLINE;
     }
 
     private void ensureExpensesForTasks(Long eventId) {

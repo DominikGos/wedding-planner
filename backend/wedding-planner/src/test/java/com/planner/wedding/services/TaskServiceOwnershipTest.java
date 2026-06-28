@@ -1,5 +1,8 @@
 package com.planner.wedding.services;
 
+import com.planner.wedding.entities.Expense;
+import com.planner.wedding.entities.Payment;
+import com.planner.wedding.entities.PaymentStatus;
 import com.planner.wedding.entities.Task;
 import com.planner.wedding.entities.User;
 import com.planner.wedding.repositories.ExpenseRepository;
@@ -13,6 +16,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -40,11 +44,13 @@ class TaskServiceOwnershipTest {
     private EventService eventService;
 
     @Test
-    void refusesToDeleteTaskWithExpenses() {
+    void refusesToDeleteTaskWithPaymentHistory() {
         User user = User.builder().id(7L).build();
         Task task = Task.builder().id(3L).build();
+        Payment payment = Payment.builder().status(PaymentStatus.CANCELLED).build();
+        Expense expense = Expense.builder().task(task).payment(payment).build();
         when(taskRepository.findByIdAndEventId(3L, 2L)).thenReturn(Optional.of(task));
-        when(expenseRepository.existsByTaskId(3L)).thenReturn(true);
+        when(expenseRepository.findByTaskId(3L)).thenReturn(List.of(expense));
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,

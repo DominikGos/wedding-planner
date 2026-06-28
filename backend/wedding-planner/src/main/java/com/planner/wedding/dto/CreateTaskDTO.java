@@ -1,6 +1,7 @@
 package com.planner.wedding.dto;
 
 import com.planner.wedding.entities.TaskType;
+import com.planner.wedding.entities.PaymentMethod;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -18,6 +19,7 @@ public class CreateTaskDTO {
     private String description;
     private LocalDateTime dueDate;
     private Integer priority;
+    private PaymentMethod paymentMethod;
 
     // Catering fields
     private BigDecimal pricePerGuest;

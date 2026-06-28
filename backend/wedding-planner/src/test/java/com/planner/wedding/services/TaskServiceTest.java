@@ -12,6 +12,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -46,7 +47,7 @@ class TaskServiceTest {
 
     @Test
     void createTaskCateringSuccess() {
-        User user = User.builder().id(1L).build();
+        User user = User.builder().id(1L).role(UserRole.PLANNER).build();
         Event event = Event.builder().id(10L).build();
         CreateTaskDTO dto = CreateTaskDTO.builder()
                 .name("Catering Task")
@@ -73,6 +74,7 @@ class TaskServiceTest {
         assertEquals(100L, result.get("id"));
         assertEquals("Catering Task", result.get("name"));
         assertEquals(TaskType.CATERING, result.get("type"));
+        assertEquals(PaymentMethod.ONLINE, result.get("paymentMethod"));
         verify(taskRepository).save(any(Task.class));
     }
 
@@ -133,17 +135,21 @@ class TaskServiceTest {
     void getTaskReturnsTaskMap() {
         User user = User.builder().id(1L).build();
         Task task = Task.builder().id(100L).type(TaskType.ENTERTAINMENT).build();
+        Payment payment = Payment.builder().status(PaymentStatus.PENDING).build();
+        Expense expense = Expense.builder().task(task).payment(payment).build();
         when(taskRepository.findByIdAndEventId(100L, 10L)).thenReturn(Optional.of(task));
+        when(expenseRepository.findByTaskId(100L)).thenReturn(List.of(expense));
 
         Map<String, Object> result = taskService.getTask(10L, 100L, user);
 
         assertEquals(100L, result.get("id"));
+        assertEquals(true, result.get("lockedByPayment"));
         verify(eventService).requireOwnedEvent(10L, user);
     }
 
     @Test
     void updateTaskCateringSuccess() {
-        User user = User.builder().id(1L).build();
+        User user = User.builder().id(1L).role(UserRole.BRIDE).build();
         Task task = Task.builder().id(100L).type(TaskType.CATERING).build();
         CreateTaskDTO dto = CreateTaskDTO.builder()
                 .name("New Name")
@@ -154,12 +160,167 @@ class TaskServiceTest {
                 .build();
 
         when(taskRepository.findByIdAndEventId(100L, 10L)).thenReturn(Optional.of(task));
+        when(expenseRepository.findByTaskId(100L)).thenReturn(List.of());
         when(taskRepository.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Map<String, Object> result = taskService.updateTask(10L, 100L, dto, user);
 
         assertEquals("New Name", result.get("name"));
         assertEquals(BigDecimal.valueOf(100), result.get("pricePerGuest"));
+        assertEquals(PaymentMethod.ONLINE, result.get("paymentMethod"));
+    }
+
+    @Test
+    void updateTaskChangesPaymentMethodWhenTaskHasNoPayment() {
+        User user = User.builder().id(1L).role(UserRole.BRIDE).build();
+        Task task = Task.builder()
+                .id(100L)
+                .type(TaskType.CATERING)
+                .paymentMethod(PaymentMethod.ONLINE)
+                .build();
+        CreateTaskDTO dto = CreateTaskDTO.builder()
+                .name("New Name")
+                .type(TaskType.CATERING)
+                .paymentMethod(PaymentMethod.OFFLINE)
+                .build();
+
+        when(taskRepository.findByIdAndEventId(100L, 10L)).thenReturn(Optional.of(task));
+        when(expenseRepository.findByTaskId(100L)).thenReturn(List.of());
+        when(taskRepository.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Map<String, Object> result = taskService.updateTask(10L, 100L, dto, user);
+
+        assertEquals(PaymentMethod.OFFLINE, result.get("paymentMethod"));
+    }
+
+    @Test
+    void updateTaskPlannerDoesNotOverwritePaymentMethod() {
+        User user = User.builder().id(1L).role(UserRole.PLANNER).build();
+        Task task = Task.builder()
+                .id(100L)
+                .type(TaskType.CATERING)
+                .paymentMethod(PaymentMethod.OFFLINE)
+                .build();
+        CreateTaskDTO dto = CreateTaskDTO.builder()
+                .name("Catering")
+                .type(TaskType.CATERING)
+                .paymentMethod(PaymentMethod.ONLINE)
+                .build();
+
+        when(taskRepository.findByIdAndEventId(100L, 10L)).thenReturn(Optional.of(task));
+        when(taskRepository.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Map<String, Object> result = taskService.updateTask(10L, 100L, dto, user);
+
+        assertEquals(PaymentMethod.OFFLINE, result.get("paymentMethod"));
+    }
+
+    @Test
+    void updateTaskKeepsExistingPaymentMethodWhenDtoMethodIsMissing() {
+        User user = User.builder().id(1L).role(UserRole.PLANNER).build();
+        Task task = Task.builder()
+                .id(100L)
+                .type(TaskType.CATERING)
+                .paymentMethod(PaymentMethod.OFFLINE)
+                .build();
+        CreateTaskDTO dto = CreateTaskDTO.builder()
+                .name("Catering")
+                .type(TaskType.CATERING)
+                .build();
+
+        when(taskRepository.findByIdAndEventId(100L, 10L)).thenReturn(Optional.of(task));
+        when(taskRepository.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Map<String, Object> result = taskService.updateTask(10L, 100L, dto, user);
+
+        assertEquals(PaymentMethod.OFFLINE, result.get("paymentMethod"));
+    }
+
+    @Test
+    void updateTaskIsBlockedByPendingPayment() {
+        User user = User.builder().id(1L).role(UserRole.BRIDE).build();
+        Task task = Task.builder().id(100L).type(TaskType.CATERING).build();
+        Payment payment = Payment.builder().status(PaymentStatus.PENDING).build();
+        Expense expense = Expense.builder().task(task).payment(payment).build();
+        CreateTaskDTO dto = CreateTaskDTO.builder().name("Changed").type(TaskType.CATERING).build();
+
+        when(taskRepository.findByIdAndEventId(100L, 10L)).thenReturn(Optional.of(task));
+        when(expenseRepository.findByTaskId(100L)).thenReturn(List.of(expense));
+
+        ResponseStatusException ex = assertThrows(
+                ResponseStatusException.class,
+                () -> taskService.updateTask(10L, 100L, dto, user)
+        );
+
+        assertEquals(org.springframework.http.HttpStatus.CONFLICT, ex.getStatusCode());
+        verify(taskRepository, never()).save(any());
+    }
+
+    @Test
+    void updateTaskIsBlockedBySuccessfulPayment() {
+        User user = User.builder().id(1L).role(UserRole.BRIDE).build();
+        Task task = Task.builder().id(100L).type(TaskType.CATERING).build();
+        Payment payment = Payment.builder().status(PaymentStatus.SUCCESS).build();
+        Expense expense = Expense.builder().task(task).payment(payment).build();
+        CreateTaskDTO dto = CreateTaskDTO.builder().name("Changed").type(TaskType.CATERING).build();
+
+        when(taskRepository.findByIdAndEventId(100L, 10L)).thenReturn(Optional.of(task));
+        when(expenseRepository.findByTaskId(100L)).thenReturn(List.of(expense));
+
+        ResponseStatusException ex = assertThrows(
+                ResponseStatusException.class,
+                () -> taskService.updateTask(10L, 100L, dto, user)
+        );
+
+        assertEquals(org.springframework.http.HttpStatus.CONFLICT, ex.getStatusCode());
+        verify(taskRepository, never()).save(any());
+    }
+
+    @Test
+    void updateTaskWithCancelledPaymentAllowsBrideToChangePaymentMethod() {
+        User user = User.builder().id(1L).role(UserRole.BRIDE).build();
+        Task task = Task.builder()
+                .id(100L)
+                .type(TaskType.CATERING)
+                .paymentMethod(PaymentMethod.ONLINE)
+                .build();
+        Payment payment = Payment.builder().status(PaymentStatus.CANCELLED).build();
+        Expense expense = Expense.builder().task(task).payment(payment).build();
+        CreateTaskDTO dto = CreateTaskDTO.builder()
+                .name("Changed")
+                .type(TaskType.CATERING)
+                .paymentMethod(PaymentMethod.OFFLINE)
+                .build();
+
+        when(taskRepository.findByIdAndEventId(100L, 10L)).thenReturn(Optional.of(task));
+        when(expenseRepository.findByTaskId(100L)).thenReturn(List.of(expense));
+        when(taskRepository.save(task)).thenReturn(task);
+
+        Map<String, Object> result = taskService.updateTask(10L, 100L, dto, user);
+
+        assertEquals("Changed", result.get("name"));
+        assertEquals(PaymentMethod.OFFLINE, result.get("paymentMethod"));
+        assertEquals(false, result.get("lockedByPayment"));
+    }
+
+    @Test
+    void updateTaskStatusIsBlockedByPendingPayment() {
+        User user = User.builder().id(1L).build();
+        Task task = Task.builder().id(100L).type(TaskType.CATERING).status("PENDING").build();
+        Payment payment = Payment.builder().status(PaymentStatus.PENDING).build();
+        Expense expense = Expense.builder().task(task).payment(payment).build();
+
+        when(taskRepository.findByIdAndEventId(100L, 10L)).thenReturn(Optional.of(task));
+        when(expenseRepository.findByTaskId(100L)).thenReturn(List.of(expense));
+
+        ResponseStatusException ex = assertThrows(
+                ResponseStatusException.class,
+                () -> taskService.updateTaskStatus(10L, 100L, "COMPLETED", user)
+        );
+
+        assertEquals(org.springframework.http.HttpStatus.CONFLICT, ex.getStatusCode());
+        verify(taskRepository, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
@@ -237,10 +398,44 @@ class TaskServiceTest {
         Task task = Task.builder().id(100L).build();
 
         when(taskRepository.findByIdAndEventId(100L, 10L)).thenReturn(Optional.of(task));
-        when(expenseRepository.existsByTaskId(100L)).thenReturn(false);
-
         taskService.deleteTask(10L, 100L, user);
 
         verify(taskRepository).delete(task);
+    }
+
+    @Test
+    void deleteTaskDeletesExpenseWithoutPayment() {
+        User user = User.builder().id(1L).build();
+        Task task = Task.builder().id(100L).build();
+        Expense expense = Expense.builder().id(200L).task(task).build();
+
+        when(taskRepository.findByIdAndEventId(100L, 10L)).thenReturn(Optional.of(task));
+        when(expenseRepository.findByTaskId(100L)).thenReturn(List.of(expense));
+
+        taskService.deleteTask(10L, 100L, user);
+
+        verify(expenseRepository).deleteAll(List.of(expense));
+        verify(expenseRepository).flush();
+        verify(taskRepository).delete(task);
+    }
+
+    @Test
+    void deleteTaskRejectsExpenseWithPaymentHistory() {
+        User user = User.builder().id(1L).build();
+        Task task = Task.builder().id(100L).build();
+        Payment payment = Payment.builder().id(300L).status(PaymentStatus.CANCELLED).build();
+        Expense expense = Expense.builder().id(200L).task(task).payment(payment).build();
+
+        when(taskRepository.findByIdAndEventId(100L, 10L)).thenReturn(Optional.of(task));
+        when(expenseRepository.findByTaskId(100L)).thenReturn(List.of(expense));
+
+        ResponseStatusException ex = assertThrows(
+                ResponseStatusException.class,
+                () -> taskService.deleteTask(10L, 100L, user)
+        );
+
+        assertEquals(org.springframework.http.HttpStatus.CONFLICT, ex.getStatusCode());
+        verify(expenseRepository, never()).deleteAll(any());
+        verify(taskRepository, never()).delete(any());
     }
 }

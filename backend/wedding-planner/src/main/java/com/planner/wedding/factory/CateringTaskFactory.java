@@ -23,6 +23,7 @@ public class CateringTaskFactory extends TaskFactory {
                 .dueDate(dto.getDueDate())
                 .status("PENDING")
                 .priority(dto.getPriority() != null ? dto.getPriority() : 0)
+                .paymentMethod(dto.getPaymentMethod())
                 .pricePerGuest(dto.getPricePerGuest())
                 .numberOfGuests(dto.getNumberOfGuests())
                 .mealType(dto.getMealType())
@@ -41,6 +42,7 @@ public class CateringTaskFactory extends TaskFactory {
         dto.put("dueDate", task.getDueDate());
         dto.put("status", task.getStatus());
         dto.put("priority", task.getPriority());
+        dto.put("paymentMethod", task.getPaymentMethod());
         dto.put("pricePerGuest", task.getPricePerGuest());
         dto.put("numberOfGuests", task.getNumberOfGuests());
         dto.put("mealType", task.getMealType());

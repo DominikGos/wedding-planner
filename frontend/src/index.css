@@ -680,6 +680,13 @@ button {
   font: inherit;
 }
 
+.budget-payment-method-select:disabled {
+  opacity: 1;
+  color: var(--text);
+  -webkit-text-fill-color: var(--text);
+  cursor: not-allowed;
+}
+
 table {
   min-width: 720px;
 }

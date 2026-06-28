@@ -2,8 +2,12 @@ package com.planner.wedding.services;
 
 import com.planner.wedding.dto.CreateTaskDTO;
 import com.planner.wedding.entities.Event;
+import com.planner.wedding.entities.Expense;
+import com.planner.wedding.entities.PaymentMethod;
+import com.planner.wedding.entities.PaymentStatus;
 import com.planner.wedding.entities.Task;
 import com.planner.wedding.entities.User;
+import com.planner.wedding.entities.UserRole;
 import com.planner.wedding.events.TaskStatusChangedEvent;
 import com.planner.wedding.factory.TaskFactory;
 import com.planner.wedding.repositories.ExpenseRepository;
@@ -52,6 +56,7 @@ public class TaskService {
         // Fabryka tworzy Task
         Task task = factory.createFromDTO(createTaskDTO);
         task.setEvent(event);
+        task.setPaymentMethod(resolvePaymentMethod(createTaskDTO, null));
 
         // Jeśli podano vendorId, przypisz dostawcę
         if (createTaskDTO.getVendorId() != null) {
@@ -65,7 +70,7 @@ public class TaskService {
         Task savedTask = taskRepository.save(task);
 
         // Konwertuj z powrotem do DTO używając fabryki
-        return factory.convertToDTO(savedTask);
+        return mapTask(savedTask);
     }
 
     /**
@@ -76,10 +81,7 @@ public class TaskService {
         List<Task> tasks = taskRepository.findByEventId(eventId);
 
         return tasks.stream()
-                .map(task -> {
-                    TaskFactory factory = TaskFactory.getFactory(task.getType());
-                    return factory.convertToDTO(task);
-                })
+                .map(this::mapTask)
                 .collect(Collectors.toList());
     }
 
@@ -94,10 +96,7 @@ public class TaskService {
         List<Task> scheduledTasks = ScheduleGenerator.getInstance().generateSchedule(tasks);
 
         return scheduledTasks.stream()
-                .map(task -> {
-                    TaskFactory factory = TaskFactory.getFactory(task.getType());
-                    return factory.convertToDTO(task);
-                })
+                .map(this::mapTask)
                 .collect(Collectors.toList());
     }
 
@@ -108,8 +107,7 @@ public class TaskService {
         eventService.requireOwnedEvent(eventId, user);
         Task task = requireTask(eventId, taskId);
 
-        TaskFactory factory = TaskFactory.getFactory(task.getType());
-        return factory.convertToDTO(task);
+        return mapTask(task);
     }
 
     /**
@@ -118,12 +116,23 @@ public class TaskService {
     public Map<String, Object> updateTask(Long eventId, Long taskId, CreateTaskDTO createTaskDTO, User user) {
         eventService.requireOwnedEvent(eventId, user);
         Task task = requireTask(eventId, taskId);
+        if (isTaskLockedByPayment(taskId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Task cannot be edited because it has active or completed payment"
+            );
+        }
 
         // Update fields
         task.setName(createTaskDTO.getName());
         task.setDescription(createTaskDTO.getDescription());
         task.setDueDate(createTaskDTO.getDueDate());
         task.setPriority(createTaskDTO.getPriority());
+        if (user.getRole() == UserRole.BRIDE || user.getRole() == UserRole.GROOM) {
+            task.setPaymentMethod(resolvePaymentMethod(createTaskDTO, task.getPaymentMethod()));
+        } else if (task.getPaymentMethod() == null) {
+            task.setPaymentMethod(PaymentMethod.ONLINE);
+        }
 
         // Update type-specific fields
         if (task.getType() == createTaskDTO.getType()) {
@@ -147,8 +156,7 @@ public class TaskService {
 
         Task updatedTask = taskRepository.save(task);
 
-        TaskFactory factory = TaskFactory.getFactory(updatedTask.getType());
-        return factory.convertToDTO(updatedTask);
+        return mapTask(updatedTask);
     }
 
     /**
@@ -157,12 +165,15 @@ public class TaskService {
     public void deleteTask(Long eventId, Long taskId, User user) {
         eventService.requireOwnedEvent(eventId, user);
         Task task = requireTask(eventId, taskId);
-        if (expenseRepository.existsByTaskId(taskId)) {
+        List<Expense> expenses = expenseRepository.findByTaskId(taskId);
+        if (expenses.stream().anyMatch(expense -> expense.getPayment() != null)) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Task cannot be deleted because it has assigned expenses"
+                    "Task cannot be deleted because it has payment history"
             );
         }
+        expenseRepository.deleteAll(expenses);
+        expenseRepository.flush();
         taskRepository.delete(task);
     }
 
@@ -172,6 +183,12 @@ public class TaskService {
     public Map<String, Object> updateTaskStatus(Long eventId, Long taskId, String status, User user) {
         eventService.requireOwnedEvent(eventId, user);
         Task task = requireTask(eventId, taskId);
+        if (isTaskLockedByPayment(taskId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Task cannot be edited because it has active or completed payment"
+            );
+        }
 
         String previousStatus = task.getStatus();
         task.setStatus(status);
@@ -181,12 +198,30 @@ public class TaskService {
             eventPublisher.publishEvent(new TaskStatusChangedEvent(updatedTask, previousStatus, status));
         }
 
-        TaskFactory factory = TaskFactory.getFactory(updatedTask.getType());
-        return factory.convertToDTO(updatedTask);
+        return mapTask(updatedTask);
     }
 
     private Task requireTask(Long eventId, Long taskId) {
         return taskRepository.findByIdAndEventId(taskId, eventId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found"));
+    }
+
+    private boolean isTaskLockedByPayment(Long taskId) {
+        return expenseRepository.findByTaskId(taskId).stream()
+                .anyMatch(expense -> expense.getPayment() != null
+                        && expense.getPayment().getStatus() != PaymentStatus.CANCELLED);
+    }
+
+    private Map<String, Object> mapTask(Task task) {
+        Map<String, Object> response = TaskFactory.getFactory(task.getType()).convertToDTO(task);
+        response.put("lockedByPayment", isTaskLockedByPayment(task.getId()));
+        return response;
+    }
+
+    private PaymentMethod resolvePaymentMethod(CreateTaskDTO dto, PaymentMethod currentPaymentMethod) {
+        if (dto.getPaymentMethod() != null) {
+            return dto.getPaymentMethod();
+        }
+        return currentPaymentMethod != null ? currentPaymentMethod : PaymentMethod.ONLINE;
     }
 }

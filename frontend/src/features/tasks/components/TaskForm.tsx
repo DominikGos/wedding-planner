@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import type { TaskType } from '../../../api/taskApi'
+import type { PaymentMethod } from '../../../api/paymentApi'
 import { taskTypes } from '../data/tasksMock'
 
 export type TaskFormState = {
@@ -12,6 +13,7 @@ export type TaskFormState = {
   price: string
   numberOfGuests: string
   detail: string
+  paymentMethod: PaymentMethod
 }
 
 type TaskFormProps = {
@@ -22,9 +24,11 @@ type TaskFormProps = {
   onCancel: () => void
   onSubmit: () => void
   onDelete?: () => void
+  canEditPaymentMethod: boolean
+  readOnly?: boolean
 }
 
-export function TaskForm({ values, editing, error, onChange, onCancel, onSubmit, onDelete }: TaskFormProps) {
+export function TaskForm({ values, editing, error, onChange, onCancel, onSubmit, onDelete, canEditPaymentMethod, readOnly = false }: TaskFormProps) {
   const { t, i18n } = useTranslation()
   const cateringCost = values.price && values.numberOfGuests
     ? Number(values.price) * Number(values.numberOfGuests)
@@ -51,12 +55,12 @@ export function TaskForm({ values, editing, error, onChange, onCancel, onSubmit,
       <div style={{ padding: '1.25rem', display: 'grid', gap: '1rem' }}>
         <label style={{ display: 'grid', gap: '0.5rem' }}>
           <span style={{ fontWeight: 600 }}>{t('tasks.fieldName')}</span>
-          <input value={values.name} onChange={event => onChange('name', event.target.value)} style={inputStyle} />
+          <input disabled={readOnly} value={values.name} onChange={event => onChange('name', event.target.value)} style={inputStyle} />
         </label>
 
         <label style={{ display: 'grid', gap: '0.5rem' }}>
           <span style={{ fontWeight: 600 }}>{t('tasks.fieldType')}</span>
-          <select value={values.type} disabled={editing} onChange={event => onChange('type', event.target.value)} style={selectStyle} className='task-form-control'>
+          <select value={values.type} disabled={editing || readOnly} onChange={event => onChange('type', event.target.value)} style={selectStyle} className='task-form-control'>
             {taskTypes.map(type => (
               <option key={type.value} value={type.value}>
                 {t(`tasks.types.${type.value}`)}
@@ -67,28 +71,38 @@ export function TaskForm({ values, editing, error, onChange, onCancel, onSubmit,
 
         <label style={{ display: 'grid', gap: '0.5rem' }}>
           <span style={{ fontWeight: 600 }}>{t('tasks.fieldDescription')}</span>
-          <textarea value={values.description} onChange={event => onChange('description', event.target.value)} style={{ ...inputStyle, minHeight: '100px', padding: '0.9rem 1rem', resize: 'vertical' }} />
+          <textarea disabled={readOnly} value={values.description} onChange={event => onChange('description', event.target.value)} style={{ ...inputStyle, minHeight: '100px', padding: '0.9rem 1rem', resize: 'vertical' }} />
         </label>
 
         <div className="form-two-columns" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
           <label style={{ display: 'grid', gap: '0.5rem' }}>
             <span style={{ fontWeight: 600 }}>{t('tasks.fieldDate')}</span>
-            <input type='date' value={values.date} onChange={event => onChange('date', event.target.value)} style={inputStyle} />
+            <input disabled={readOnly} type='date' value={values.date} onChange={event => onChange('date', event.target.value)} style={inputStyle} />
           </label>
           <label style={{ display: 'grid', gap: '0.5rem' }}>
             <span style={{ fontWeight: 600 }}>{t('tasks.fieldTime')}</span>
-            <input type='time' value={values.time} onChange={event => onChange('time', event.target.value)} style={inputStyle} />
+            <input disabled={readOnly} type='time' value={values.time} onChange={event => onChange('time', event.target.value)} style={inputStyle} />
           </label>
         </div>
 
         <label style={{ display: 'grid', gap: '0.5rem' }}>
           <span style={{ fontWeight: 600 }}>{t('tasks.fieldPriority')}</span>
-          <select value={values.priority} onChange={event => onChange('priority', event.target.value)} style={selectStyle} className='task-form-control'>
+          <select disabled={readOnly} value={values.priority} onChange={event => onChange('priority', event.target.value)} style={selectStyle} className='task-form-control'>
             <option value='1'>{t('tasks.priorityLow')}</option>
             <option value='2'>{t('tasks.priorityMedium')}</option>
             <option value='3'>{t('tasks.priorityHigh')}</option>
           </select>
         </label>
+
+        {canEditPaymentMethod && (
+          <label style={{ display: 'grid', gap: '0.5rem' }}>
+            <span style={{ fontWeight: 600 }}>{t('budget.formMethod')}</span>
+            <select disabled={readOnly || editing} value={values.paymentMethod} onChange={event => onChange('paymentMethod', event.target.value)} style={selectStyle} className='task-form-control'>
+              <option value='ONLINE'>{t('budget.formMethodOnline')}</option>
+              <option value='OFFLINE'>{t('budget.formMethodOffline')}</option>
+            </select>
+          </label>
+        )}
 
         <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
           <strong>{t('tasks.detailsAndCost')}</strong>
@@ -97,13 +111,13 @@ export function TaskForm({ values, editing, error, onChange, onCancel, onSubmit,
 
         <label style={{ display: 'grid', gap: '0.5rem' }}>
           <span style={{ fontWeight: 600 }}>{values.type === 'CATERING' ? t('tasks.pricePerGuest') : t('tasks.estimatedTotalCost')}</span>
-          <input type='number' min='0' value={values.price} onChange={event => onChange('price', event.target.value)} style={inputStyle} />
+          <input disabled={readOnly} type='number' min='0' value={values.price} onChange={event => onChange('price', event.target.value)} style={inputStyle} />
         </label>
 
         {values.type === 'CATERING' && (
           <label style={{ display: 'grid', gap: '0.5rem' }}>
             <span style={{ fontWeight: 600 }}>{t('tasks.guestsCountLabel')}</span>
-            <input type='number' min='0' value={values.numberOfGuests} onChange={event => onChange('numberOfGuests', event.target.value)} style={inputStyle} />
+            <input disabled={readOnly} type='number' min='0' value={values.numberOfGuests} onChange={event => onChange('numberOfGuests', event.target.value)} style={inputStyle} />
           </label>
         )}
 
@@ -111,13 +125,19 @@ export function TaskForm({ values, editing, error, onChange, onCancel, onSubmit,
           <span style={{ fontWeight: 600 }}>
             {values.type === 'CATERING' ? t('tasks.menuType') : values.type === 'DECORATION' ? t('tasks.decorationTheme') : t('tasks.performerName')}
           </span>
-          <input value={values.detail} onChange={event => onChange('detail', event.target.value)} style={inputStyle} />
+          <input disabled={readOnly} value={values.detail} onChange={event => onChange('detail', event.target.value)} style={inputStyle} />
         </label>
 
         {values.type === 'CATERING' && cateringCost !== null && (
           <strong style={{ color: 'var(--primary)' }}>
             {t('tasks.estimatedCostLabel', { cost: cateringCost.toLocaleString(i18n.language === 'pl' ? 'pl-PL' : 'en-US') })}
           </strong>
+        )}
+
+        {readOnly && (
+          <div className='app-alert app-alert-warning' style={{ margin: '0.2rem 0', padding: '0.75rem', fontSize: '0.9rem', textAlign: 'center' }}>
+            {t('tasks.paymentLockedMessage')}
+          </div>
         )}
 
         {error && (
@@ -128,7 +148,7 @@ export function TaskForm({ values, editing, error, onChange, onCancel, onSubmit,
 
         <div className="form-actions" style={{ display: 'flex', gap: '0.8rem', marginTop: '0.35rem' }}>
           <button type='button' onClick={onCancel} className='button-secondary' style={{ flex: 1 }}>{t('common.cancel')}</button>
-          <button type='button' onClick={onSubmit} className='button-primary' style={{ flex: 1 }}>
+          <button type='button' disabled={readOnly} onClick={onSubmit} className='button-primary' style={{ flex: 1, opacity: readOnly ? 0.6 : 1, cursor: readOnly ? 'not-allowed' : 'pointer' }}>
             {editing ? t('tasks.saveChanges') : t('tasks.addTaskBtn')}
           </button>
         </div>

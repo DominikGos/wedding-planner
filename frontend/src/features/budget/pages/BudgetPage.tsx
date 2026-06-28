@@ -46,7 +46,7 @@ const initialCreatePaymentForm = {
   expenseId: '',
   vendorId: '',
   amount: '',
-  method: 'ONLINE' as PaymentMethod,
+  method: '' as PaymentMethod | '',
   currency: 'PLN',
 }
 
@@ -221,8 +221,8 @@ export function BudgetPage() {
 
   const unpaidExpenses = useMemo(() => {
     return expensesList.filter(exp => {
-      const hasPayment = payments.some(p => p.expenseId === exp.id)
-      return !hasPayment
+      const hasBlockingPayment = payments.some(p => p.expenseId === exp.id && p.status !== 'CANCELLED')
+      return !hasBlockingPayment
     })
   }, [expensesList, payments])
 
@@ -398,7 +398,6 @@ export function BudgetPage() {
         expenseId: Number(createPaymentForm.expenseId),
         vendorId: Number(createPaymentForm.vendorId),
         amount: Number(createPaymentForm.amount),
-        method: createPaymentForm.method,
         currency: createPaymentForm.currency || 'PLN',
       }, { token: token ?? undefined })
 
@@ -508,6 +507,7 @@ export function BudgetPage() {
                         ...form,
                         expenseId: selectedId,
                         amount: exp ? String(exp.amount) : form.amount,
+                        method: exp ? (exp.paymentMethod ?? 'ONLINE') : '',
                       }))
                     }}
                     style={{ padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
@@ -545,7 +545,7 @@ export function BudgetPage() {
                 gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
                 gap: '1rem',
               }}>
-                <label style={{ display: 'grid', gap: '0.4rem', fontWeight: 600 }}>
+                <label style={{ display: 'grid', gap: '0.4rem', fontWeight: 600, minWidth: 0 }}>
                   {t('budget.formAmount')}
                   <input
                     type='number'
@@ -554,28 +554,30 @@ export function BudgetPage() {
                     required
                     value={createPaymentForm.amount}
                     onChange={(event) => setCreatePaymentForm((form) => ({ ...form, amount: event.target.value }))}
-                    style={{ padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
+                    style={{ width: '100%', boxSizing: 'border-box', padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
                   />
                 </label>
 
-                <label style={{ display: 'grid', gap: '0.4rem', fontWeight: 600 }}>
+                <label style={{ display: 'grid', gap: '0.4rem', fontWeight: 600, minWidth: 0 }}>
                   {t('budget.formMethod')}
                   <select
+                    disabled
                     value={createPaymentForm.method}
-                    onChange={(event) => setCreatePaymentForm((form) => ({ ...form, method: event.target.value as PaymentMethod }))}
-                    style={{ padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
+                    className='budget-payment-method-select'
+                    style={{ width: '100%', boxSizing: 'border-box', padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
                   >
+                    <option value=''>{t('budget.formSelectExpense')}</option>
                     <option value='ONLINE'>{t('budget.formMethodOnline')}</option>
                     <option value='OFFLINE'>{t('budget.formMethodOffline')}</option>
                   </select>
                 </label>
 
-                <label style={{ display: 'grid', gap: '0.4rem', fontWeight: 600 }}>
+                <label style={{ display: 'grid', gap: '0.4rem', fontWeight: 600, minWidth: 0 }}>
                   {t('budget.formCurrency')}
                   <input
                     value={createPaymentForm.currency}
                     onChange={(event) => setCreatePaymentForm((form) => ({ ...form, currency: event.target.value }))}
-                    style={{ padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
+                    style={{ width: '100%', boxSizing: 'border-box', padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
                   />
                 </label>
               </div>

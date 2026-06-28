@@ -19,13 +19,14 @@ const emptyForm: TaskFormState = {
   price: '',
   numberOfGuests: '',
   detail: '',
+  paymentMethod: 'ONLINE',
 }
 
 export function TasksPage() {
   const { t } = useTranslation()
   const dispatch = useDispatch()
   const tasks = useSelector((state: RootState) => state.tasks.items)
-  const { activeWeddingId, token } = useSelector((state: RootState) => state.auth)
+  const { activeWeddingId, token, user } = useSelector((state: RootState) => state.auth)
 
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -106,6 +107,7 @@ export function TasksPage() {
       price: String(task.totalPrice ?? task.pricePerGuest ?? ''),
       numberOfGuests: String(task.numberOfGuests ?? ''),
       detail: task.mealType ?? task.theme ?? task.performerName ?? '',
+      paymentMethod: task.paymentMethod ?? 'ONLINE',
     })
     setShowForm(true)
     setMessage(null)
@@ -121,6 +123,7 @@ export function TasksPage() {
     description: taskForm.description.trim(),
     dueDate: taskForm.date ? `${taskForm.date}T${taskForm.time || '00:00'}:00` : null,
     priority: Number(taskForm.priority),
+    paymentMethod: taskForm.paymentMethod || 'ONLINE',
     ...(taskForm.type === 'CATERING'
       ? {
           ...(taskForm.price && { pricePerGuest: Number(taskForm.price) }),
@@ -139,6 +142,10 @@ export function TasksPage() {
   })
 
   const saveTask = async () => {
+    if (selectedTask?.lockedByPayment) {
+      setError(t('tasks.paymentLockedError'))
+      return
+    }
     if (!activeWeddingId || !token || !taskForm.name.trim()) {
       setError(t('tasks.nameRequired'))
       return
@@ -151,28 +158,38 @@ export function TasksPage() {
 
     try {
       if (selectedTask) {
-        await updateTask(activeWeddingId, selectedTask.id, getRequest(), { token })
+        const updatedTask = await updateTask(activeWeddingId, selectedTask.id, getRequest(), { token })
+        dispatch(setTasks(tasks.map(task => task.id === updatedTask.id ? updatedTask : task)))
         setMessage(t('tasks.saved'))
       } else {
-        await createTask(activeWeddingId, getRequest(), { token })
+        const createdTask = await createTask(activeWeddingId, getRequest(), { token })
+        dispatch(setTasks([...tasks, createdTask]))
         setMessage(t('tasks.added'))
       }
       setShowForm(false)
       setSelectedTask(null)
       await loadTasks()
-    } catch {
-      setError(t('tasks.saveError'))
+    } catch (error) {
+      setError(error instanceof Error && error.message.includes('409')
+        ? t('tasks.paymentLockedError')
+        : t('tasks.saveError'))
     }
   }
 
   const changeStatus = async (taskId: number, status: TaskStatus) => {
     if (!activeWeddingId || !token) return
+    if (tasks.find(task => task.id === taskId)?.lockedByPayment) {
+      setError(t('tasks.paymentLockedError'))
+      return
+    }
     try {
       await updateTaskStatus(activeWeddingId, taskId, status, { token })
       window.dispatchEvent(new Event('notifications:refresh'))
       await loadTasks()
-    } catch {
-      setError(t('tasks.statusError'))
+    } catch (error) {
+      setError(error instanceof Error && error.message.includes('409')
+        ? t('tasks.paymentLockedError')
+        : t('tasks.statusError'))
     }
   }
 
@@ -271,6 +288,8 @@ export function TasksPage() {
               onCancel={() => { setShowForm(false); setSelectedTask(null); setError(null) }}
               onSubmit={() => void saveTask()}
               onDelete={selectedTask ? () => void removeTask() : undefined}
+              canEditPaymentMethod={user?.role === 'couple'}
+              readOnly={Boolean(selectedTask?.lockedByPayment)}
             />
           </div>
         )}
