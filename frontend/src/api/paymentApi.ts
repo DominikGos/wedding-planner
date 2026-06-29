@@ -120,3 +120,9 @@ export function approveOfflinePayment(
     token: options.token,
   })
 }
+
+export function getPaymentById(id: number, options: PaymentRequestOptions = {}) {
+  return httpClient<PaymentResponse>(`/api/payments/${id}`, {
+    token: options.token,
+  })
+}

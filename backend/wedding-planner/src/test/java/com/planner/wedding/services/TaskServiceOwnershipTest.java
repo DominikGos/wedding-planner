@@ -43,6 +43,9 @@ class TaskServiceOwnershipTest {
     @Mock
     private EventService eventService;
 
+    @Mock
+    private ExpenseService expenseService;
+
     @Test
     void refusesToDeleteTaskWithPaymentHistory() {
         User user = User.builder().id(7L).build();
@@ -77,6 +80,6 @@ class TaskServiceOwnershipTest {
     }
 
     private TaskService service() {
-        return new TaskService(taskRepository, expenseRepository, vendorRepository, eventPublisher, eventService);
+        return new TaskService(taskRepository, expenseRepository, vendorRepository, eventPublisher, eventService, expenseService);
     }
 }

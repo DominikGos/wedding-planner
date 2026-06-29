@@ -5,6 +5,7 @@ import { AppShell } from '../components/common/AppShell'
 
 // Lazy loaded page components
 const BudgetPage = lazy(() => import('../features/budget/pages/BudgetPage').then(m => ({ default: m.BudgetPage })))
+const CheckoutPage = lazy(() => import('../features/budget/pages/CheckoutPage').then(m => ({ default: m.CheckoutPage })))
 const CateringPage = lazy(() => import('../features/catering/pages/CateringPage').then(m => ({ default: m.CateringPage })))
 const DashboardPage = lazy(() => import('../features/dashboard/pages/DashboardPage').then(m => ({ default: m.DashboardPage })))
 const EventsPage = lazy(() => import('../features/events/pages/EventsPage').then(m => ({ default: m.EventsPage })))
@@ -88,6 +89,10 @@ export const router = createBrowserRouter([
       {
         path: 'budget',
         element: withSuspense(BudgetPage),
+      },
+      {
+        path: 'budget/checkout',
+        element: withSuspense(CheckoutPage),
       },
       {
         path: 'catering',

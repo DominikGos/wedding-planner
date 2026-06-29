@@ -8,6 +8,13 @@ type RequestOptions = {
   token?: string
 }
 
+export function extractErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error && err.message) {
+    return err.message
+  }
+  return fallback
+}
+
 export async function httpClient<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = {}
 
@@ -50,3 +57,4 @@ export async function httpClient<T>(path: string, options: RequestOptions = {}):
 
   return (await response.json()) as T
 }
+

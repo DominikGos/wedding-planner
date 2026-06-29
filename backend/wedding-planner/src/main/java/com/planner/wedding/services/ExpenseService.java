@@ -169,35 +169,40 @@ public class ExpenseService {
         return PaymentMethod.ONLINE;
     }
 
-    private void ensureExpensesForTasks(Long eventId) {
-        List<Task> tasks = taskRepository.findByEventId(eventId);
-        for (Task task : tasks) {
-            BigDecimal cost = calculateTaskCost(task);
-            if (cost.compareTo(BigDecimal.ZERO) > 0) {
-                List<Expense> existing = expenseRepository.findByTaskId(task.getId());
-                if (existing.isEmpty()) {
-                    Expense expense = Expense.builder()
-                            .task(task)
-                            .amount(cost)
-                            .description(task.getName())
-                            .category("TASK_COST")
-                            .date(LocalDateTime.now())
-                            .status("PENDING")
-                            .build();
+    public void createOrUpdateExpenseForTask(Task task) {
+        BigDecimal cost = calculateTaskCost(task);
+        if (cost.compareTo(BigDecimal.ZERO) > 0) {
+            List<Expense> existing = expenseRepository.findByTaskId(task.getId());
+            if (existing.isEmpty()) {
+                Expense expense = Expense.builder()
+                        .task(task)
+                        .amount(cost)
+                        .description(task.getName())
+                        .category("TASK_COST")
+                        .date(LocalDateTime.now())
+                        .status("PENDING")
+                        .build();
+                expenseRepository.save(expense);
+            } else {
+                Expense expense = existing.get(0);
+                if (expense.getPayment() == null ||
+                        (expense.getPayment().getStatus() != PaymentStatus.SUCCESS &&
+                                expense.getPayment().getStatus() != PaymentStatus.OFFLINE_APPROVED)) {
+                    expense.setAmount(cost);
+                    expense.setDescription(task.getName());
                     expenseRepository.save(expense);
-                } else {
-                    Expense expense = existing.get(0);
-                    if (expense.getPayment() == null ||
-                            (expense.getPayment().getStatus() != PaymentStatus.SUCCESS &&
-                                    expense.getPayment().getStatus() != PaymentStatus.OFFLINE_APPROVED)) {
-                        expense.setAmount(cost);
-                        expense.setDescription(task.getName());
-                        expenseRepository.save(expense);
-                    }
                 }
             }
         }
     }
+
+    private void ensureExpensesForTasks(Long eventId) {
+        List<Task> tasks = taskRepository.findByEventId(eventId);
+        for (Task task : tasks) {
+            createOrUpdateExpenseForTask(task);
+        }
+    }
+
 
     private BigDecimal calculateTaskCost(Task task) {
         if (task.getType() == null)

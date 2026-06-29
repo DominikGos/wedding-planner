@@ -39,6 +39,7 @@ public class TaskService {
     private final VendorRepository vendorRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final EventService eventService;
+    private final ExpenseService expenseService;
 
     /**
      * Tworzy nowy task używając Factory Pattern
@@ -68,6 +69,9 @@ public class TaskService {
 
         // Zapisz task
         Task savedTask = taskRepository.save(task);
+
+        // Tworzy powiązany wydatek automatycznie (eager)
+        expenseService.createOrUpdateExpenseForTask(savedTask);
 
         // Konwertuj z powrotem do DTO używając fabryki
         return mapTask(savedTask);
@@ -155,6 +159,7 @@ public class TaskService {
         }
 
         Task updatedTask = taskRepository.save(task);
+        expenseService.createOrUpdateExpenseForTask(updatedTask);
 
         return mapTask(updatedTask);
     }

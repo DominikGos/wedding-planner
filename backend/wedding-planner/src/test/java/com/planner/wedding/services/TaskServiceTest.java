@@ -42,6 +42,9 @@ class TaskServiceTest {
     @Mock
     private EventService eventService;
 
+    @Mock
+    private ExpenseService expenseService;
+
     @InjectMocks
     private TaskService taskService;
 

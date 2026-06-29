@@ -1,6 +1,7 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { useSelector } from 'react-redux'
 import { useTranslation } from 'react-i18next'
+import { useNavigate, useLocation } from 'react-router-dom'
 import type { RootState } from '../../../store'
 import {
   approveOfflinePayment,
@@ -18,6 +19,7 @@ import {
 import { getEventCostSummary, type EventCostSummaryResponse } from '../../../api/eventCostApi'
 import { getVendors, type VendorResponse } from '../../../api/vendorApi'
 import { getExpenses, type ExpenseResponse } from '../../../api/expenseApi'
+import { extractErrorMessage } from '../../../api/httpClient'
 
 import { BudgetStatCard } from '../components/BudgetStatCard'
 import { PaymentTable, type PaymentTableAction } from '../components/PaymentTable'
@@ -60,6 +62,8 @@ function formatDate(value: string | null, locale: string) {
 
 export function BudgetPage() {
   const { t, i18n } = useTranslation()
+  const navigate = useNavigate()
+  const location = useLocation()
   const user = useSelector((state: RootState) => state.auth.user)
   const token = useSelector((state: RootState) => state.auth.token)
   const activeWeddingId = useSelector((state: RootState) => state.auth.activeWeddingId)
@@ -86,8 +90,6 @@ export function BudgetPage() {
   const [budgetNotification, setBudgetNotification] = useState<{ text: string; type: 'success' | 'info' } | null>(null)
   const [vendorsList, setVendorsList] = useState<VendorResponse[]>([])
   const [expensesList, setExpensesList] = useState<ExpenseResponse[]>([])
-  const [onlinePaymentId, setOnlinePaymentId] = useState<number | null>(null)
-  const [isGatewaySimulating, setIsGatewaySimulating] = useState(false)
 
   const showNotification = (text: string, type: 'success' | 'info' = 'success') => {
     setBudgetNotification({ text, type })
@@ -107,8 +109,8 @@ export function BudgetPage() {
       ])
       setPayments(paymentsResponse)
       setSummary(summaryResponse)
-    } catch {
-      setError(t('budget.loadError'))
+    } catch (err) {
+      setError(extractErrorMessage(err, t('budget.loadError')))
       setPayments([])
       setSummary(emptySummary)
     } finally {
@@ -162,6 +164,70 @@ export function BudgetPage() {
   useEffect(() => {
     queueMicrotask(() => void loadDropdownData())
   }, [loadDropdownData])
+
+  useEffect(() => {
+    if (location.state?.notificationText) {
+      showNotification(location.state.notificationText, location.state.notificationType || 'success')
+      navigate(location.pathname, { replace: true, state: {} })
+    }
+
+    const params = new URLSearchParams(location.search)
+    const paymentIntentId = params.get('payment_intent')
+    const redirectStatus = params.get('redirect_status')
+
+    if (paymentIntentId && token) {
+      // Wait until payments are loaded before evaluating
+      if (payments.length === 0 && isLoading) {
+        return
+      }
+
+      const matchingPayment = payments.find(p => 
+        p.gatewayPaymentId && p.gatewayPaymentId.includes(paymentIntentId)
+      )
+
+      if (matchingPayment) {
+        if (matchingPayment.status === 'PENDING') {
+          const confirmRedirectPayment = async () => {
+            const isSuccess = redirectStatus === 'succeeded'
+            try {
+              const updatedPayment = await confirmOnlinePayment(
+                matchingPayment.id,
+                {
+                  success: isSuccess,
+                  gatewayPaymentId: matchingPayment.gatewayPaymentId,
+                  failureReason: isSuccess ? undefined : 'Płatność odrzucona lub anulowana przez użytkownika.'
+                },
+                { token }
+              )
+              
+              if (updatedPayment.status === 'SUCCESS') {
+                showNotification(t('budget.paymentConfirmed') || 'Płatność została pomyślnie zrealizowana!', 'success')
+              } else {
+                const errorMsg = updatedPayment.failureReason || 'Płatność online nie powiodła się.'
+                showNotification(`${t('budget.history.paymentFailedTitle') || 'Płatność nieudana'}: ${errorMsg}`, 'info')
+              }
+            } catch (err) {
+              console.error('Failed to confirm redirect payment:', err)
+              showNotification(t('budget.actionError') || 'Wystąpił błąd podczas autoryzacji płatności.', 'info')
+            } finally {
+              navigate('/budget', { replace: true })
+              void loadPayments()
+              void loadDropdownData()
+              void loadEventCosts()
+            }
+          }
+          void confirmRedirectPayment()
+        } else {
+          // Payment is already processed, just clean the URL params
+          navigate('/budget', { replace: true })
+        }
+      } else if (payments.length > 0) {
+        // No matching payment found in the loaded list, clean the URL params
+        navigate('/budget', { replace: true })
+      }
+    }
+  }, [location, payments, isLoading, token, navigate, t, loadPayments, loadDropdownData, loadEventCosts])
+
 
   const stats = useMemo(() => {
     const paid = summary.successAmount + summary.offlineApprovedAmount
@@ -313,7 +379,7 @@ export function BudgetPage() {
 
   const handlePaymentAction = async (id: number, action: PaymentTableAction) => {
     if (action === 'pay-online') {
-      setOnlinePaymentId(id)
+      navigate('/budget/checkout', { state: { paymentId: id } })
       return
     }
 
@@ -338,47 +404,13 @@ export function BudgetPage() {
 
       await loadPayments()
       await loadDropdownData()
-    } catch {
-      setError(t('budget.actionError'))
+    } catch (err) {
+      setError(extractErrorMessage(err, t('budget.actionError')))
     } finally {
       setActionLoadingId(null)
     }
   }
 
-  const handleOnlinePaymentConfirm = async (success: boolean, reason?: string) => {
-    if (!onlinePaymentId) return
-    setIsGatewaySimulating(true)
-    setError(null)
-
-    const payment = payments.find(p => p.id === onlinePaymentId)
-    const gatewayPaymentId = payment?.gatewayPaymentId ?? ''
-
-    try {
-      await confirmOnlinePayment(
-        onlinePaymentId,
-        {
-          success,
-          gatewayPaymentId,
-          ...(reason && { failureReason: reason }),
-        },
-        { token: token ?? undefined }
-      )
-
-      showNotification(
-        success
-          ? t('budget.paymentConfirmed')
-          : `${t('budget.history.paymentFailedTitle')}: ${reason || 'Error'}`,
-        success ? 'success' : 'info'
-      )
-      setOnlinePaymentId(null)
-      await loadPayments()
-      await loadDropdownData()
-    } catch {
-      setError(t('budget.actionError'))
-    } finally {
-      setIsGatewaySimulating(false)
-    }
-  }
 
   const handleExport = () => {
     showNotification(t('budget.actionError') || 'Export is not connected.', 'info')
@@ -406,8 +438,8 @@ export function BudgetPage() {
       showNotification(t('budget.paymentCreated'), 'success')
       await loadPayments()
       await loadDropdownData()
-    } catch {
-      setError(t('budget.createErrorDetails'))
+    } catch (err) {
+      setError(extractErrorMessage(err, t('budget.createErrorDetails')))
     } finally {
       setIsCreatingPayment(false)
     }
@@ -804,157 +836,6 @@ export function BudgetPage() {
           </section>
         </div>
       </div>
-
-      {/* Sandbox Payment Gateway Modal */}
-      {onlinePaymentId !== null && (() => {
-        const payment = payments.find(p => p.id === onlinePaymentId)
-        if (!payment) return null
-
-        return (
-          <div style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(47, 42, 36, 0.65)',
-            display: 'grid',
-            placeItems: 'center',
-            zIndex: 1000,
-            backdropFilter: 'blur(4px)',
-            padding: '1rem'
-          }}>
-            <article className='page-card' style={{
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              borderRadius: '22px',
-              padding: '2rem',
-              width: 'min(440px, 100% - 2rem)',
-              boxShadow: '0 20px 50px rgba(0,0,0,0.15)',
-              display: 'grid',
-              gap: '1.25rem',
-              animation: 'scaleUp 0.3s ease'
-            }}>
-              <header style={{ textAlign: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
-                <span style={{ fontSize: '1.8rem' }}>💳</span>
-                <h3 style={{ margin: '0.4rem 0 0', fontFamily: 'Georgia, serif', fontSize: '1.25rem' }}>
-                  {t('budget.gateway.title')}
-                </h3>
-                <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.85rem' }}>
-                  {t('budget.gateway.subtitle')}
-                </p>
-              </header>
-
-              {/* Mock Card design */}
-              <div style={{
-                background: 'linear-gradient(135deg, #1b2a2e 0%, #2f2a24 100%)',
-                color: '#f8e1d2',
-                padding: '1.25rem',
-                borderRadius: '14px',
-                display: 'grid',
-                gap: '1.5rem',
-                boxShadow: '0 8px 20px rgba(0,0,0,0.15)'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '1.2rem', fontWeight: 'bold', fontFamily: 'monospace' }}>SECURE PAY</span>
-                  <span style={{ fontSize: '1.4rem' }}>🌸</span>
-                </div>
-                <div style={{ fontSize: '1.2rem', letterSpacing: '0.15em', fontFamily: 'monospace', textAlign: 'center', padding: '0.2rem 0' }}>
-                  ••••  ••••  ••••  {1000 + (onlinePaymentId % 9000)}
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontFamily: 'monospace' }}>
-                  <div>
-                    <div style={{ opacity: 0.7, fontSize: '0.6rem' }}>{t('budget.gateway.cardOwner')}</div>
-                    <div>PARA MŁODA</div>
-                  </div>
-                  <div>
-                    <div style={{ opacity: 0.7, fontSize: '0.6rem' }}>{t('budget.gateway.cardExpiryLabel')}</div>
-                    <div>12 / 29</div>
-                  </div>
-                </div>
-              </div>
-
-               <div style={{ display: 'grid', gap: '0.55rem', background: 'var(--surface-soft)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                {(() => {
-                  const vendorObj = vendorsList.find(v => v.id === payment.vendorId)
-                  const expenseObj = expensesList.find(e => e.id === payment.expenseId)
-                  return (
-                    <>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                        <span style={{ color: 'var(--muted)' }}>{t('budget.gateway.serviceLabel')}</span>
-                        <strong>{expenseObj ? (expenseObj.description || `${t('common.expense')} #${payment.expenseId}`) : `${t('common.expense')} #${payment.expenseId}`}</strong>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                        <span style={{ color: 'var(--muted)' }}>{t('budget.gateway.vendorLabel')}</span>
-                        <strong>{vendorObj ? (vendorObj.companyName || `${t('common.vendor')} #${payment.vendorId}`) : `${t('common.vendor')} #${payment.vendorId}`}</strong>
-                      </div>
-                    </>
-                  )
-                })()}
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem', fontWeight: 'bold', borderTop: '1px dashed var(--border)', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
-                  <span>{t('budget.gateway.amountLabel')}</span>
-                  <span style={{ color: 'var(--primary)' }}>{payment.amount.toLocaleString()} {payment.currency}</span>
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gap: '0.75rem' }}>
-                <button
-                  type="button"
-                  disabled={isGatewaySimulating}
-                  onClick={() => handleOnlinePaymentConfirm(true)}
-                  style={{
-                    width: '100%',
-                    minHeight: '44px',
-                    borderRadius: '12px',
-                    border: 'none',
-                    background: '#35684f',
-                    color: '#fff',
-                    fontWeight: 700,
-                    cursor: isGatewaySimulating ? 'wait' : 'pointer',
-                    boxShadow: '0 4px 12px rgba(53, 104, 79, 0.25)'
-                  }}
-                >
-                  {isGatewaySimulating ? t('budget.gateway.authorizing') : t('budget.gateway.successBtn')}
-                </button>
-                
-                <button
-                  type="button"
-                  disabled={isGatewaySimulating}
-                  onClick={() => handleOnlinePaymentConfirm(false, 'Brak wystarczających środków na koncie')}
-                  style={{
-                    width: '100%',
-                    minHeight: '44px',
-                    borderRadius: '12px',
-                    border: 'none',
-                    background: '#c53030',
-                    color: '#fff',
-                    fontWeight: 700,
-                    cursor: isGatewaySimulating ? 'wait' : 'pointer',
-                    boxShadow: '0 4px 12px rgba(197, 48, 48, 0.25)'
-                  }}
-                >
-                  {isGatewaySimulating ? t('budget.gateway.authorizing') : t('budget.gateway.failBtn')}
-                </button>
-
-                <button
-                  type="button"
-                  disabled={isGatewaySimulating}
-                  onClick={() => setOnlinePaymentId(null)}
-                  style={{
-                    width: '100%',
-                    minHeight: '44px',
-                    borderRadius: '12px',
-                    border: '1px solid var(--border)',
-                    background: 'var(--surface)',
-                    color: 'var(--text)',
-                    fontWeight: 600,
-                    cursor: isGatewaySimulating ? 'wait' : 'pointer'
-                  }}
-                >
-                  {t('budget.gateway.cancelBtn')}
-                </button>
-              </div>
-            </article>
-          </div>
-        )
-      })()}
     </div>
   )
 }

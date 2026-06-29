@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -25,6 +26,9 @@ public class PaymentService {
     private final VendorRepository vendorRepository;
     private final PaymentGatewayClient paymentGatewayClient;
 
+    @Value("${stripe.secret.key:}")
+    private String stripeSecretKey;
+
     public PaymentResponse createPayment(CreatePaymentRequest request) {
         validateCreateRequest(request);
 
@@ -34,8 +38,8 @@ public class PaymentService {
         Payment payment = expense.getPayment();
         PaymentMethod paymentMethod = expense.getTask() != null
                 && expense.getTask().getPaymentMethod() != null
-                ? expense.getTask().getPaymentMethod()
-                : null;
+                        ? expense.getTask().getPaymentMethod()
+                        : null;
         if (paymentMethod == null
                 && payment != null
                 && payment.getStatus() == PaymentStatus.CANCELLED
@@ -70,9 +74,7 @@ public class PaymentService {
             payment.setGatewayPaymentId(
                     paymentGatewayClient.createSandboxPayment(
                             payment.getAmount(),
-                            payment.getCurrency()
-                    )
-            );
+                            payment.getCurrency()));
         } else {
             payment.setStatus(PaymentStatus.OFFLINE);
             payment.setGatewayPaymentId(null);
@@ -85,8 +87,7 @@ public class PaymentService {
     public List<PaymentResponse> getPayments(
             PaymentStatus status,
             Long vendorId,
-            Long eventId
-    ) {
+            Long eventId) {
         List<Payment> payments;
 
         if (status != null) {
@@ -129,19 +130,72 @@ public class PaymentService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Gateway payment id does not match");
         }
 
-        if (request.isSuccess()) {
-            payment.setStatus(PaymentStatus.SUCCESS);
-            payment.setFailureReason(null);
+        if (stripeSecretKey != null && !stripeSecretKey.isBlank() &&
+                payment.getGatewayPaymentId() != null &&
+                (payment.getGatewayPaymentId().startsWith("pi_")
+                        || payment.getGatewayPaymentId().contains("_secret_"))) {
+
+            try {
+                String intentId = extractPaymentIntentId(payment.getGatewayPaymentId());
+                com.stripe.model.PaymentIntent intent = com.stripe.model.PaymentIntent.retrieve(intentId);
+
+                if ("succeeded".equals(intent.getStatus())) {
+                    payment.setStatus(PaymentStatus.SUCCESS);
+                    payment.setFailureReason(null);
+                } else if ("canceled".equals(intent.getStatus())) {
+                    payment.setStatus(PaymentStatus.FAILED);
+                    payment.setFailureReason("Płatność została anulowana.");
+                } else {
+                    if (!request.isSuccess()) {
+                        // Jeśli frontend jawnie zgłosił błąd (np. powrót z fail test Przelewy24),
+                        // to ustawiamy status na FAILED. W przeciwnym razie zostawiamy PENDING.
+                        payment.setStatus(PaymentStatus.FAILED);
+                        payment.setFailureReason(
+                                request.getFailureReason() == null || request.getFailureReason().isBlank()
+                                        ? "Płatność online nie powiodła się."
+                                        : request.getFailureReason()
+                        );
+                    } else {
+                        // Płatność wciąż jest aktywna w Stripe (np. wymaga nowej próby lub autoryzacji)
+                        // Nie blokujemy jej w bazie i zostawiamy jako PENDING, dzięki czemu użytkownik
+                        // może dokonać kolejnej, udanej próby (np. po nieudanym 3DS2 lub BLIK).
+                        payment.setStatus(PaymentStatus.PENDING);
+                        String lastError = intent.getLastPaymentError() != null
+                                ? intent.getLastPaymentError().getMessage()
+                                : "Ostatnia próba płatności nie powiodła się. Status Stripe: " + intent.getStatus();
+                        payment.setFailureReason(lastError);
+                    }
+                }
+            } catch (com.stripe.exception.StripeException e) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_GATEWAY,
+                        "Failed to verify payment status with Stripe: " + e.getMessage(),
+                        e);
+            }
         } else {
-            payment.setStatus(PaymentStatus.FAILED);
-            payment.setFailureReason(
-                    request.getFailureReason() == null || request.getFailureReason().isBlank()
-                            ? "Sandbox payment failed"
-                            : request.getFailureReason()
-            );
+            if (request.isSuccess()) {
+                payment.setStatus(PaymentStatus.SUCCESS);
+                payment.setFailureReason(null);
+            } else {
+                payment.setStatus(PaymentStatus.FAILED);
+                payment.setFailureReason(
+                        request.getFailureReason() == null || request.getFailureReason().isBlank()
+                                ? "Sandbox payment failed"
+                                : request.getFailureReason());
+            }
         }
 
         return mapToResponse(paymentRepository.save(payment));
+    }
+
+    private String extractPaymentIntentId(String gatewayPaymentId) {
+        if (gatewayPaymentId == null) {
+            return null;
+        }
+        if (gatewayPaymentId.contains("_secret_")) {
+            return gatewayPaymentId.split("_secret_")[0];
+        }
+        return gatewayPaymentId;
     }
 
     public PaymentResponse cancelPayment(Long id, CancelPaymentRequest request) {
@@ -149,7 +203,8 @@ public class PaymentService {
 
         if (payment.getStatus() != PaymentStatus.PENDING
                 && payment.getStatus() != PaymentStatus.OFFLINE) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only pending or offline payments can be cancelled");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Only pending or offline payments can be cancelled");
         }
 
         payment.setStatus(PaymentStatus.CANCELLED);
@@ -163,7 +218,8 @@ public class PaymentService {
 
         if (originalPayment.getStatus() != PaymentStatus.FAILED
                 && originalPayment.getStatus() != PaymentStatus.CANCELLED) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only failed or cancelled payments can be retried");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Only failed or cancelled payments can be retried");
         }
 
         if (originalPayment.getMethod() != PaymentMethod.ONLINE) {
@@ -174,9 +230,7 @@ public class PaymentService {
         originalPayment.setGatewayPaymentId(
                 paymentGatewayClient.createSandboxPayment(
                         originalPayment.getAmount(),
-                        originalPayment.getCurrency()
-                )
-        );
+                        originalPayment.getCurrency()));
         originalPayment.setFailureReason(null);
         originalPayment.setUpdatedAt(LocalDateTime.now());
 
@@ -191,7 +245,8 @@ public class PaymentService {
         }
 
         if (payment.getStatus() != PaymentStatus.OFFLINE) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only offline payments awaiting approval can be approved");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Only offline payments awaiting approval can be approved");
         }
 
         payment.setStatus(PaymentStatus.OFFLINE_APPROVED);
@@ -283,15 +338,13 @@ public class PaymentService {
         response.setTaskId(
                 payment.getExpense() != null && payment.getExpense().getTask() != null
                         ? payment.getExpense().getTask().getId()
-                        : null
-        );
+                        : null);
         response.setEventId(
                 payment.getExpense() != null
                         && payment.getExpense().getTask() != null
                         && payment.getExpense().getTask().getEvent() != null
-                        ? payment.getExpense().getTask().getEvent().getId()
-                        : null
-        );
+                                ? payment.getExpense().getTask().getEvent().getId()
+                                : null);
         response.setStatus(payment.getStatus());
         response.setMethod(payment.getMethod());
         response.setAmount(payment.getAmount());
