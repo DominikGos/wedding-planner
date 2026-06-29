@@ -176,7 +176,14 @@
       "authorizing": "Autoryzacja...",
       "successBtn": "✓ Zakończ Płatność Sukcesem",
       "failBtn": "✕ Symuluj Błąd (Brak Środków)",
-      "cancelBtn": "Anuluj i Wróć"
+      "cancelBtn": "Anuluj i Wróć",
+      "stripeSubtitle": "Bezpieczna płatność testowa Stripe",
+      "summaryTitle": "Podsumowanie płatności",
+      "methodLabel": "Metoda:",
+      "methodValue": "Online (Sandbox)",
+      "stripeDetails": "Szczegóły płatności Stripe",
+      "paySecurely": "Opłać bezpiecznie",
+      "paymentCancelledByUser": "Płatność odrzucona lub anulowana przez użytkownika."
     },
     "summary": {
       "progressTitle": "Postęp płatności",

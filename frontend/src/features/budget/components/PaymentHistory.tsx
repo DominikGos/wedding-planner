@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { type HistoryEntry } from '../data/budgetMock'
 import { BudgetIcon } from './BudgetIcon'
 
@@ -6,54 +7,98 @@ type PaymentHistoryProps = {
 }
 
 export function PaymentHistory({ history }: PaymentHistoryProps) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  
+  if (!history || history.length === 0) {
+    return (
+      <div style={{ padding: '1rem 0', textAlign: 'center', color: 'var(--muted)', fontSize: '0.85rem' }}>
+        Brak wpisów w historii.
+      </div>
+    )
+  }
+
+  const displayedHistory = isExpanded ? history : history.slice(0, 5)
+  const hasMore = history.length > 5
+
   return (
     <div style={{ display: 'grid', gap: '1.25rem' }}>
-      {history.map((entry) => (
-        <div key={entry.id} style={{ display: 'flex', gap: '1rem', position: 'relative' }}>
-          <div style={{ 
-            width: '2.5rem', 
-            height: '2.5rem', 
-            borderRadius: '50%', 
-            background: entry.type === 'reminder_sent' ? '#fdf2f2' : '#fcf6f1',
-            display: 'grid',
-            placeItems: 'center',
-            flexShrink: 0,
-            zIndex: 1
-          }}>
-            <BudgetIcon 
-              name={entry.type === 'reminder_sent' ? 'alert' : entry.type === 'payment_confirmed' ? 'check' : 'file-text'} 
-              color={entry.type === 'reminder_sent' ? '#c53030' : 'var(--primary)'} 
-              size={18} 
-            />
-          </div>
-          
-          <div style={{ flex: 1 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600 }}>{entry.title}</h4>
-              <span style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>{entry.date}</span>
+      <div style={{ display: 'grid', gap: '1.25rem' }}>
+        {displayedHistory.map((entry) => (
+          <div key={entry.id} style={{ display: 'flex', gap: '1rem', position: 'relative' }}>
+            <div style={{ 
+              width: '2.5rem', 
+              height: '2.5rem', 
+              borderRadius: '50%', 
+              background: entry.type === 'reminder_sent' ? 'var(--danger-soft)' : 'var(--primary-soft)',
+              display: 'grid',
+              placeItems: 'center',
+              flexShrink: 0,
+              zIndex: 1
+            }}>
+              <BudgetIcon 
+                name={entry.type === 'reminder_sent' ? 'alert' : entry.type === 'payment_confirmed' ? 'check' : 'file-text'} 
+                color={entry.type === 'reminder_sent' ? 'var(--danger)' : 'var(--primary)'} 
+                size={18} 
+              />
             </div>
-            <p style={{ margin: '0.25rem 0 0.5rem', fontSize: '0.85rem', color: 'var(--muted)', lineHeight: '1.4' }}>
-              {entry.description}
-            </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <div style={{ 
-                width: '1.5rem', 
-                height: '1.5rem', 
-                borderRadius: '50%', 
-                background: 'var(--primary-soft)', 
-                color: 'var(--primary)',
-                fontSize: '0.7rem',
-                fontWeight: 700,
-                display: 'grid',
-                placeItems: 'center'
-              }}>
-                {entry.user.initials}
+            
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600 }}>{entry.title}</h4>
+                <span style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>{entry.date}</span>
               </div>
-              <span style={{ fontSize: '0.8rem', fontWeight: 500 }}>{entry.user.name}</span>
+              <p style={{ margin: '0.25rem 0 0.5rem', fontSize: '0.85rem', color: 'var(--muted)', lineHeight: '1.4' }}>
+                {entry.description}
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div style={{ 
+                  width: '1.5rem', 
+                  height: '1.5rem', 
+                  borderRadius: '50%', 
+                  background: 'var(--primary-soft)', 
+                  color: 'var(--primary)',
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                  display: 'grid',
+                  placeItems: 'center'
+                }}>
+                  {entry.user.initials}
+                </div>
+                <span style={{ fontSize: '0.8rem', fontWeight: 500 }}>{entry.user.name}</span>
+              </div>
             </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
+
+      {hasMore && (
+        <button
+          className="button-secondary"
+          onClick={() => setIsExpanded(!isExpanded)}
+          style={{
+            marginTop: '0.5rem',
+            padding: '0.4rem',
+            fontSize: '0.8rem',
+            width: '100%',
+            minHeight: '36px',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: '0.25rem',
+            cursor: 'pointer'
+          }}
+        >
+          {isExpanded ? (
+            <>
+              Zwiń historię &uarr;
+            </>
+          ) : (
+            <>
+              Pokaż całą historię (+{history.length - 5} wpisów) &darr;
+            </>
+          )}
+        </button>
+      )}
     </div>
   )
 }

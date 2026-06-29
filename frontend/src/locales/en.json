@@ -176,7 +176,14 @@
       "authorizing": "Authorizing...",
       "successBtn": "✓ Complete Payment Successfully",
       "failBtn": "✕ Simulate Error (No Funds)",
-      "cancelBtn": "Cancel & Return"
+      "cancelBtn": "Cancel & Return",
+      "stripeSubtitle": "Secure Stripe test payment",
+      "summaryTitle": "Payment summary",
+      "methodLabel": "Method:",
+      "methodValue": "Online (Sandbox)",
+      "stripeDetails": "Stripe payment details",
+      "paySecurely": "Pay securely",
+      "paymentCancelledByUser": "Payment declined or cancelled by the user."
     },
     "summary": {
       "progressTitle": "Payment progress",

@@ -2,6 +2,88 @@ import type { PaymentStatus } from '../../../api/paymentApi'
 import { BudgetIcon } from './BudgetIcon'
 import { useTranslation } from 'react-i18next'
 
+export const localizePaymentError = (msg: string | null | undefined, lng: string): string | null => {
+  if (!msg) return null;
+  
+  const isEn = lng === 'en';
+  const lowerMsg = msg.toLowerCase();
+  
+  if (!isEn) {
+    // Tłumaczenia z angielskiego na polski
+    if (lowerMsg.includes('passed has expired') || lowerMsg.includes('blik codes expire after 2 minutes') || lowerMsg.includes('blik codes expire')) {
+      return 'Kod BLIK wygasł. Kody BLIK są ważne przez 2 minuty. Wygeneruj nowy kod w aplikacji bankowej.';
+    }
+    if (lowerMsg.includes('payment limit on this bank account has been reached') || lowerMsg.includes('payment limit')) {
+      return 'Płatność została odrzucona z powodu przekroczenia limitu transakcyjnego na koncie bankowym.';
+    }
+    if (lowerMsg.includes('insufficient funds') || lowerMsg.includes('insufficient_funds')) {
+      return 'Brak wystarczających środków na koncie bankowym.';
+    }
+    if (lowerMsg.includes('customer declined this payment') || lowerMsg.includes('customer declined')) {
+      return 'Płatność została odrzucona przez klienta.';
+    }
+    if (lowerMsg.includes('declined by the customer\'s bank') || lowerMsg.includes('bank declined') || lowerMsg.includes('customer\'s bank for an unknown reason')) {
+      return 'Płatność została odrzucona przez bank klienta z nieznanej przyczyny.';
+    }
+    if (lowerMsg.includes('declined for an unknown reason')) {
+      return 'Płatność została odrzucona z nieznanej przyczyny.';
+    }
+    if (lowerMsg.includes('didn\'t approve this payment within the allocated') || lowerMsg.includes('within the allocated 60 seconds')) {
+      return 'Klient nie zatwierdził płatności w wymaganym czasie (60 sekund).';
+    }
+    if (lowerMsg.includes('request to the customer\'s bank timed out') || lowerMsg.includes('bank timed out')) {
+      return 'Upłynął limit czasu na odpowiedź banku klienta.';
+    }
+    if (lowerMsg.includes('request to the blik network timed out') || lowerMsg.includes('blik network timed out')) {
+      return 'Upłynął limit czasu połączenia z siecią BLIK.';
+    }
+    if (lowerMsg.includes('expired card') || lowerMsg.includes('expired_card') || lowerMsg.includes('has expired')) {
+      return 'Karta płatnicza utraciła ważność.';
+    }
+    if (lowerMsg.includes('incorrect cvc') || lowerMsg.includes('incorrect_cvc') || lowerMsg.includes('invalid cvc')) {
+      return 'Niepoprawny kod CVC/CVV karty.';
+    }
+    if (lowerMsg.includes('incorrect number') || lowerMsg.includes('incorrect_number') || lowerMsg.includes('invalid number')) {
+      return 'Niepoprawny numer karty płatniczej.';
+    }
+    if (lowerMsg.includes('authentication_failure') || lowerMsg.includes('authentication failed') || lowerMsg.includes('3d secure')) {
+      return 'Autoryzacja płatności (np. 3D Secure) nie powiodła się.';
+    }
+    if (lowerMsg.includes('blik_code_invalid') || lowerMsg.includes('blik_invalid_code') || (lowerMsg.includes('blik') && lowerMsg.includes('code') && (lowerMsg.includes('invalid') || lowerMsg.includes('incorrect')))) {
+      return 'Twój kod BLIK jest nieprawidłowy. Sprawdź kod w aplikacji bankowej i spróbuj ponownie.';
+    }
+    if (lowerMsg.includes('canceled') || lowerMsg.includes('cancelled')) {
+      return 'Płatność została anulowana.';
+    }
+    return msg;
+  } else {
+    // Tłumaczenia z polskiego na angielski
+    if (msg.includes('Płatność została anulowana.')) {
+      return 'Payment has been cancelled.';
+    }
+    if (msg.includes('Płatność odrzucona lub anulowana przez użytkownika.')) {
+      return 'Payment declined or cancelled by the user.';
+    }
+    if (msg.includes('Ostatnia próba płatności nie powiodła się. Status Stripe:')) {
+      return msg.replace('Ostatnia próba płatności nie powiodła się. Status Stripe:', 'The last payment attempt failed. Stripe status:');
+    }
+    if (msg.includes('Ostatnia próba płatności nie powiodła się.')) {
+      return 'The last payment attempt failed.';
+    }
+    if (msg.includes('Płatność online nie powiodła się.')) {
+      return 'Online payment failed.';
+    }
+    if (msg.includes('Adres e-mail jest niekompletny.')) {
+      return 'Email address is incomplete.';
+    }
+    return msg;
+  }
+};
+
+export const translateErrorToPolish = (msg: string | null | undefined): string | null => {
+  return localizePaymentError(msg, 'pl');
+};
+
 export type PaymentTablePayment = {
   id: number
   vendor: string
@@ -25,7 +107,7 @@ type PaymentTableProps = {
 }
 
 export function PaymentTable({ payments, onAction, actionLoadingId, userRole }: PaymentTableProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const getStatusStyle = (status: PaymentStatus) => {
     switch (status) {
@@ -89,7 +171,7 @@ export function PaymentTable({ payments, onAction, actionLoadingId, userRole }: 
                   )}
                 </td>
                 <td style={cellStyle}>
-                  <span className={status.className} title={payment.failureReason || undefined}>
+                  <span className={status.className} title={localizePaymentError(payment.failureReason, i18n.language) || undefined}>
                     <BudgetIcon name={status.icon} color={status.iconColor} size={14} strokeWidth={2.5} />
                     {status.label}
                   </span>

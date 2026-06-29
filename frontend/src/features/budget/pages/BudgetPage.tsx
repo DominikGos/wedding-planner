@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import { type FormEvent, useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import { useSelector } from 'react-redux'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useLocation } from 'react-router-dom'
@@ -22,7 +22,7 @@ import { getExpenses, type ExpenseResponse } from '../../../api/expenseApi'
 import { extractErrorMessage } from '../../../api/httpClient'
 
 import { BudgetStatCard } from '../components/BudgetStatCard'
-import { PaymentTable, type PaymentTableAction } from '../components/PaymentTable'
+import { PaymentTable, type PaymentTableAction, localizePaymentError } from '../components/PaymentTable'
 import { PaymentHistory } from '../components/PaymentHistory'
 import { BudgetSummary } from '../components/BudgetSummary'
 import { BudgetIcon } from '../components/BudgetIcon'
@@ -68,6 +68,7 @@ export function BudgetPage() {
   const token = useSelector((state: RootState) => state.auth.token)
   const activeWeddingId = useSelector((state: RootState) => state.auth.activeWeddingId)
   const userRole = user?.role || 'couple'
+  const processingIntent = useRef<string | null>(null)
 
   const taskTypeLabels: Record<EventCostSummaryResponse['tasks'][number]['taskType'], string> = useMemo(() => ({
     CATERING: t('schedule.typeCatering'),
@@ -79,6 +80,7 @@ export function BudgetPage() {
   const [summary, setSummary] = useState<PaymentSummaryResponse>(emptySummary)
   const [costSummary, setCostSummary] = useState<EventCostSummaryResponse>(emptyCostSummary)
   const [filter, setFilter] = useState<PaymentStatus | 'all'>('all')
+  const [currentCostPage, setCurrentCostPage] = useState(1)
   const [isLoading, setIsLoading] = useState(true)
   const [isCostLoading, setIsCostLoading] = useState(Boolean(activeWeddingId && token))
   const [error, setError] = useState<string | null>(null)
@@ -93,9 +95,10 @@ export function BudgetPage() {
 
   const showNotification = (text: string, type: 'success' | 'info' = 'success') => {
     setBudgetNotification({ text, type })
+    const timeoutDuration = type === 'info' ? 10000 : 5000
     setTimeout(() => {
       setBudgetNotification(null)
-    }, 4000)
+    }, timeoutDuration)
   }
 
   const loadPayments = useCallback(async () => {
@@ -166,6 +169,10 @@ export function BudgetPage() {
   }, [loadDropdownData])
 
   useEffect(() => {
+    setCurrentCostPage(1)
+  }, [activeWeddingId])
+
+  useEffect(() => {
     if (location.state?.notificationText) {
       showNotification(location.state.notificationText, location.state.notificationType || 'success')
       navigate(location.pathname, { replace: true, state: {} })
@@ -176,6 +183,10 @@ export function BudgetPage() {
     const redirectStatus = params.get('redirect_status')
 
     if (paymentIntentId && token) {
+      if (processingIntent.current === paymentIntentId) {
+        return
+      }
+
       // Wait until payments are loaded before evaluating
       if (payments.length === 0 && isLoading) {
         return
@@ -186,7 +197,9 @@ export function BudgetPage() {
       )
 
       if (matchingPayment) {
-        if (matchingPayment.status === 'PENDING') {
+        if (matchingPayment.status === 'PENDING' || matchingPayment.status === 'FAILED') {
+          processingIntent.current = paymentIntentId;
+          setActionLoadingId(matchingPayment.id);
           const confirmRedirectPayment = async () => {
             const isSuccess = redirectStatus === 'succeeded'
             try {
@@ -195,7 +208,7 @@ export function BudgetPage() {
                 {
                   success: isSuccess,
                   gatewayPaymentId: matchingPayment.gatewayPaymentId,
-                  failureReason: isSuccess ? undefined : 'Płatność odrzucona lub anulowana przez użytkownika.'
+                  failureReason: isSuccess ? undefined : t('budget.gateway.paymentCancelledByUser')
                 },
                 { token }
               )
@@ -203,13 +216,14 @@ export function BudgetPage() {
               if (updatedPayment.status === 'SUCCESS') {
                 showNotification(t('budget.paymentConfirmed') || 'Płatność została pomyślnie zrealizowana!', 'success')
               } else {
-                const errorMsg = updatedPayment.failureReason || 'Płatność online nie powiodła się.'
+                const errorMsg = localizePaymentError(updatedPayment.failureReason, i18n.language) || 'Płatność online nie powiodła się.'
                 showNotification(`${t('budget.history.paymentFailedTitle') || 'Płatność nieudana'}: ${errorMsg}`, 'info')
               }
             } catch (err) {
               console.error('Failed to confirm redirect payment:', err)
               showNotification(t('budget.actionError') || 'Wystąpił błąd podczas autoryzacji płatności.', 'info')
             } finally {
+              setActionLoadingId(null)
               navigate('/budget', { replace: true })
               void loadPayments()
               void loadDropdownData()
@@ -262,6 +276,15 @@ export function BudgetPage() {
       }))
       .sort((a, b) => b.amount - a.amount)
   }, [costSummary, taskTypeLabels])
+
+  const paginatedCostTasks = useMemo(() => {
+    const startIndex = (currentCostPage - 1) * 5
+    return costSummary.tasks.slice(startIndex, startIndex + 5)
+  }, [costSummary.tasks, currentCostPage])
+
+  const totalCostPages = useMemo(() => {
+    return Math.ceil(costSummary.tasks.length / 5)
+  }, [costSummary.tasks])
 
   const filteredPayments = useMemo(() => {
     const list = filter === 'all' ? payments : payments.filter(payment => payment.status === filter)
@@ -350,7 +373,7 @@ export function BudgetPage() {
           id: `f-${payment.id}`,
           type: 'reminder_sent',
           title: t('budget.history.paymentFailedTitle'),
-          description: t('budget.history.paymentFailedDesc', { vendor: vendorName, reason: payment.failureReason || t('budget.history.noFunds') }),
+          description: t('budget.history.paymentFailedDesc', { vendor: vendorName, reason: localizePaymentError(payment.failureReason, i18n.language) || t('budget.history.noFunds') }),
           date: new Date(payment.updatedAt).toLocaleString(currentLocale, { dateStyle: 'short', timeStyle: 'short' }),
           timestamp: updatedTime,
           user: {
@@ -449,16 +472,36 @@ export function BudgetPage() {
     <div style={{ display: 'grid', gap: '1.5rem' }}>
       {budgetNotification && (
         <div style={{
-          padding: '1rem',
+          padding: '0.85rem 1rem',
           borderRadius: '12px',
           background: budgetNotification.type === 'success' ? '#daf6e5' : '#e8efff',
           color: budgetNotification.type === 'success' ? '#14834b' : '#4b6acb',
           border: `1px solid ${budgetNotification.type === 'success' ? '#bfeecf' : '#cbd9f9'}`,
           fontWeight: 600,
-          textAlign: 'center',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '1rem',
           animation: 'fadeIn 0.3s ease'
         }}>
-          {budgetNotification.text}
+          <span style={{ flex: 1, textAlign: 'center' }}>{budgetNotification.text}</span>
+          <button 
+            onClick={() => setBudgetNotification(null)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'inherit',
+              fontSize: '1.25rem',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              padding: '0 0.25rem',
+              lineHeight: 1,
+              display: 'flex',
+              alignItems: 'center'
+            }}
+          >
+            &times;
+          </button>
         </div>
       )}
 
@@ -720,21 +763,68 @@ export function BudgetPage() {
                   <tr>
                     <th style={{ padding: '0.8rem 0.75rem', color: 'var(--muted)', fontSize: '0.85rem' }}>{t('budget.tableTask')}</th>
                     <th style={{ padding: '0.8rem 0.75rem', color: 'var(--muted)', fontSize: '0.85rem' }}>{t('budget.tableType')}</th>
-                    <th style={{ padding: '0.8rem 0.75rem', color: 'var(--muted)', fontSize: '0.85rem', textAlign: 'right' }}>{t('budget.tableCost')}</th>
+                    <th style={{ padding: '0.8rem 0.75rem', color: 'var(--muted)', fontSize: '0.85rem', textAlign: 'right', minWidth: '135px' }}>{t('budget.tableCost')}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {costSummary.tasks.map(task => (
+                  {paginatedCostTasks.map(task => (
                     <tr key={task.taskId}>
                       <td style={{ padding: '0.9rem 0.75rem', fontWeight: 650 }}>{task.taskName}</td>
                       <td style={{ padding: '0.9rem 0.75rem', color: 'var(--muted)' }}>{taskTypeLabels[task.taskType]}</td>
-                      <td style={{ padding: '0.9rem 0.75rem', textAlign: 'right', fontWeight: 800, color: 'var(--info)' }}>
+                      <td style={{ padding: '0.9rem 0.75rem', textAlign: 'right', fontWeight: 800, color: 'var(--info)', minWidth: '135px', whiteSpace: 'nowrap' }}>
                         {task.cost.toLocaleString('pl-PL')} PLN
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+
+              {totalCostPages > 1 && (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '0.75rem',
+                  borderTop: '1px solid var(--border)',
+                  background: 'var(--surface-soft)'
+                }}>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>
+                    Strona {currentCostPage} z {totalCostPages} ({costSummary.tasks.length} {costSummary.tasks.length === 1 ? 'wydatek' : 'wydatków'})
+                  </span>
+                  <div style={{ display: 'flex', gap: '0.4rem' }}>
+                    <button
+                      className='button-secondary'
+                      disabled={currentCostPage === 1}
+                      onClick={() => setCurrentCostPage(p => Math.max(p - 1, 1))}
+                      style={{
+                        padding: '0.25rem 0.6rem',
+                        fontSize: '0.75rem',
+                        minWidth: 'auto',
+                        minHeight: 'auto',
+                        opacity: currentCostPage === 1 ? 0.5 : 1,
+                        cursor: currentCostPage === 1 ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      &laquo;
+                    </button>
+                    <button
+                      className='button-secondary'
+                      disabled={currentCostPage === totalCostPages}
+                      onClick={() => setCurrentCostPage(p => Math.min(p + 1, totalCostPages))}
+                      style={{
+                        padding: '0.25rem 0.6rem',
+                        fontSize: '0.75rem',
+                        minWidth: 'auto',
+                        minHeight: 'auto',
+                        opacity: currentCostPage === totalCostPages ? 0.5 : 1,
+                        cursor: currentCostPage === totalCostPages ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      &raquo;
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div style={{ display: 'grid', gap: '0.75rem' }}>

@@ -120,8 +120,8 @@ public class PaymentService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only online payments can be confirmed online");
         }
 
-        if (payment.getStatus() != PaymentStatus.PENDING) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only pending online payments can be confirmed");
+        if (payment.getStatus() != PaymentStatus.PENDING && payment.getStatus() != PaymentStatus.FAILED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only pending or failed online payments can be confirmed");
         }
 
         if (request.getGatewayPaymentId() != null
@@ -146,9 +146,14 @@ public class PaymentService {
                     payment.setStatus(PaymentStatus.FAILED);
                     payment.setFailureReason("Płatność została anulowana.");
                 } else {
-                    if (!request.isSuccess()) {
-                        // Jeśli frontend jawnie zgłosił błąd (np. powrót z fail test Przelewy24),
-                        // to ustawiamy status na FAILED. W przeciwnym razie zostawiamy PENDING.
+                    if (intent.getLastPaymentError() != null) {
+                        // Jeśli w Stripe wystąpił błąd autoryzacji (np. zły BLIK, brak środków, odrzucenie banku),
+                        // to natychmiast oznaczamy transakcję w bazie jako FAILED, aby użytkownik widział to w tabeli
+                        // i mógł kliknąć przycisk "Ponów" (Retry).
+                        payment.setStatus(PaymentStatus.FAILED);
+                        payment.setFailureReason(intent.getLastPaymentError().getMessage());
+                    } else if (!request.isSuccess()) {
+                        // Jeśli frontend jawnie zgłosił błąd (np. powrót z fail test Przelewy24)
                         payment.setStatus(PaymentStatus.FAILED);
                         payment.setFailureReason(
                                 request.getFailureReason() == null || request.getFailureReason().isBlank()
@@ -156,14 +161,10 @@ public class PaymentService {
                                         : request.getFailureReason()
                         );
                     } else {
-                        // Płatność wciąż jest aktywna w Stripe (np. wymaga nowej próby lub autoryzacji)
-                        // Nie blokujemy jej w bazie i zostawiamy jako PENDING, dzięki czemu użytkownik
-                        // może dokonać kolejnej, udanej próby (np. po nieudanym 3DS2 lub BLIK).
+                        // Brak błędów autoryzacji w Stripe i brak zgłoszenia porażki z frontendu.
+                        // Płatność jest wciąż aktywna i nie podjęto jeszcze prób (np. nowa sesja).
                         payment.setStatus(PaymentStatus.PENDING);
-                        String lastError = intent.getLastPaymentError() != null
-                                ? intent.getLastPaymentError().getMessage()
-                                : "Ostatnia próba płatności nie powiodła się. Status Stripe: " + intent.getStatus();
-                        payment.setFailureReason(lastError);
+                        payment.setFailureReason(null);
                     }
                 }
             } catch (com.stripe.exception.StripeException e) {

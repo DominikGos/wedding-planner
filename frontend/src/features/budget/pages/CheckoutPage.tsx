@@ -12,18 +12,56 @@ import { getExpenses, type ExpenseResponse } from '../../../api/expenseApi'
 const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || ''
 const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null
 
+const mapStripeErrorCodeToPolish = (code?: string, defaultMessage?: string): string => {
+  if (!code) return defaultMessage || 'Wystąpił nieoczekiwany błąd płatności.';
+  
+  const translations: Record<string, string> = {
+    'insufficient_funds': 'Brak wystarczających środków na koncie bankowym.',
+    'card_declined': 'Karta płatnicza została odrzucona przez bank.',
+    'expired_card': 'Karta płatnicza utraciła ważność.',
+    'incorrect_cvc': 'Niepoprawny kod CVC/CVV karty.',
+    'incorrect_number': 'Niepoprawny numer karty płatniczej.',
+    'invalid_expiry_month': 'Niepoprawny miesiąc ważności karty.',
+    'invalid_expiry_year': 'Niepoprawny rok ważności karty.',
+    'processing_error': 'Wystąpił błąd procesowania transakcji. Spróbuj ponownie.',
+    'payment_intent_authentication_failure': 'Autoryzacja płatności (np. 3D Secure) nie powiodła się.',
+    'token_already_used': 'Token transakcji został już użyty.',
+    'amount_too_large': 'Kwota płatności przekracza dozwolony limit.',
+    'amount_too_small': 'Kwota płatności jest zbyt niska.',
+    'blik_code_invalid': 'Twój kod BLIK jest nieprawidłowy. Sprawdź kod w aplikacji bankowej i spróbuj ponownie.',
+    'blik_invalid_code': 'Twój kod BLIK jest nieprawidłowy. Sprawdź kod w aplikacji bankowej i spróbuj ponownie.'
+  };
+
+  return translations[code] || defaultMessage || 'Wystąpił błąd płatności.';
+};
+
 export function CheckoutPage() {
   const location = useLocation()
   const paymentId = (location.state as { paymentId?: number } | null)?.paymentId
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const token = useSelector((state: RootState) => state.auth.token)
 
   const [payment, setPayment] = useState<PaymentResponse | null>(null)
   const [vendor, setVendor] = useState<VendorResponse | null>(null)
   const [expense, setExpense] = useState<ExpenseResponse | null>(null)
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    return localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'
+  })
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const syncTheme = () => {
+      setTheme(localStorage.getItem('theme') === 'dark' ? 'dark' : 'light')
+    }
+    window.addEventListener('theme:change', syncTheme)
+    window.addEventListener('storage', syncTheme)
+    return () => {
+      window.removeEventListener('theme:change', syncTheme)
+      window.removeEventListener('storage', syncTheme)
+    }
+  }, [])
 
   // If no paymentId in state, redirect immediately — prevents direct URL access
   useEffect(() => {
@@ -42,6 +80,10 @@ export function CheckoutPage() {
 
         // 1. Fetch payment
         const paymentData = await getPaymentById(paymentId!, { token: token ?? undefined })
+        if (paymentData.status === 'SUCCESS') {
+          navigate('/budget', { replace: true, state: { notificationText: t('budget.paymentConfirmed') || 'Płatność została pomyślnie zrealizowana!', notificationType: 'success' } })
+          return
+        }
         setPayment(paymentData)
 
         // 2. Fetch vendor & expense to resolve names
@@ -125,7 +167,7 @@ export function CheckoutPage() {
           {t('budget.gateway.title')}
         </h1>
         <p className='page-subtitle'>
-          {isStripe ? 'Bezpieczna płatność testowa Stripe' : t('budget.gateway.subtitle')}
+          {isStripe ? t('budget.gateway.stripeSubtitle') : t('budget.gateway.subtitle')}
         </p>
       </header>
 
@@ -138,7 +180,7 @@ export function CheckoutPage() {
         {/* Left: Summary */}
         <section className='page-card' style={{ padding: '1.5rem', display: 'grid', gap: '1rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>
-            Podsumowanie płatności
+            {t('budget.gateway.summaryTitle')}
           </h2>
           <div style={{ display: 'grid', gap: '0.75rem', fontSize: '0.95rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -150,8 +192,8 @@ export function CheckoutPage() {
               <strong>{vendor?.companyName || `Dostawca #${payment.vendorId}`}</strong>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--muted)' }}>Metoda:</span>
-              <span>Online (Sandbox)</span>
+              <span style={{ color: 'var(--muted)' }}>{t('budget.gateway.methodLabel')}</span>
+              <span>{t('budget.gateway.methodValue')}</span>
             </div>
             <div style={{
               display: 'flex',
@@ -172,8 +214,17 @@ export function CheckoutPage() {
         {/* Right: Checkout integration */}
         <section className='page-card' style={{ padding: '1.5rem' }}>
           {isStripe && stripePromise ? (
-            <Elements stripe={stripePromise} options={{ clientSecret: payment.gatewayPaymentId || undefined }}>
-              <StripeCheckoutForm payment={payment} />
+            <Elements 
+              stripe={stripePromise} 
+              options={{ 
+                clientSecret: payment.gatewayPaymentId || undefined, 
+                locale: i18n.language as any,
+                appearance: {
+                  theme: theme === 'dark' ? 'night' : 'stripe'
+                }
+              }}
+            >
+              <StripeCheckoutForm payment={payment} token={token} />
             </Elements>
           ) : (
             <MockCheckoutForm payment={payment} token={token} />
@@ -189,9 +240,10 @@ export function CheckoutPage() {
    ========================================================================== */
 interface StripeCheckoutFormProps {
   payment: PaymentResponse
+  token: string
 }
 
-function StripeCheckoutForm({ payment }: StripeCheckoutFormProps) {
+function StripeCheckoutForm({ payment, token }: StripeCheckoutFormProps) {
   const stripe = useStripe()
   const elements = useElements()
   const { t } = useTranslation()
@@ -219,15 +271,30 @@ function StripeCheckoutForm({ payment }: StripeCheckoutFormProps) {
 
       if (error) {
         // Stripe returned a payment error (e.g. insufficient funds, card declined).
-        // Show the Stripe error message directly.
-        const stripeErrorMsg = error.message || 'Wystąpił nieoczekiwany błąd podczas autoryzacji płatności.'
+        // Translate the error message to Polish using code dictionary.
+        const stripeErrorMsg = mapStripeErrorCodeToPolish(error.code, error.message)
         setErrorMessage(stripeErrorMsg)
+
+        // Notify backend about the failure so database reflects FAILED status and failureReason.
+        try {
+          await confirmOnlinePayment(
+            payment.id,
+            {
+              success: false,
+              gatewayPaymentId: payment.gatewayPaymentId,
+              failureReason: stripeErrorMsg
+            },
+            { token }
+          )
+        } catch (backendErr) {
+          console.warn('[Checkout] Could not notify backend of payment failure:', backendErr)
+        }
       }
       // If no error and no redirect happened, confirmPayment redirected the browser.
     } catch (err: any) {
       // This catch is only reached on a network/SDK-level failure BEFORE Stripe responded.
       console.error('[Checkout] Stripe SDK error:', err)
-      setErrorMessage('Nie udało się nawiązać połączenia ze Stripe. Sprawdź połączenie internetowe i spróbuj ponownie.')
+      setErrorMessage(t('budget.actionError'))
     } finally {
       setIsProcessing(false)
     }
@@ -237,7 +304,7 @@ function StripeCheckoutForm({ payment }: StripeCheckoutFormProps) {
   return (
     <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '1.25rem' }}>
       <h2 style={{ margin: 0, fontSize: '1.1rem', marginBottom: '0.5rem' }}>
-        Szczegóły płatności Stripe
+        {t('budget.gateway.stripeDetails')}
       </h2>
 
       <PaymentElement />
@@ -261,7 +328,7 @@ function StripeCheckoutForm({ payment }: StripeCheckoutFormProps) {
           marginTop: '0.5rem'
         }}
       >
-        {isProcessing ? t('budget.gateway.authorizing') : `Opłać bezpiecznie (${payment.amount} ${payment.currency})`}
+        {isProcessing ? t('budget.gateway.authorizing') : `${t('budget.gateway.paySecurely')} (${payment.amount} ${payment.currency})`}
       </button>
     </form>
   )
