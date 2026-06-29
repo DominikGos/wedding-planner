@@ -50,7 +50,23 @@ class ExpenseServiceTest {
         assertEquals(1, result.size());
         assertEquals(200L, result.get(0).getId());
         assertEquals(BigDecimal.TEN, result.get(0).getAmount());
+        assertEquals(PaymentMethod.ONLINE, result.get(0).getPaymentMethod());
         verify(eventService).requireOwnedEvent(10L, user);
+    }
+
+    @Test
+    void getExpensesUsesCancelledPaymentMethodWhenTaskMethodIsMissing() {
+        Task task = Task.builder().id(100L).build();
+        Payment payment = Payment.builder()
+                .status(PaymentStatus.CANCELLED)
+                .method(PaymentMethod.ONLINE)
+                .build();
+        Expense expense = Expense.builder().id(200L).task(task).payment(payment).build();
+        when(expenseRepository.findByTaskId(100L)).thenReturn(List.of(expense));
+
+        List<ExpenseResponse> result = expenseService.getExpenses(100L, null, null);
+
+        assertEquals(PaymentMethod.ONLINE, result.get(0).getPaymentMethod());
     }
 
     @Test

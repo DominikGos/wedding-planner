@@ -23,6 +23,7 @@ public class EntertainmentTaskFactory extends TaskFactory {
                 .dueDate(dto.getDueDate())
                 .status("PENDING")
                 .priority(dto.getPriority() != null ? dto.getPriority() : 0)
+                .paymentMethod(dto.getPaymentMethod())
                 .performerName(dto.getPerformerName())
                 .totalPrice(dto.getTotalPrice())
                 .duration(dto.getDuration())
@@ -41,6 +42,7 @@ public class EntertainmentTaskFactory extends TaskFactory {
         dto.put("dueDate", task.getDueDate());
         dto.put("status", task.getStatus());
         dto.put("priority", task.getPriority());
+        dto.put("paymentMethod", task.getPaymentMethod());
         dto.put("performerName", task.getPerformerName());
         dto.put("totalPrice", task.getTotalPrice());
         dto.put("duration", task.getDuration());

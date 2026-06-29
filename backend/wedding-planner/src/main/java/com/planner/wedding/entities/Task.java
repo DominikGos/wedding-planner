@@ -46,6 +46,9 @@ public class Task {
 
     private Integer priority;
 
+    @Enumerated(EnumType.STRING)
+    private PaymentMethod paymentMethod;
+
     // Catering
 
     private BigDecimal pricePerGuest;

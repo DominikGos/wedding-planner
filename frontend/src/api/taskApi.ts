@@ -1,4 +1,5 @@
 import { httpClient } from './httpClient'
+import type { PaymentMethod } from './paymentApi'
 
 export type TaskType = 'CATERING' | 'DECORATION' | 'ENTERTAINMENT'
 export type TaskStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED'
@@ -17,6 +18,8 @@ export type TaskResponse = {
   theme?: string | null
   performerName?: string | null
   totalPrice?: number | null
+  paymentMethod?: PaymentMethod | null
+  lockedByPayment?: boolean
 }
 
 export type TaskRequest = {
@@ -31,6 +34,7 @@ export type TaskRequest = {
   theme?: string
   performerName?: string
   totalPrice?: number
+  paymentMethod: PaymentMethod
 }
 
 type TaskRequestOptions = {

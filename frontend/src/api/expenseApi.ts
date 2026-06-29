@@ -1,4 +1,5 @@
 import { httpClient } from './httpClient'
+import type { PaymentMethod } from './paymentApi'
 
 export type ExpenseResponse = {
   id: number
@@ -9,6 +10,7 @@ export type ExpenseResponse = {
   date: string | null
   status: string | null
   paymentId: number | null
+  paymentMethod: PaymentMethod | null
 }
 
 type ExpenseRequestOptions = {

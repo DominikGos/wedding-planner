@@ -28,7 +28,14 @@ export function TaskRow({ task, isSelected, onSelect, onStatusChange }: TaskRowP
       <span style={{ color: 'var(--text)', fontWeight: 600 }}>{type}</span>
       <span>{date}</span>
       <span onClick={event => event.stopPropagation()}>
-        <select value={task.status} onChange={event => onStatusChange(event.target.value as TaskStatus)} className='task-status-select'>
+        <select
+          disabled={task.lockedByPayment}
+          value={task.status}
+          onChange={event => {
+            if (!task.lockedByPayment) onStatusChange(event.target.value as TaskStatus)
+          }}
+          className='task-status-select'
+        >
           {taskStatuses.map(status => (
             <option key={status.value} value={status.value}>
               {t(`tasks.statuses.${status.value}`)}

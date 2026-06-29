@@ -47,7 +47,8 @@ class PaymentServiceTest {
         request.setMethod(PaymentMethod.ONLINE);
         request.setCurrency("USD");
 
-        Expense expense = Expense.builder().id(10L).build();
+        Task task = Task.builder().paymentMethod(PaymentMethod.ONLINE).build();
+        Expense expense = Expense.builder().id(10L).task(task).build();
         Vendor vendor = Vendor.builder().id(20L).build();
 
         when(expenseRepository.findById(10L)).thenReturn(Optional.of(expense));
@@ -79,7 +80,8 @@ class PaymentServiceTest {
         request.setMethod(PaymentMethod.OFFLINE);
         request.setCurrency("");
 
-        Expense expense = Expense.builder().id(10L).build();
+        Task task = Task.builder().paymentMethod(PaymentMethod.OFFLINE).build();
+        Expense expense = Expense.builder().id(10L).task(task).build();
         Vendor vendor = Vendor.builder().id(20L).build();
 
         when(expenseRepository.findById(10L)).thenReturn(Optional.of(expense));
@@ -130,6 +132,78 @@ class PaymentServiceTest {
         });
 
         assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
+    }
+
+    @Test
+    void createPaymentUsesTaskMethodInsteadOfRequestMethod() {
+        CreatePaymentRequest request = new CreatePaymentRequest();
+        request.setExpenseId(10L);
+        request.setVendorId(20L);
+        request.setAmount(BigDecimal.TEN);
+        request.setMethod(PaymentMethod.OFFLINE);
+
+        Task task = Task.builder().paymentMethod(PaymentMethod.ONLINE).build();
+        Expense expense = Expense.builder().id(10L).task(task).build();
+        Vendor vendor = Vendor.builder().id(20L).build();
+
+        when(expenseRepository.findById(10L)).thenReturn(Optional.of(expense));
+        when(vendorRepository.findById(20L)).thenReturn(Optional.of(vendor));
+        when(paymentGatewayClient.createSandboxPayment(BigDecimal.TEN, "PLN")).thenReturn("gw-task-method");
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        PaymentResponse response = paymentService.createPayment(request);
+
+        assertEquals(PaymentMethod.ONLINE, response.getMethod());
+        assertEquals(PaymentStatus.PENDING, response.getStatus());
+    }
+
+    @Test
+    void createPaymentReusesCancelledPayment() {
+        CreatePaymentRequest request = new CreatePaymentRequest();
+        request.setExpenseId(10L);
+        request.setVendorId(20L);
+        request.setAmount(BigDecimal.TEN);
+
+        Task task = Task.builder().build();
+        Payment cancelled = Payment.builder()
+                .id(5L)
+                .status(PaymentStatus.CANCELLED)
+                .method(PaymentMethod.OFFLINE)
+                .build();
+        Expense expense = Expense.builder().id(10L).task(task).payment(cancelled).build();
+        Vendor vendor = Vendor.builder().id(20L).build();
+
+        when(expenseRepository.findById(10L)).thenReturn(Optional.of(expense));
+        when(vendorRepository.findById(20L)).thenReturn(Optional.of(vendor));
+        when(paymentRepository.save(cancelled)).thenReturn(cancelled);
+
+        PaymentResponse response = paymentService.createPayment(request);
+
+        assertEquals(5L, response.getId());
+        assertEquals(PaymentMethod.OFFLINE, response.getMethod());
+        assertEquals(PaymentStatus.OFFLINE, response.getStatus());
+        verify(paymentRepository).save(cancelled);
+    }
+
+    @Test
+    void createPaymentRejectsExpenseWithExistingActivePayment() {
+        CreatePaymentRequest request = new CreatePaymentRequest();
+        request.setExpenseId(10L);
+        request.setVendorId(20L);
+        request.setAmount(BigDecimal.TEN);
+
+        Task task = Task.builder().paymentMethod(PaymentMethod.ONLINE).build();
+        Payment existing = Payment.builder().status(PaymentStatus.PENDING).build();
+        Expense expense = Expense.builder().id(10L).task(task).payment(existing).build();
+        when(expenseRepository.findById(10L)).thenReturn(Optional.of(expense));
+
+        ResponseStatusException ex = assertThrows(
+                ResponseStatusException.class,
+                () -> paymentService.createPayment(request)
+        );
+
+        assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
+        verify(paymentRepository, never()).save(any());
     }
 
     @Test

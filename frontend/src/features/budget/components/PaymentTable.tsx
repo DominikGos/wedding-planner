@@ -117,7 +117,7 @@ export function PaymentTable({ payments, onAction, actionLoadingId, userRole }: 
                         {isActionLoading ? t('budget.table.btnLoading') : t('budget.table.btnCancel')}
                       </button>
                     )}
-                    {(payment.status === 'FAILED' || payment.status === 'CANCELLED') && userRole === 'couple' && (
+                    {payment.status === 'FAILED' && userRole === 'couple' && (
                       <button
                         style={{ ...actionButtonStyle, cursor: isActionLoading ? 'wait' : 'pointer', opacity: isActionLoading ? 0.7 : 1 }}
                         disabled={isActionLoading}

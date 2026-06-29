@@ -41,7 +41,7 @@ export type PaymentSummaryResponse = {
 export type CreatePaymentRequest = {
   amount: number
   currency?: string
-  method: PaymentMethod
+  method?: PaymentMethod
   vendorId?: number
   expenseId?: number
   eventId?: number

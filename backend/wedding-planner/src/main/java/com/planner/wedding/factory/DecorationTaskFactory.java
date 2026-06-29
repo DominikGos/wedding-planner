@@ -23,6 +23,7 @@ public class DecorationTaskFactory extends TaskFactory {
                 .dueDate(dto.getDueDate())
                 .status("PENDING")
                 .priority(dto.getPriority() != null ? dto.getPriority() : 0)
+                .paymentMethod(dto.getPaymentMethod())
                 .theme(dto.getTheme())
                 .totalPrice(dto.getTotalPrice())
                 .performerName(dto.getPerformerName())
@@ -41,6 +42,7 @@ public class DecorationTaskFactory extends TaskFactory {
         dto.put("dueDate", task.getDueDate());
         dto.put("status", task.getStatus());
         dto.put("priority", task.getPriority());
+        dto.put("paymentMethod", task.getPaymentMethod());
         dto.put("theme", task.getTheme());
         dto.put("totalPrice", task.getTotalPrice());
         dto.put("performerName", task.getPerformerName());
