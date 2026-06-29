@@ -97,7 +97,7 @@ export function TaskForm({ values, editing, error, onChange, onCancel, onSubmit,
         {canEditPaymentMethod && (
           <label style={{ display: 'grid', gap: '0.5rem' }}>
             <span style={{ fontWeight: 600 }}>{t('budget.formMethod')}</span>
-            <select disabled={readOnly || editing} value={values.paymentMethod} onChange={event => onChange('paymentMethod', event.target.value)} style={selectStyle} className='task-form-control'>
+            <select disabled={readOnly} value={values.paymentMethod} onChange={event => onChange('paymentMethod', event.target.value)} style={selectStyle} className='task-form-control'>
               <option value='ONLINE'>{t('budget.formMethodOnline')}</option>
               <option value='OFFLINE'>{t('budget.formMethodOffline')}</option>
             </select>

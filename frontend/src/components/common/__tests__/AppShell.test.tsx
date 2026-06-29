@@ -56,7 +56,7 @@ describe('AppShell Component', () => {
       </Provider>
     )
 
-    const themeToggleBtn = screen.getByTitle(/Przełącz motyw/i)
+    const themeToggleBtn = screen.getByTitle(/Przełącz motyw|Motyw strony/i)
     expect(themeToggleBtn).toBeInTheDocument()
 
     // Trigger theme toggle
@@ -76,7 +76,7 @@ describe('AppShell Component', () => {
       </Provider>
     )
 
-    const langToggleBtn = screen.getByTitle(/Zmień język /i)
+    const langToggleBtn = screen.getByTitle(/Zmień język|Język strony/i)
     expect(langToggleBtn).toBeInTheDocument()
 
     const initialLangBtnText = langToggleBtn.textContent // e.g. "🇬🇧 EN" or "🇵🇱 PL"

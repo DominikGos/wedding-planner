@@ -128,7 +128,7 @@ public class TaskService {
         task.setDescription(createTaskDTO.getDescription());
         task.setDueDate(createTaskDTO.getDueDate());
         task.setPriority(createTaskDTO.getPriority());
-        if (user.getRole() == UserRole.BRIDE || user.getRole() == UserRole.GROOM) {
+        if (user.getRole() != UserRole.PLANNER) {
             task.setPaymentMethod(resolvePaymentMethod(createTaskDTO, task.getPaymentMethod()));
         } else if (task.getPaymentMethod() == null) {
             task.setPaymentMethod(PaymentMethod.ONLINE);
