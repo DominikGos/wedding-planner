@@ -10,6 +10,12 @@ export const localizePaymentError = (msg: string | null | undefined, lng: string
   
   if (!isEn) {
     // Tłumaczenia z angielskiego na polski
+    if (lowerMsg.includes('failed to authorize the payment') || lowerMsg.includes('failed to authorize')) {
+      return 'Klient nie autoryzował płatności.';
+    }
+    if (lowerMsg.includes('redirect was not completed') || (lowerMsg.includes('redirect') && lowerMsg.includes('not completed'))) {
+      return 'Płatność nie powiodła się, ponieważ przekierowanie nie zostało ukończone.';
+    }
     if (lowerMsg.includes('passed has expired') || lowerMsg.includes('blik codes expire after 2 minutes') || lowerMsg.includes('blik codes expire')) {
       return 'Kod BLIK wygasł. Kody BLIK są ważne przez 2 minuty. Wygeneruj nowy kod w aplikacji bankowej.';
     }
@@ -19,19 +25,22 @@ export const localizePaymentError = (msg: string | null | undefined, lng: string
     if (lowerMsg.includes('insufficient funds') || lowerMsg.includes('insufficient_funds')) {
       return 'Brak wystarczających środków na koncie bankowym.';
     }
-    if (lowerMsg.includes('customer declined this payment') || lowerMsg.includes('customer declined')) {
+    if (lowerMsg.includes('customer declined this payment') || lowerMsg.includes('customer declined') || lowerMsg.includes('customer declined')) {
       return 'Płatność została odrzucona przez klienta.';
     }
-    if (lowerMsg.includes('declined by the customer\'s bank') || lowerMsg.includes('bank declined') || lowerMsg.includes('customer\'s bank for an unknown reason')) {
+    if (lowerMsg.includes('customer') && lowerMsg.includes('bank') && lowerMsg.includes('declined')) {
       return 'Płatność została odrzucona przez bank klienta z nieznanej przyczyny.';
     }
     if (lowerMsg.includes('declined for an unknown reason')) {
       return 'Płatność została odrzucona z nieznanej przyczyny.';
     }
-    if (lowerMsg.includes('didn\'t approve this payment within the allocated') || lowerMsg.includes('within the allocated 60 seconds')) {
+    if (lowerMsg.includes('declined')) {
+      return 'Płatność została odrzucona.';
+    }
+    if (lowerMsg.includes('approve') && lowerMsg.includes('60 seconds') || (lowerMsg.includes('approve') && lowerMsg.includes('didn'))) {
       return 'Klient nie zatwierdził płatności w wymaganym czasie (60 sekund).';
     }
-    if (lowerMsg.includes('request to the customer\'s bank timed out') || lowerMsg.includes('bank timed out')) {
+    if (lowerMsg.includes('customer') && lowerMsg.includes('bank') && lowerMsg.includes('timed out')) {
       return 'Upłynął limit czasu na odpowiedź banku klienta.';
     }
     if (lowerMsg.includes('request to the blik network timed out') || lowerMsg.includes('blik network timed out')) {
@@ -75,6 +84,15 @@ export const localizePaymentError = (msg: string | null | undefined, lng: string
     }
     if (msg.includes('Adres e-mail jest niekompletny.')) {
       return 'Email address is incomplete.';
+    }
+    if (msg.includes('Brak wystarczających środków na koncie')) {
+      return 'Insufficient funds on account.';
+    }
+    if (msg.includes('Klient nie autoryzował płatności.')) {
+      return 'The customer failed to authorize the payment.';
+    }
+    if (msg.includes('Płatność nie powiodła się, ponieważ przekierowanie nie zostało ukończone.')) {
+      return 'The payment has failed because the redirect was not completed.';
     }
     return msg;
   }
